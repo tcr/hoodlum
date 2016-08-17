@@ -1,0 +1,124 @@
+use std::str::FromStr;
+use ast;
+
+grammar;
+
+Comma<T>: Vec<T> = { // (1)
+    <v:(<T> ",")*> <e:T?> => match e { // (2)
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
+pub Module: ast::Module = { // (1)
+    "module" "(" <a:ModuleArgs> ")" "{" <b:ModuleBody> "}" => {
+        ast::Module(a, b)
+    },
+};
+
+ModuleArgs = Comma<ModuleArg>;
+
+ModuleArg: (ast::Ident, ast::Dir) = {
+    //(r"[^{}]+" "{" Inner "}")* => (),
+    <i:Ident> ":" <d:ModuleArgType> => (i, d),
+};
+
+ModuleArgType: ast::Dir = {
+    "out" => ast::Dir::Out,
+    "in" => ast::Dir::In,
+};
+
+ModuleBody: Vec<ast::Decl> = {
+    <v:(Decl)*> => v,
+};
+
+Ident: ast::Ident = {
+    r"[a-zA-Z][0-9A-Za-z]*" => ast::Ident(<>.to_string()),
+};
+
+Num: ast::Expr = {
+    r"\d+" => ast::Expr::Num(i64::from_str(<>).unwrap()),
+    r"0b\d+" => ast::Expr::Num(i64::from_str(&<>[2..]).unwrap()),
+    r"0x\d+" => ast::Expr::Num(i64::from_str(&<>[2..]).unwrap()),
+};
+
+Decl: ast::Decl = {
+    "reg" <i:Ident> ";" => ast::Decl::Reg(i),
+    "reg" <i:Ident> "[" <a:Num> "]" ";" => ast::Decl::RegArray(i, a),
+    "on" "(" Ident "." Ident ")" "{" <b:SeqStatements> "}" => {
+        ast::Decl::On(ast::EdgeRef("clk".to_string(), ast::Edge::Pos), b)
+    },
+    "always" "{" <b:CombStatements> "}" => {
+        ast::Decl::Always(b)
+    },
+};
+
+CombStatements: ast::CombBlock = {
+    <CombStatement*> => ast::CombBlock(<>),
+};
+
+CombStatement: ast::Comb = {
+    <i:Ident> "=" <e:Expr> ";" => ast::Comb::Assign(i, e),
+};
+
+SeqStatements: ast::SeqBlock = {
+    <SeqStatement*> => ast::SeqBlock(<>),
+};
+
+SeqStatement: ast::Seq = {
+    "if" <c:Expr> "{" <t:SeqStatements> "}" "else" "{" <e:SeqStatements> "}" ";"? => {
+        ast::Seq::If(c, t, Some(e))
+    },
+    "if" <c:Expr> "{" <t:SeqStatements> "}" ";"? => {
+        ast::Seq::If(c, t, None)
+    },
+    <i:Ident> "<=" <v:Expr> ";" => {
+        ast::Seq::Set(i, v)
+    },
+};
+
+Expr: ast::Expr = {
+    "{" <v:Comma<Expr>> "}" => ast::Expr::Concat(v),
+    <l:Expr> "==" <r:Term> => ast::Expr::Arith(ast::Op::Eq, Box::new(l), Box::new(r)),
+    <l:Expr> "+" <r:Term> => ast::Expr::Arith(ast::Op::Add, Box::new(l), Box::new(r)),
+    <l:Expr> "-" <r:Term> => ast::Expr::Arith(ast::Op::Sub, Box::new(l), Box::new(r)),
+    Term => <>,
+};
+
+Term: ast::Expr = {
+    "(" <e:Expr> ")" => e,
+    <i:Ident> "[" <l:Expr> ":" <r:Expr> "]" => ast::Expr::Slice(i, Box::new(l), Some(Box::new(r))),
+    <i:Ident> "[" <l:Expr> "]" => ast::Expr::Slice(i, Box::new(l), None),
+    Ident => ast::Expr::Ref(<>),
+    Num => <>,
+};
+
+//module ( clk : in , D1 : out , D2 : out , D3 : out , D4 : out , D5 : out ) {\nreg rot [ 3 ] ; reg ready ; reg divider [ 20 ] ; on ( clk . posedge ) {\nif ready {\nif divider == 1200000 - 1 { divider <= 0 ; } else { divider <= divider + 1 ; }\n} else { ready <= 1 ; rot <= 0b0001 ; divider <= 0 ; } } always {\nD1 = rot [ 0 ] ; D2 = rot [ 1 ] ; D3 = rot [ 2 ] ; D4 = rot [ 3 ] ; D5 = 1 ; }\n}
+
+//Expr: Expr = {
+//    "(" <Exprs> ")" => Expr::SExpr(<>),
+//    "null" => Expr::Null,
+//    Num => Expr::Int(<>),
+//    r#""(?:[^"\\]|\\.)*""# => {
+//      let val = <>;
+//      Expr::Str(val[1..val.len() - 1].to_owned())
+//    },
+//    r#"'(?:[^'\\]|\\.)*'"# => {
+//      let val = <>;
+//      Expr::Str(val[1..val.len() - 1].to_owned())
+//    },
+//    r";[^;\n\r]*" => Expr::Null,
+//    Term => Expr::Atom(<>),
+//};
+//
+//Term: String = {
+//    r#"[A-Za-z_?+*/.=<>-]+[0-9A-Za-z_?+*/.=<>-]*"# => (<>).to_owned()
+//};
+//
+//Num: i32 = {
+//    r"[0-9]+" => i32::from_str(<>).unwrap()
+//};
