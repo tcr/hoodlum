@@ -42,14 +42,18 @@ Ident: ast::Ident = {
 
 Num: ast::Expr = {
     r"\d+" => ast::Expr::Num(i64::from_str(<>).unwrap()),
-    r"0b\d+" => ast::Expr::Num(i64::from_str(&<>[2..]).unwrap()),
-    r"0x\d+" => ast::Expr::Num(i64::from_str(&<>[2..]).unwrap()),
+    r"0b\d+" => ast::Expr::Num(i64::from_str_radix(&<>[2..], 2).unwrap()),
+    r"0x\d+" => ast::Expr::Num(i64::from_str_radix(&<>[2..], 16).unwrap()),
 };
 
 Decl: ast::Decl = {
-    "reg" <i:Ident> ";" => ast::Decl::Reg(i),
-    "reg" <i:Ident> "[" <a:Num> "]" ";" => ast::Decl::RegArray(i, a),
-    "on" "(" Ident "." Ident ")" "{" <b:SeqStatements> "}" => {
+    "reg" <i:Ident> "=" <v:Expr> ";" => {
+        ast::Decl::Reg(i, v)
+    },
+    "reg" <i:Ident> "[" <a:Num> "]" "=" <v:Expr> ";" => {
+        ast::Decl::RegArray(i, a, v)
+    },
+    "on" Ident "." Ident "{" <b:SeqStatements> "}" => {
         ast::Decl::On(ast::EdgeRef("clk".to_string(), ast::Edge::Pos), b)
     },
     "always" "{" <b:CombStatements> "}" => {
@@ -70,11 +74,15 @@ SeqStatements: ast::SeqBlock = {
 };
 
 SeqStatement: ast::Seq = {
-    "if" <c:Expr> "{" <t:SeqStatements> "}" "else" "{" <e:SeqStatements> "}" ";"? => {
+    "if" <c:Expr> "{" <t:SeqStatements> "}"
+    "else" "{" <e:SeqStatements> "}" ";"? => {
         ast::Seq::If(c, t, Some(e))
     },
     "if" <c:Expr> "{" <t:SeqStatements> "}" ";"? => {
         ast::Seq::If(c, t, None)
+    },
+    "reset" <c:Ident> "{" <b:SeqStatements> "}" ";"? => {
+        ast::Seq::Reset(c, b)
     },
     <i:Ident> "<=" <v:Expr> ";" => {
         ast::Seq::Set(i, v)
@@ -96,29 +104,3 @@ Term: ast::Expr = {
     Ident => ast::Expr::Ref(<>),
     Num => <>,
 };
-
-//module ( clk : in , D1 : out , D2 : out , D3 : out , D4 : out , D5 : out ) {\nreg rot [ 3 ] ; reg ready ; reg divider [ 20 ] ; on ( clk . posedge ) {\nif ready {\nif divider == 1200000 - 1 { divider <= 0 ; } else { divider <= divider + 1 ; }\n} else { ready <= 1 ; rot <= 0b0001 ; divider <= 0 ; } } always {\nD1 = rot [ 0 ] ; D2 = rot [ 1 ] ; D3 = rot [ 2 ] ; D4 = rot [ 3 ] ; D5 = 1 ; }\n}
-
-//Expr: Expr = {
-//    "(" <Exprs> ")" => Expr::SExpr(<>),
-//    "null" => Expr::Null,
-//    Num => Expr::Int(<>),
-//    r#""(?:[^"\\]|\\.)*""# => {
-//      let val = <>;
-//      Expr::Str(val[1..val.len() - 1].to_owned())
-//    },
-//    r#"'(?:[^'\\]|\\.)*'"# => {
-//      let val = <>;
-//      Expr::Str(val[1..val.len() - 1].to_owned())
-//    },
-//    r";[^;\n\r]*" => Expr::Null,
-//    Term => Expr::Atom(<>),
-//};
-//
-//Term: String = {
-//    r#"[A-Za-z_?+*/.=<>-]+[0-9A-Za-z_?+*/.=<>-]*"# => (<>).to_owned()
-//};
-//
-//Num: i32 = {
-//    r"[0-9]+" => i32::from_str(<>).unwrap()
-//};

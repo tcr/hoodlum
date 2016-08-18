@@ -1,0 +1,7 @@
+[package]
+name = "hoodlum-test"
+version = "0.1.0"
+authors = ["Tim Ryan <id@timryan.org>"]
+
+[dependencies]
+hoodlum = { path = "../" }

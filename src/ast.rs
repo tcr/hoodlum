@@ -1,51 +1,52 @@
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Ident(pub String);
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Dir {
     In,
     Out,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Module(pub Vec<(Ident, Dir)>, pub Vec<Decl>);
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Edge {
     Pos,
     Neg,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct EdgeRef(pub String, pub Edge);
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Decl {
-    Reg(Ident),
-    RegArray(Ident, Expr),
+    Reg(Ident, Expr),
+    RegArray(Ident, Expr, Expr),
     On(EdgeRef, SeqBlock),
     Always(CombBlock),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct SeqBlock(pub Vec<Seq>);
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Seq {
     If(Expr, SeqBlock, Option<SeqBlock>),
+    Reset(Ident, SeqBlock),
     Set(Ident, Expr),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct CombBlock(pub Vec<Comb>);
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Comb {
     If(Expr, CombBlock, Option<CombBlock>),
     Assign(Ident, Expr)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Op {
     Add,
     Sub,
@@ -54,7 +55,7 @@ pub enum Op {
     Eq,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Expr {
     Slice(Ident, Box<Expr>, Option<Box<Expr>>),
     Concat(Vec<Expr>),
