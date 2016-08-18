@@ -123,6 +123,21 @@ impl ToVerilog for ast::Dir {
     }
 }
 
+impl ToVerilog for ast::Edge {
+    fn to_verilog(&self, _: &VerilogState) -> String {
+        (match *self {
+            ast::Edge::Pos => "posedge",
+            ast::Edge::Neg => "negedge",
+        }).to_string()
+    }
+}
+
+impl ToVerilog for ast::EdgeRef {
+    fn to_verilog(&self, v: &VerilogState) -> String {
+        format!("{} {}", self.1.to_verilog(v), self.0.to_verilog(v))
+    }
+}
+
 impl ToVerilog for ast::Op {
     fn to_verilog(&self, _: &VerilogState) -> String {
         (match *self {
@@ -148,7 +163,8 @@ impl ToVerilog for ast::Decl {
                     name=i.to_verilog(v))
             }
             ast::Decl::On(ref edge, ref block) => {
-                format!("{ind}always @(posedge clk) begin\n{body}{ind}end",
+                format!("{ind}always @({edge}) begin\n{body}{ind}end",
+                    edge=edge.to_verilog(v),
                     ind=v.indent,
                     body=block.to_verilog(&v.tab()))
             }

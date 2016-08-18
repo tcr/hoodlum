@@ -17,7 +17,7 @@ pub enum Edge {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct EdgeRef(pub String, pub Edge);
+pub struct EdgeRef(pub Ident, pub Edge);
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Decl {

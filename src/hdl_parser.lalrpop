@@ -53,12 +53,17 @@ Decl: ast::Decl = {
     "reg" <i:Ident> "[" <a:Num> "]" "=" <v:Expr> ";" => {
         ast::Decl::RegArray(i, a, v)
     },
-    "on" Ident "." Ident "{" <b:SeqStatements> "}" => {
-        ast::Decl::On(ast::EdgeRef("clk".to_string(), ast::Edge::Pos), b)
+    "on" <sig:Ident> "." <edge:Edge> "{" <b:SeqStatements> "}" => {
+        ast::Decl::On(ast::EdgeRef(sig, edge), b)
     },
     "always" "{" <b:CombStatements> "}" => {
         ast::Decl::Always(b)
     },
+};
+
+Edge: ast::Edge = {
+    "posedge" => ast::Edge::Pos,
+    "negedge" => ast::Edge::Neg,
 };
 
 CombStatements: ast::CombBlock = {
