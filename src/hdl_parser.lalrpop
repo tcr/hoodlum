@@ -94,8 +94,26 @@ SeqStatement: ast::Seq = {
     "reset" <c:Ident> "{" <b:SeqStatements> "}" ";"? => {
         ast::Seq::Reset(c, b)
     },
+    "match" <cond:Expr> "{" <arms:MatchArm+> "}" ";"? => {
+        ast::Seq::Match(cond, arms)
+    },
+    "fsm" "{" <b:SeqStatements> "}" ";"? => {
+        ast::Seq::Fsm(b)
+    },
+    "yield" ";" => {
+        ast::Seq::Yield
+    },
     <i:Ident> "<=" <v:Expr> ";" => {
         ast::Seq::Set(i, v)
+    },
+};
+
+MatchArm: (ast::Expr, ast::SeqBlock) = {
+    <e:Expr> "=>" <s:SeqStatement> "," => {
+        (e, ast::SeqBlock(vec![s]))
+    },
+    <e:Expr> "=>" "{" <b:SeqStatements> "}" ","? => {
+        (e, b)
     },
 };
 

@@ -35,6 +35,9 @@ pub enum Seq {
     If(Expr, SeqBlock, Option<SeqBlock>),
     Reset(Ident, SeqBlock),
     Set(Ident, Expr),
+    Match(Expr, Vec<(Expr, SeqBlock)>),
+    Fsm(SeqBlock),
+    Yield,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

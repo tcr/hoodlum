@@ -150,6 +150,13 @@ impl VerilogState {
             init: self.init.clone(),
         }
     }
+
+    pub fn untab(&self) -> VerilogState {
+        VerilogState {
+            indent: self.indent.chars().skip(4).collect(),
+            init: self.init.clone(),
+        }
+    }
 }
 
 impl Default for VerilogState {
@@ -267,6 +274,29 @@ impl ToVerilog for ast::Seq {
                     ind=v.indent,
                     name=id.to_verilog(v),
                     value=value.to_verilog(v))
+            }
+            ast::Seq::Match(ref cond, ref arms) => {
+                format!("{ind}case ({cond})\n{body}{ind}endcase\n",
+                    ind=v.indent,
+                    cond=cond.to_verilog(v),
+                    body=arms.iter().map(|arm| {
+                        format!("{ind}{cond}: begin\n{body}{ind}end\n",
+                            ind=v.tab().indent,
+                            cond=arm.0.to_verilog(&v.tab()),
+                            body=arm.1.to_verilog(&v.tab().tab()))
+                    }).collect::<Vec<_>>().join(""))
+            }
+            ast::Seq::Fsm(ref block) => {
+                format!("{ind}case (_FSM)\n{ind2}0: begin\n{body}{ind3}_FSM <= 0;\n{ind2}end\n{ind}endcase\n",
+                    ind=v.indent,
+                    ind2=v.tab().indent,
+                    ind3=v.tab().tab().indent,
+                    body=block.to_verilog(&v.tab().tab()))
+            }
+            ast::Seq::Yield => {
+                format!("{ind2}_FSM <= _FSM + 1;\n{ind}end\n{ind}1: begin\n",
+                    ind=v.untab().indent,
+                    ind2=v.indent)
             }
         }
     }

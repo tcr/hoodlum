@@ -14,11 +14,30 @@ module (clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
 
     reg index[0..1200000] = 0;
 
+    reg state[0..3] = 0;
+
     on clk.posedge {
         reset ready {
             if divider == 1200000 - 1 {
                 divider <= 0;
-                rot <= {rot[3-1:0], rot[3]};
+                match state {
+                    0 => {
+                        rot <= 0b0001;
+                        state <= 1;
+                    }
+                    1 => {
+                        rot <= 0b0010;
+                        state <= 2;
+                    }
+                    2 => {
+                        rot <= 0b0100;
+                        state <= 3;
+                    }
+                    3 => {
+                        rot <= 0b1000;
+                        state <= 0;
+                    }
+                }
             } else {
                 divider <= divider + 1;
             }
