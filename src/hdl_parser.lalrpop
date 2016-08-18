@@ -41,9 +41,9 @@ Ident: ast::Ident = {
 };
 
 Num: ast::Expr = {
-    r"\d+" => ast::Expr::Num(i64::from_str(<>).unwrap()),
-    r"0b\d+" => ast::Expr::Num(i64::from_str_radix(&<>[2..], 2).unwrap()),
-    r"0x\d+" => ast::Expr::Num(i64::from_str_radix(&<>[2..], 16).unwrap()),
+    r"\d+" => ast::Expr::Num(i32::from_str(<>).unwrap()),
+    r"0b\d+" => ast::Expr::Num(i32::from_str_radix(&<>[2..], 2).unwrap()),
+    r"0x\d+" => ast::Expr::Num(i32::from_str_radix(&<>[2..], 16).unwrap()),
 };
 
 Decl: ast::Decl = {
@@ -52,6 +52,11 @@ Decl: ast::Decl = {
     },
     "reg" <i:Ident> "[" <a:Num> "]" "=" <v:Expr> ";" => {
         ast::Decl::RegArray(i, a, v)
+    },
+    "reg" <i:Ident> "[" Num ".." <a:Num> "]" "=" <v:Expr> ";" => {
+        //TODO need to adjust register approximation
+        let width = u32::next_power_of_two(a.to_i32() as u32).trailing_zeros() + 3;
+        ast::Decl::RegArray(i, ast::Expr::Num(width as i32), v)
     },
     "on" <sig:Ident> "." <edge:Edge> "{" <b:SeqStatements> "}" => {
         ast::Decl::On(ast::EdgeRef(sig, edge), b)

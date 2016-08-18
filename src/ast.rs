@@ -62,5 +62,16 @@ pub enum Expr {
     Concat(Vec<Expr>),
     Ref(Ident),
     Arith(Op, Box<Expr>, Box<Expr>),
-    Num(i64),
+    Num(i32),
+}
+
+impl Expr {
+    pub fn to_i32(&self) -> i32 {
+        match *self {
+            Expr::Num(value) => value,
+            _ => {
+                panic!("Called to_i32 on non-Num.")
+            }
+        }
+    }
 }

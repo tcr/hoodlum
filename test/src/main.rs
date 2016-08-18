@@ -10,9 +10,9 @@ fn main() {
 module (clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
     reg rot[4] = 0b0001;
     reg ready = 0;
-    reg divider[21] = 0;
+    reg divider[0..1200000] = 0;
 
-    reg index[32] = 0;
+    reg index[0..1200000] = 0;
 
     on clk.posedge {
         reset ready {
