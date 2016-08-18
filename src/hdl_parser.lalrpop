@@ -99,6 +99,7 @@ Expr: ast::Expr = {
     <l:Expr> "==" <r:Term> => ast::Expr::Arith(ast::Op::Eq, Box::new(l), Box::new(r)),
     <l:Expr> "+" <r:Term> => ast::Expr::Arith(ast::Op::Add, Box::new(l), Box::new(r)),
     <l:Expr> "-" <r:Term> => ast::Expr::Arith(ast::Op::Sub, Box::new(l), Box::new(r)),
+    <l:Expr> "&&" <r:Term> => ast::Expr::Arith(ast::Op::And, Box::new(l), Box::new(r)),
     Term => <>,
 };
 

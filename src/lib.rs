@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 pub mod hdl_parser;
 pub mod ast;
@@ -24,8 +24,9 @@ macro_rules! hdl {
 
 
 pub trait Walker {
-    fn module(&mut self, item: &ast::Module) { }
-    fn decl(&mut self, item: &ast::Decl) { }
+    fn module(&mut self, _: &ast::Module) { }
+    fn decl(&mut self, _: &ast::Decl) { }
+    fn seq(&mut self, _: &ast::Seq) { }
 }
 
 pub trait Walkable {
@@ -43,7 +44,37 @@ impl Walkable for ast::Module {
 
 impl Walkable for ast::Decl {
     fn walk<W: Walker>(&self, walker: &mut W) {
-        walker.decl(self)
+        walker.decl(self);
+        match *self {
+            ast::Decl::On(_, ref block) => {
+                block.walk(walker);
+            }
+            _ => { }
+        }
+    }
+}
+
+impl Walkable for ast::SeqBlock {
+    fn walk<W: Walker>(&self, walker: &mut W) {
+        for seq in self.0.iter() {
+            seq.walk(walker);
+        }
+    }
+}
+
+impl Walkable for ast::Seq {
+    fn walk<W: Walker>(&self, walker: &mut W) {
+        walker.seq(self);
+        match *self {
+            ast::Seq::If(ref cond, ref t, ref f) => {
+                // TODO cond
+                t.walk(walker);
+                if let &Some(ref block) = f {
+                    block.walk(walker);
+                }
+            }
+            _ => { }
+        }
     }
 }
 
@@ -66,8 +97,31 @@ impl Walker for InitWalker {
             ast::Decl::Reg(ref ident, ref init) => {
                 self.init.insert(ident.clone(), init.clone());
             }
-            ast::Decl::RegArray(ref ident, ref len, ref init) => {
+            ast::Decl::RegArray(ref ident, _, ref init) => {
                 self.init.insert(ident.clone(), init.clone());
+            }
+            _ => { }
+        }
+    }
+}
+
+pub struct ResetWalker {
+    modified: HashSet<ast::Ident>,
+}
+
+impl ResetWalker {
+    fn new() -> ResetWalker {
+        ResetWalker {
+            modified: HashSet::new(),
+        }
+    }
+}
+
+impl Walker for ResetWalker {
+    fn seq(&mut self, item: &ast::Seq) {
+        match *item {
+            ast::Seq::Set(ref ident, _) => {
+                self.modified.insert(ident.clone());
             }
             _ => { }
         }
@@ -146,6 +200,7 @@ impl ToVerilog for ast::Op {
             ast::Op::Mul => "*",
             ast::Op::Div => "/",
             ast::Op::Eq => "==",
+            ast::Op::And => "&&",
         }).to_string()
     }
 }
@@ -179,10 +234,6 @@ impl ToVerilog for ast::SeqBlock {
     }
 }
 
-// Add reg declarations to it (state initialized with a walkthrough),
-// Add walkr,
-// Add lookup in the reset() block
-
 impl ToVerilog for ast::Seq {
     fn to_verilog(&self, v: &VerilogState) -> String {
         match *self {
@@ -198,13 +249,18 @@ impl ToVerilog for ast::Seq {
                     }))
             },
             ast::Seq::Reset(ref c, ref b) => {
+                let mut reset = ResetWalker::new();
+                b.walk(&mut reset);
+
                 format!("{ind}if ({cond}) begin\n{body}{ind}end\n{ind}else begin\n{reset}{ind}end\n",
                     ind=v.indent,
                     cond=c.to_verilog(v),
                     body=b.to_verilog(&v.tab()),
-                    reset=v.init.iter().map(|(ident, init)| {
-                        ast::Seq::Set(ident.clone(), init.clone()).to_verilog(&v.tab())
-                    }).collect::<Vec<_>>().join(""))
+                    reset=v.init.iter()
+                        .filter(|&(ident, _)| reset.modified.contains(ident))
+                        .map(|(ident, init)| {
+                            ast::Seq::Set(ident.clone(), init.clone()).to_verilog(&v.tab())
+                        }).collect::<Vec<_>>().join(""))
             },
             ast::Seq::Set(ref id, ref value) => {
                 format!("{ind}{name} <= {value};\n",

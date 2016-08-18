@@ -53,6 +53,7 @@ pub enum Op {
     Mul,
     Div,
     Eq,
+    And,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

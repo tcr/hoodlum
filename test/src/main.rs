@@ -9,8 +9,10 @@ fn main() {
 
 module (clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
     reg rot[4] = 0b0001;
-    reg ready = 1;
+    reg ready = 0;
     reg divider[21] = 0;
+
+    reg index[32] = 0;
 
     on clk.posedge {
         reset ready {
@@ -23,12 +25,21 @@ module (clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
         }
     }
 
+    on clk.posedge {
+        if index == 12000000 - 1 {
+            ready <= 1;
+            LED5 <= 0;
+        } else {
+            index <= index + 1;
+            LED5 <= 1;
+        }
+    }
+
     always {
-        LED1 = rot[0];
-        LED2 = rot[1];
-        LED3 = rot[2];
-        LED4 = rot[3];
-        LED5 = 1;
+        LED1 = ready && rot[0];
+        LED2 = ready && rot[1];
+        LED3 = ready && rot[2];
+        LED4 = ready && rot[3];
     }
 }
 
