@@ -63,11 +63,17 @@ pub enum Op {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum UnaryOp {
+    Not,
+}
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Expr {
     Slice(Ident, Box<Expr>, Option<Box<Expr>>),
     Concat(Vec<Expr>),
     Ref(Ident),
     Arith(Op, Box<Expr>, Box<Expr>),
+    Unary(UnaryOp, Box<Expr>),
     Num(i32),
 }
 

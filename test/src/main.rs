@@ -7,11 +7,10 @@ use hoodlum::*;
 fn main() {
     let code = hdl! {
 
-entity Entry (clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
+entity Entry(clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
     reg rot[4] = 0b0001;
     reg ready = 0;
     reg divider[0..1200000] = 0;
-
     reg index[0..1200000] = 0;
 
     reg FSM[0..3] = 0;
@@ -59,12 +58,12 @@ entity Entry (clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
 
 };
 
-    println!("");
-    println!("AST: {:?}", code);
+    //println!("");
+    //println!("AST: {:?}", code);
 
-    println!("");
     let verilog = code.to_verilog(&Default::default());
-    println!("Verilog:\n{}", verilog);
+    println!("Verilog:");
+    codelist(&verilog);
 
     let mut f = File::create("out/test.v").unwrap();
     f.write_all(verilog.as_bytes()).unwrap();

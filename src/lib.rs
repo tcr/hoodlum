@@ -1,22 +1,57 @@
+extern crate lalrpop_util;
+
 use std::collections::{HashMap, HashSet};
+pub use lalrpop_util::ParseError as ParseError;
 
 pub mod hdl_parser;
 pub mod ast;
+
+pub fn codelist(code: &str) {
+    for (i, line) in code.lines().enumerate() {
+        println!("{:>3} | {}", i+1, line);
+    }
+}
+
+pub fn code_error(code: &str, tok: usize) {
+    let code = format!("\n\n{}", code);
+    let code = code.lines().collect::<Vec<_>>();
+    let mut pos = 0;
+    for (i, lines) in (&code[..]).windows(3).enumerate() {
+        if pos + lines[2].len() >= tok {
+            println!("{:>3} | {}", i - 1, lines[0]);
+            println!("{:>3} | {}", i, lines[1]);
+            println!("{:>3} | {}", i + 1, lines[2]);
+            println!("{}^", (0..tok - (pos - 6)).map(|_| "~").collect::<String>());
+            return;
+        }
+        pos += lines[2].len() + 1;
+    }
+}
 
 #[macro_export]
 macro_rules! hdl {
     ( $( $x:tt )* ) => {
         {
-            let mut temp_vec = Vec::new();
-            $(
-                temp_vec.push(stringify!($x));
-            )*
-            let concat = temp_vec.join(" ");
+            let concat = stringify!($($x)*);
 
-            println!("Parsing {:?}", concat);
-            let res = hdl_parser::parse_Code(&concat);
+            println!("Input");
+            codelist(concat);
+            println!("");
+            let res = hoodlum::hdl_parser::parse_Code(&concat);
 
-            res.unwrap()
+            match res {
+                Err(hoodlum::ParseError::InvalidToken {
+                    location: loc
+                }) => {
+                    println!("Error: Invalid token:");
+                    code_error(concat, loc);
+                    panic!("{:?}", res);
+                }
+                Ok(value) => value,
+                err => {
+                    panic!("{:?}", err);
+                }
+            }
         }
     };
 }
@@ -212,20 +247,28 @@ impl ToVerilog for ast::Op {
     }
 }
 
+impl ToVerilog for ast::UnaryOp {
+    fn to_verilog(&self, _: &VerilogState) -> String {
+        (match *self {
+            ast::UnaryOp::Not => "!",
+        }).to_string()
+    }
+}
+
 impl ToVerilog for ast::Decl {
     fn to_verilog(&self, v: &VerilogState) -> String {
         match *self {
             ast::Decl::Reg(ref i, _) => {
-                format!("{ind}reg {name} = 0;", ind=v.indent, name=i.to_verilog(v))
+                format!("{ind}reg {name} = 0;\n", ind=v.indent, name=i.to_verilog(v))
             }
             ast::Decl::RegArray(ref i, ref e, _) => {
-                format!("{ind}reg [({len})-1:0] {name} = 0;",
+                format!("{ind}reg [({len})-1:0] {name} = 0;\n",
                     ind=v.indent,
                     len=e.to_verilog(v),
                     name=i.to_verilog(v))
             }
             ast::Decl::On(ref edge, ref block) => {
-                format!("{ind}always @({edge}) begin\n{body}{ind}end",
+                format!("{ind}always @({edge}) begin\n{body}{ind}end\n",
                     edge=edge.to_verilog(v),
                     ind=v.indent,
                     body=block.to_verilog(&v.tab()))
@@ -374,6 +417,11 @@ impl ToVerilog for ast::Expr {
                     op=op.to_verilog(v),
                     right=r.to_verilog(v))
             }
+            ast::Expr::Unary(ref op, ref r) => {
+                format!("{op} {right}",
+                    op=op.to_verilog(v),
+                    right=r.to_verilog(v))
+            }
         }
     }
 }
@@ -394,7 +442,7 @@ impl ToVerilog for ast::Entity {
             }).collect::<Vec<_>>().join(", "),
             body=self.2.iter().map(|x| {
                 x.to_verilog(&v.tab())
-            }).collect::<Vec<_>>().join("\n"))
+            }).collect::<Vec<_>>().join(""))
     }
 }
 
