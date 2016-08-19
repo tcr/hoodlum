@@ -26,6 +26,7 @@ pub struct EdgeRef(pub Ident, pub Edge);
 pub enum Decl {
     Reg(Ident, Expr),
     RegArray(Ident, Expr, Expr),
+    Let(Ident, Ident, Vec<Ident>),
     On(EdgeRef, SeqBlock),
     Always(CombBlock),
 }

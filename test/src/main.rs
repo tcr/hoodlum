@@ -7,6 +7,19 @@ use hoodlum::*;
 fn main() {
     let code = hdl! {
 
+entity Second(clk: in, ready: out) {
+    reg index[0..1200000] = 0;
+
+    on clk.posedge {
+        if index == 12000000 - 1 {
+            ready <= 1;
+        } else {
+            index <= index + 1;
+            ready <= 0;
+        }
+    }
+}
+
 entity Entry(clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
     reg rot[4] = 0b0001;
     reg ready = 0;
@@ -14,6 +27,8 @@ entity Entry(clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
     reg index[0..1200000] = 0;
 
     reg FSM[0..3] = 0;
+
+    let sec = Second(clk, ready);
 
     on clk.posedge {
         reset ready {
@@ -38,21 +53,12 @@ entity Entry(clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
         }
     }
 
-    on clk.posedge {
-        if index == 12000000 - 1 {
-            ready <= 1;
-            LED5 <= 0;
-        } else {
-            index <= index + 1;
-            LED5 <= 1;
-        }
-    }
-
     always {
         LED1 = ready && rot[0];
         LED2 = ready && rot[1];
         LED3 = ready && rot[2];
         LED4 = ready && rot[3];
+        LED5 = !ready;
     }
 }
 

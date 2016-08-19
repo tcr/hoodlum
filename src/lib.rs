@@ -47,6 +47,14 @@ macro_rules! hdl {
                     code_error(concat, loc);
                     panic!("{:?}", res);
                 }
+                Err(hoodlum::ParseError::UnrecognizedToken {
+                    token: Some((loc, _, _)),
+                    ..
+                }) => {
+                    println!("Error: Unrecognized token:");
+                    code_error(concat, loc);
+                    panic!("{:?}", res);
+                }
                 Ok(value) => value,
                 err => {
                     panic!("{:?}", err);
@@ -266,6 +274,15 @@ impl ToVerilog for ast::Decl {
                     ind=v.indent,
                     len=e.to_verilog(v),
                     name=i.to_verilog(v))
+            }
+            ast::Decl::Let(ref i, ref entity, ref args) => {
+                format!("{ind}{entity} {i}({args});\n",
+                    ind=v.indent,
+                    entity=entity.to_verilog(v),
+                    i=i.to_verilog(v),
+                    args=args.iter().map(|x| {
+                        x.to_verilog(v)
+                    }).collect::<Vec<_>>().join(", "))
             }
             ast::Decl::On(ref edge, ref block) => {
                 format!("{ind}always @({edge}) begin\n{body}{ind}end\n",
