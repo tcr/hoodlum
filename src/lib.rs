@@ -138,7 +138,9 @@ impl Walker for InitWalker {
     fn decl(&mut self, item: &ast::Decl) {
         match *item {
             ast::Decl::Reg(ref ident, ref init) => {
-                self.init.insert(ident.clone(), init.clone());
+                if let &Some(ref init) = init {
+                    self.init.insert(ident.clone(), init.clone());
+                }
             }
             ast::Decl::RegArray(ref ident, _, ref init) => {
                 self.init.insert(ident.clone(), init.clone());
@@ -266,8 +268,13 @@ impl ToVerilog for ast::UnaryOp {
 impl ToVerilog for ast::Decl {
     fn to_verilog(&self, v: &VerilogState) -> String {
         match *self {
-            ast::Decl::Reg(ref i, _) => {
-                format!("{ind}reg {name} = 0;\n", ind=v.indent, name=i.to_verilog(v))
+            ast::Decl::Reg(ref i, ref init) => {
+                format!("{ind}reg {name}{init};\n", ind=v.indent, name=i.to_verilog(v),
+                    init=if init.is_some() {
+                        "= 0"
+                    } else {
+                        ""
+                    })
             }
             ast::Decl::RegArray(ref i, ref e, _) => {
                 format!("{ind}reg [({len})-1:0] {name} = 0;\n",

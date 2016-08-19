@@ -51,8 +51,11 @@ Num: ast::Expr = {
 };
 
 Decl: ast::Decl = {
+    "reg" <i:Ident> ";" => {
+        ast::Decl::Reg(i, None)
+    },
     "reg" <i:Ident> "=" <v:Expr> ";" => {
-        ast::Decl::Reg(i, v)
+        ast::Decl::Reg(i, Some(v))
     },
     "reg" <i:Ident> "[" <a:Num> "]" "=" <v:Expr> ";" => {
         ast::Decl::RegArray(i, a, v)

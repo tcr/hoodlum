@@ -22,12 +22,12 @@ entity Second(clk: in, ready: out) {
 
 entity Entry(clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
     reg rot[4] = 0b0001;
-    reg ready = 0;
     reg divider[0..1200000] = 0;
     reg index[0..1200000] = 0;
 
     reg FSM[0..3] = 0;
 
+    reg ready;
     let sec = Second(clk, ready);
 
     on clk.posedge {
