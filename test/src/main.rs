@@ -7,36 +7,31 @@ use hoodlum::*;
 fn main() {
     let code = hdl! {
 
-module (clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
+entity Entry (clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
     reg rot[4] = 0b0001;
     reg ready = 0;
     reg divider[0..1200000] = 0;
 
     reg index[0..1200000] = 0;
 
-    reg state[0..3] = 0;
+    reg FSM[0..3] = 0;
 
     on clk.posedge {
         reset ready {
             if divider == 1200000 - 1 {
                 divider <= 0;
-                match state {
-                    0 => {
-                        rot <= 0b0001;
-                        state <= 1;
-                    }
-                    1 => {
-                        rot <= 0b0010;
-                        state <= 2;
-                    }
-                    2 => {
-                        rot <= 0b0100;
-                        state <= 3;
-                    }
-                    3 => {
-                        rot <= 0b1000;
-                        state <= 0;
-                    }
+                fsm {
+                    rot <= 0b0001;
+                    yield;
+                    rot <= 0b0011;
+                    yield;
+                    rot <= 0b0110;
+                    yield;
+                    rot <= 0b1100;
+                    yield;
+                    rot <= 0b1000;
+                    yield;
+                    rot <= 0b0000;
                 }
             } else {
                 divider <= divider + 1;

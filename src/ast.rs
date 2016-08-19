@@ -1,4 +1,7 @@
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Code(pub Vec<Entity>);
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Ident(pub String);
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -8,7 +11,7 @@ pub enum Dir {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Module(pub Vec<(Ident, Dir)>, pub Vec<Decl>);
+pub struct Entity(pub Ident, pub Vec<(Ident, Dir)>, pub Vec<Decl>);
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Edge {

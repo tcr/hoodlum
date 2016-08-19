@@ -3,6 +3,10 @@ use ast;
 
 grammar;
 
+pub Code: ast::Code = {
+    <m:Entity+> => ast::Code(m),
+};
+
 Comma<T>: Vec<T> = { // (1)
     <v:(<T> ",")*> <e:T?> => match e { // (2)
         None => v,
@@ -14,25 +18,25 @@ Comma<T>: Vec<T> = { // (1)
     }
 };
 
-pub Module: ast::Module = { // (1)
-    "module" "(" <a:ModuleArgs> ")" "{" <b:ModuleBody> "}" => {
-        ast::Module(a, b)
+Entity: ast::Entity = { // (1)
+    "entity" <i:Ident> "(" <a:EntityArgs> ")" "{" <b:EntityBody> "}" => {
+        ast::Entity(i, a, b)
     },
 };
 
-ModuleArgs = Comma<ModuleArg>;
+EntityArgs = Comma<EntityArg>;
 
-ModuleArg: (ast::Ident, ast::Dir) = {
+EntityArg: (ast::Ident, ast::Dir) = {
     //(r"[^{}]+" "{" Inner "}")* => (),
-    <i:Ident> ":" <d:ModuleArgType> => (i, d),
+    <i:Ident> ":" <d:EntityArgType> => (i, d),
 };
 
-ModuleArgType: ast::Dir = {
+EntityArgType: ast::Dir = {
     "out" => ast::Dir::Out,
     "in" => ast::Dir::In,
 };
 
-ModuleBody: Vec<ast::Decl> = {
+EntityBody: Vec<ast::Decl> = {
     <v:(Decl)*> => v,
 };
 

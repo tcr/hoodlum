@@ -14,7 +14,7 @@ macro_rules! hdl {
             let concat = temp_vec.join(" ");
 
             println!("Parsing {:?}", concat);
-            let res = hdl_parser::parse_Module(&concat);
+            let res = hdl_parser::parse_Code(&concat);
 
             res.unwrap()
         }
@@ -24,7 +24,7 @@ macro_rules! hdl {
 
 
 pub trait Walker {
-    fn module(&mut self, _: &ast::Module) { }
+    fn entity(&mut self, _: &ast::Entity) { }
     fn decl(&mut self, _: &ast::Decl) { }
     fn seq(&mut self, _: &ast::Seq) { }
 }
@@ -33,10 +33,10 @@ pub trait Walkable {
     fn walk<W: Walker>(&self, walker: &mut W);
 }
 
-impl Walkable for ast::Module {
+impl Walkable for ast::Entity {
     fn walk<W: Walker>(&self, walker: &mut W) {
-        walker.module(self);
-        for decl in &self.1 {
+        walker.entity(self);
+        for decl in &self.2 {
             decl.walk(walker);
         }
     }
@@ -287,16 +287,36 @@ impl ToVerilog for ast::Seq {
                     }).collect::<Vec<_>>().join(""))
             }
             ast::Seq::Fsm(ref block) => {
-                format!("{ind}case (_FSM)\n{ind2}0: begin\n{body}{ind3}_FSM <= 0;\n{ind2}end\n{ind}endcase\n",
-                    ind=v.indent,
-                    ind2=v.tab().indent,
-                    ind3=v.tab().tab().indent,
-                    body=block.to_verilog(&v.tab().tab()))
+                ast::Seq::Match(ast::Expr::Ref(ast::Ident("FSM".to_owned())), {
+                    // Divide block.
+                    let mut arms = vec![vec![]];
+                    for seq in &block.0 {
+                        if let &ast::Seq::Yield = seq {
+                            arms.insert(0, vec![]);
+                        } else {
+                            arms[0].push(seq.clone());
+                        }
+                    }
+
+                    let last = arms.len() - 1;
+
+                    arms.into_iter().enumerate().map(|(i, mut seq)| {
+                        let state = ast::Ident("FSM".to_string());
+                        seq.push(ast::Seq::Set(state.clone(),
+                            if i == last {
+                                ast::Expr::Num(0)
+                            } else {
+                                ast::Expr::Arith(ast::Op::Add,
+                                    Box::new(ast::Expr::Ref(state.clone())),
+                                    Box::new(ast::Expr::Num(1)))
+                            }));
+
+                        (ast::Expr::Num(i as i32), ast::SeqBlock(seq))
+                    }).collect()
+                }).to_verilog(v)
             }
             ast::Seq::Yield => {
-                format!("{ind2}_FSM <= _FSM + 1;\n{ind}end\n{ind}1: begin\n",
-                    ind=v.untab().indent,
-                    ind2=v.indent)
+                format!("")
             }
         }
     }
@@ -358,7 +378,7 @@ impl ToVerilog for ast::Expr {
     }
 }
 
-impl ToVerilog for ast::Module {
+impl ToVerilog for ast::Entity {
     fn to_verilog(&self, v: &VerilogState) -> String {
         let mut walker = InitWalker::new();
         self.walk(&mut walker);
@@ -366,13 +386,20 @@ impl ToVerilog for ast::Module {
         let mut v = v.clone();
         v.init = walker.init;
 
-        format!("{ind}module rename ({args});\n{body}{ind}endmodule\n",
+        format!("{ind}module {name} ({args});\n{body}{ind}endmodule\n\n",
             ind=v.indent,
-            args=self.0.iter().map(|x| {
+            name=self.0.to_verilog(&v),
+            args=self.1.iter().map(|x| {
                 format!("{} {}", x.1.to_verilog(&v), x.0.to_verilog(&v))
             }).collect::<Vec<_>>().join(", "),
-            body=self.1.iter().map(|x| {
+            body=self.2.iter().map(|x| {
                 x.to_verilog(&v.tab())
             }).collect::<Vec<_>>().join("\n"))
+    }
+}
+
+impl ToVerilog for ast::Code {
+    fn to_verilog(&self, v: &VerilogState) -> String {
+        self.0.iter().map(|x| x.to_verilog(v)).collect::<Vec<_>>().join("")
     }
 }
