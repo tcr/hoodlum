@@ -39,7 +39,10 @@ pub enum Seq {
     If(Expr, SeqBlock, Option<SeqBlock>),
     Reset(Ident, SeqBlock),
     Set(Ident, Expr),
-    Match(Expr, Vec<(Expr, SeqBlock)>),
+    Match(Expr, Vec<(Vec<Expr>, SeqBlock)>),
+
+    While(Expr, SeqBlock),
+    Loop(SeqBlock),
     Fsm(SeqBlock),
     Yield,
 }
@@ -61,6 +64,9 @@ pub enum Op {
     Div,
     Eq,
     And,
+    Lt,
+    Gt,
+    Ne,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

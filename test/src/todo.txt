@@ -1,0 +1,158 @@
+entity SpiMaster(
+        clk: in,
+        rst: in,
+        tx_trigger: in,
+        tx_ready: out,
+        tx_byte: in,
+        rx_byte: out,
+        spi_clk: out,
+        spi_tx: out,
+        spi_rx: out) {
+    // Internal state.
+    SpiState = enum('IDLE', 'DATA', 'FINISH')
+    state = Signal(SpiState.IDLE)
+
+    # Internal signals.
+    read_index = Signal(intbv(0, min=0, max=8))
+    internal_clk = Signal(bool(0))
+
+    # Generate SPI signal from internal clock + SPI state.
+    always {
+        if state == SpiState.DATA {
+            spi_clk = internal_clk;
+        } else {
+            spi_clk = 0;
+        }
+    }
+
+    div = 4
+    div_idx = Signal(intbv(0, min=0, max=div))
+
+    # Generate divided SPI clock.
+    on clk.negedge {
+        reset rst {
+            if div_idx == div - 1 {
+                internal_clk <= !internal_clk;
+                div_idx <= 0;
+            } else {
+                div_idx <= div_idx + 1;
+            }
+        }
+    }
+
+    // Sample read values from positive clock edge.
+    on internal_clk.posedge {
+        reset rst {
+            if state == SpiState.DATA {
+                rx_byte[read_index] <= spi_rx;
+            }
+        }
+    }
+
+    // SPI output state machine.
+    on internal_clk.negedge {
+        reset rst {
+            fsm {
+                while !tx_trigger {
+                    spi_tx <= 0;
+                    yield;
+                }
+
+                // Start sequence.
+                read_index <= 7;
+                spi_tx <= tx_byte[7];
+                tx_ready <= 0;
+                yield;
+
+                // Continue.
+                while read_index > 0 {
+                    spi_tx <= tx_byte[read_index - 1];
+                    read_index.next = read_index - 1;
+                    yield;
+                }
+
+                tx_ready <= 1;
+
+                loop {
+                    yield;
+                }
+            }
+        }
+    }
+
+
+    fsm {
+        Loop(0, 1) Some(!tx_trigger) {
+            spi_tx <= 0;
+            (next)
+        } {
+            // pass
+        }
+
+        0 | 1 => {
+            if !tx_trigger {
+                spi_tx <= 0;
+                FSM <= 1;
+            } else {
+
+            }
+        }
+
+        Block(1) {
+            // Start sequence.
+            read_index <= 7;
+            spi_tx <= tx_byte[7];
+            tx_ready <= 0;
+            (next)
+        }, (2) {
+            // pass
+        }
+        Loop(2, 3) read_index > 0 {
+            spi_tx <= tx_byte[read_index - 1];
+            read_index.next = read_index - 1;
+            (next)
+        } {
+            // pass
+        }
+        Block(3) {
+            tx_ready <= 1;
+        }
+        Loop(3) {
+        } {
+            // 3 | 4
+        }
+    }
+
+    reg FSM = 0;
+
+    // SPI output state machine.
+    on internal_clk.negedge {
+        reset rst {
+            match FSM {
+                0 => {
+                    if !tx_trigger {
+                        spi_tx <= 0;
+                        FSM <= 0;
+                    } else {
+                        // Start sequence.
+                        read_index <= 7;
+                        spi_tx <= tx_byte[7];
+                        tx_ready <= 0;
+                        FSM <= 1;
+                    }
+                }
+                1 => {
+                    // Continue.
+                    if read_index > 0 {
+                        spi_tx <= tx_byte[read_index - 1];
+                        read_index <= read_index - 1;
+                    } else {
+                        tx_ready <= 1;
+                        FSM <= 2;
+                    }
+                }
+                2 => { }
+            }
+        }
+    }
+}

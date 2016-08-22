@@ -41,7 +41,7 @@ EntityBody: Vec<ast::Decl> = {
 };
 
 Ident: ast::Ident = {
-    r"[a-zA-Z][0-9A-Za-z]*" => ast::Ident(<>.to_string()),
+    r"[a-zA-Z_][0-9A-Za-z_]*" => ast::Ident(<>.to_string()),
 };
 
 Num: ast::Expr = {
@@ -93,7 +93,7 @@ SeqStatements: ast::SeqBlock = {
     <SeqStatement*> => ast::SeqBlock(<>),
 };
 
-SeqStatement: ast::Seq = {
+pub SeqStatement: ast::Seq = {
     "if" <c:Expr> "{" <t:SeqStatements> "}"
     "else" "{" <e:SeqStatements> "}" ";"? => {
         ast::Seq::If(c, t, Some(e))
@@ -107,23 +107,31 @@ SeqStatement: ast::Seq = {
     "match" <cond:Expr> "{" <arms:MatchArm+> "}" ";"? => {
         ast::Seq::Match(cond, arms)
     },
+
+    "while" <c:Expr> "{" <b:SeqStatements> "}" ";"? => {
+        ast::Seq::While(c, b)
+    },
+    "loop" "{" <b:SeqStatements> "}" ";"? => {
+        ast::Seq::Loop(b)
+    },
     "fsm" "{" <b:SeqStatements> "}" ";"? => {
         ast::Seq::Fsm(b)
     },
     "yield" ";" => {
         ast::Seq::Yield
     },
+
     <i:Ident> "<=" <v:Expr> ";" => {
         ast::Seq::Set(i, v)
     },
 };
 
-MatchArm: (ast::Expr, ast::SeqBlock) = {
+MatchArm: (Vec<ast::Expr>, ast::SeqBlock) = {
     <e:Expr> "=>" <s:SeqStatement> "," => {
-        (e, ast::SeqBlock(vec![s]))
+        (vec![e], ast::SeqBlock(vec![s]))
     },
     <e:Expr> "=>" "{" <b:SeqStatements> "}" ","? => {
-        (e, b)
+        (vec![e], b)
     },
 };
 
@@ -133,6 +141,8 @@ Expr: ast::Expr = {
     <l:Expr> "+" <r:Term> => ast::Expr::Arith(ast::Op::Add, Box::new(l), Box::new(r)),
     <l:Expr> "-" <r:Term> => ast::Expr::Arith(ast::Op::Sub, Box::new(l), Box::new(r)),
     <l:Expr> "&&" <r:Term> => ast::Expr::Arith(ast::Op::And, Box::new(l), Box::new(r)),
+    <l:Expr> "<" <r:Term> => ast::Expr::Arith(ast::Op::Lt, Box::new(l), Box::new(r)),
+    <l:Expr> ">" <r:Term> => ast::Expr::Arith(ast::Op::Gt, Box::new(l), Box::new(r)),
     "!" <r:Term> => ast::Expr::Unary(ast::UnaryOp::Not, Box::new(r)),
     Term => <>,
 };
