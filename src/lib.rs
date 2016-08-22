@@ -257,6 +257,7 @@ impl ToVerilog for ast::Op {
             ast::Op::Div => "/",
             ast::Op::Eq => "==",
             ast::Op::And => "&&",
+            ast::Op::Or => "||",
             ast::Op::Lt => "<",
             ast::Op::Gt => ">",
             ast::Op::Ne => "!=",
@@ -465,58 +466,135 @@ impl ToVerilog for ast::Code {
     }
 }
 
-fn fsm_rewrite(expr: &ast::Seq) -> ast::Seq {
+fn fsm_rewrite(input: &ast::Seq) -> ast::Seq {
+    #[derive(Clone, Debug)]
     enum Fsm {
         Loop(Option<ast::Expr>, Vec<Vec<ast::Seq>>),
         Block(Vec<Vec<ast::Seq>>),
     }
 
-    let mut states = vec![
-        Fsm::Loop(
-            Some(ast::Expr::Unary(ast::UnaryOp::Not, Box::new(ast::Expr::Ref(ast::Ident("tx_trigger".to_string()))))),
-        vec![
-            vec![
-                ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(0)),
-            ],
-            vec![
-                ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(1)),
-            ],
-            vec![],
-            vec![
-                ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(2)),
-            ],
-            //vec![
-            //    ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(2)),
-            //],
-        ]),
-        Fsm::Block(vec![
-            vec![
-                ast::Seq::Set(ast::Ident("read_index".to_string()), ast::Expr::Num(7)),
-                ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(7)),
-                ast::Seq::Set(ast::Ident("tx_ready".to_string()), ast::Expr::Num(7)),
-            ],
-            vec![]
-        ]),
-        Fsm::Loop(
-            Some(ast::Expr::Arith(ast::Op::Gt, Box::new(ast::Expr::Ref(ast::Ident("readindex".to_string()))), Box::new(ast::Expr::Num(0)))),
-        vec![
-            vec![
-                ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(-1)),
-                ast::Seq::Set(ast::Ident("read_index".to_string()), ast::Expr::Num(-1)),
-            ],
-            vec![]
-        ]),
-        Fsm::Block(vec![
-            vec![
-                ast::Seq::Set(ast::Ident("tx_ready".to_string()), ast::Expr::Num(1)),
-            ],
-        ]),
-        Fsm::Loop(None,
-        vec![
-            vec![],
-            vec![]
-        ]),
-    ];
+    let mut input = if let &ast::Seq::Fsm(ast::SeqBlock(ref block)) = input {
+        block.clone()
+    } else {
+        panic!("Called fsm_rewrite with non-fsm");
+    };
+
+    // Convert input to Fsm tree.
+    let mut states = vec![];
+    while !input.is_empty() {
+        let item = input.remove(0);
+        match item {
+            ast::Seq::While(cond, ast::SeqBlock(inner)) => {
+                states.push(Fsm::Loop(Some(cond), vec![vec![]]));
+
+                for item in inner {
+                    match item {
+                        ast::Seq::While(..) => unreachable!(),
+                        ast::Seq::Loop(..) => unreachable!(),
+                        ast::Seq::Yield => {
+                            if let &mut Fsm::Loop(_, ref mut block) = states.last_mut().unwrap() {
+                                block.push(vec![])
+                            }
+                        }
+                        seq => {
+                            if let &mut Fsm::Loop(_, ref mut block) = states.last_mut().unwrap() {
+                                block.last_mut().unwrap().push(seq);
+                            }
+                        }
+                    }
+                }
+            }
+            ast::Seq::Loop(ast::SeqBlock(inner)) => {
+                states.push(Fsm::Loop(None, vec![vec![]]));
+
+                for item in inner {
+                    match item {
+                        ast::Seq::While(..) => unreachable!(),
+                        ast::Seq::Loop(..) => unreachable!(),
+                        ast::Seq::Yield => {
+                            if let &mut Fsm::Loop(_, ref mut block) = states.last_mut().unwrap() {
+                                block.push(vec![])
+                            }
+                        }
+                        seq => {
+                            if let &mut Fsm::Loop(_, ref mut block) = states.last_mut().unwrap() {
+                                block.last_mut().unwrap().push(seq);
+                            }
+                        }
+                    }
+                }
+            }
+            ast::Seq::Yield => {
+                if let Some(&Fsm::Block(..)) = states.last() {
+                } else {
+                    states.push(Fsm::Block(vec![vec![]]));
+                }
+
+                if let &mut Fsm::Block(ref mut block) = states.last_mut().unwrap() {
+                    block.push(vec![])
+                }
+            }
+            seq => {
+                if let Some(&Fsm::Block(..)) = states.last() {
+                } else {
+                    states.push(Fsm::Block(vec![vec![]]));
+                }
+
+                if let &mut Fsm::Block(ref mut block) = states.last_mut().unwrap() {
+                    block.last_mut().unwrap().push(seq);
+                }
+            }
+        }
+    }
+
+    println!("States: {:?}", states);
+
+    //let mut states = vec![
+    //    Fsm::Loop(
+    //        Some(ast::Expr::Unary(ast::UnaryOp::Not, Box::new(ast::Expr::Ref(ast::Ident("tx_trigger".to_string()))))),
+    //    vec![
+    //        vec![
+    //            ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(0)),
+    //        ],
+    //        vec![
+    //            ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(1)),
+    //        ],
+    //        vec![],
+    //        vec![
+    //            ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(2)),
+    //        ],
+    //        //vec![
+    //        //    ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(2)),
+    //        //],
+    //    ]),
+    //    Fsm::Block(vec![
+    //        vec![
+    //            ast::Seq::Set(ast::Ident("read_index".to_string()), ast::Expr::Num(7)),
+    //            ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(7)),
+    //            ast::Seq::Set(ast::Ident("tx_ready".to_string()), ast::Expr::Num(7)),
+    //        ],
+    //        vec![]
+    //    ]),
+    //    Fsm::Loop(
+    //        Some(ast::Expr::Arith(ast::Op::Gt, Box::new(ast::Expr::Ref(ast::Ident("readindex".to_string()))), Box::new(ast::Expr::Num(0)))),
+    //    vec![
+    //        vec![
+    //            ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(-1)),
+    //            ast::Seq::Set(ast::Ident("read_index".to_string()), ast::Expr::Num(-1)),
+    //        ],
+    //        vec![]
+    //    ]),
+    //    Fsm::Block(vec![
+    //        vec![
+    //            ast::Seq::Set(ast::Ident("tx_ready".to_string()), ast::Expr::Num(1)),
+    //        ],
+    //    ]),
+    //    Fsm::Loop(None,
+    //    vec![
+    //        vec![],
+    //        vec![]
+    //    ]),
+    //];
 
     let mut output: Vec<(Vec<i32>, Vec<ast::Seq>)> = vec![];
 
@@ -607,12 +685,23 @@ fn fsm_rewrite(expr: &ast::Seq) -> ast::Seq {
                 if let Some(FsmState::Block(content)) = prev_item {
                     state.pop();
                     if !content.is_empty() {
+                        // Match all states up to here.
+                        let mut conds = state_match.iter().map(|x| {
+                            ast::Expr::Arith(ast::Op::Eq,
+                                Box::new(ast::Expr::Ref(ast::Ident("FSM".to_string()))),
+                                Box::new(ast::Expr::Num(*x)))
+                        }).collect::<Vec<_>>();
+
+                        let mut cond = conds.remove(0);
+                        while !conds.is_empty() {
+                            cond = ast::Expr::Arith(ast::Op::Or,
+                                Box::new(cond),
+                                Box::new(conds.remove(0)))
+                        }
+
                         state.push(FsmState::Block(vec![
-                            // TODO Make this not a lt, but match all values in state_match
                             ast::Seq::If(
-                                ast::Expr::Arith(ast::Op::Lt,
-                                    Box::new(ast::Expr::Ref(ast::Ident("FSM".to_string()))),
-                                    Box::new(ast::Expr::Num(state_start - 1))),
+                                cond,
                                 ast::SeqBlock(content),
                                 None,
                             )
@@ -681,6 +770,36 @@ fsm {
     let res = parse_results(code, self::hdl_parser::parse_SeqStatement(code));
 
     let res = fsm_rewrite(&res);
+    let out = res.to_verilog(&Default::default());
 
-    println!("OK:\n{}", res.to_verilog(&Default::default()));
+    println!("OK:\n{}", out);
+
+    assert_eq!(out, r#"case (FSM)
+    0, 1: begin
+        if (!tx_trigger) begin
+            spi_tx <= 0;
+            FSM <= 1;
+        end
+        else begin
+            read_index <= 7;
+            spi_tx <= tx_byte[7];
+            tx_ready <= 0;
+            FSM <= 2;
+        end
+    end
+    2, 3, 4: begin
+        if (FSM != 4 && read_index > 0) begin
+            spi_tx <= tx_byte[read_index - 1];
+            read_index <= read_index - 1;
+            FSM <= 3;
+        end
+        else begin
+            if (FSM == 2 || FSM == 3) begin
+                tx_ready <= 1;
+            end
+            FSM <= 4;
+        end
+    end
+endcase
+"#)
 }

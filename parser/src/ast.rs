@@ -64,6 +64,7 @@ pub enum Op {
     Div,
     Eq,
     And,
+    Or,
     Lt,
     Gt,
     Ne,
