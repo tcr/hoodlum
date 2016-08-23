@@ -547,55 +547,6 @@ fn fsm_rewrite(input: &ast::Seq) -> ast::Seq {
         }
     }
 
-    println!("States: {:?}", states);
-
-    //let mut states = vec![
-    //    Fsm::Loop(
-    //        Some(ast::Expr::Unary(ast::UnaryOp::Not, Box::new(ast::Expr::Ref(ast::Ident("tx_trigger".to_string()))))),
-    //    vec![
-    //        vec![
-    //            ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(0)),
-    //        ],
-    //        vec![
-    //            ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(1)),
-    //        ],
-    //        vec![],
-    //        vec![
-    //            ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(2)),
-    //        ],
-    //        //vec![
-    //        //    ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(2)),
-    //        //],
-    //    ]),
-    //    Fsm::Block(vec![
-    //        vec![
-    //            ast::Seq::Set(ast::Ident("read_index".to_string()), ast::Expr::Num(7)),
-    //            ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(7)),
-    //            ast::Seq::Set(ast::Ident("tx_ready".to_string()), ast::Expr::Num(7)),
-    //        ],
-    //        vec![]
-    //    ]),
-    //    Fsm::Loop(
-    //        Some(ast::Expr::Arith(ast::Op::Gt, Box::new(ast::Expr::Ref(ast::Ident("readindex".to_string()))), Box::new(ast::Expr::Num(0)))),
-    //    vec![
-    //        vec![
-    //            ast::Seq::Set(ast::Ident("spi_tx".to_string()), ast::Expr::Num(-1)),
-    //            ast::Seq::Set(ast::Ident("read_index".to_string()), ast::Expr::Num(-1)),
-    //        ],
-    //        vec![]
-    //    ]),
-    //    Fsm::Block(vec![
-    //        vec![
-    //            ast::Seq::Set(ast::Ident("tx_ready".to_string()), ast::Expr::Num(1)),
-    //        ],
-    //    ]),
-    //    Fsm::Loop(None,
-    //    vec![
-    //        vec![],
-    //        vec![]
-    //    ]),
-    //];
-
     let mut output: Vec<(Vec<i32>, Vec<ast::Seq>)> = vec![];
 
     #[derive(Clone)]
@@ -667,7 +618,8 @@ fn fsm_rewrite(input: &ast::Seq) -> ast::Seq {
                 let mut initial = blocks.remove(0);
 
                 // Transition into the second state after the first iteration.
-                if blocks.len() > 0 { // always true
+                let last_empty = blocks.last().unwrap().is_empty();
+                if !last_empty {
                     initial.push(ast::Seq::Set(ast::Ident("FSM".to_string()), ast::Expr::Num(state_start)));
                 }
 
@@ -683,29 +635,32 @@ fn fsm_rewrite(input: &ast::Seq) -> ast::Seq {
                 // Wrap previous block in an if statement.
                 let prev_item: Option<FsmState> = state.last().map(|x| x.clone());
                 if let Some(FsmState::Block(content)) = prev_item {
-                    state.pop();
-                    if !content.is_empty() {
-                        // Match all states up to here.
-                        let mut conds = state_match.iter().map(|x| {
-                            ast::Expr::Arith(ast::Op::Eq,
-                                Box::new(ast::Expr::Ref(ast::Ident("FSM".to_string()))),
-                                Box::new(ast::Expr::Num(*x)))
-                        }).collect::<Vec<_>>();
+                    // Only do this if there is any loop content at all.
+                    if !next.is_empty() || !initial.is_empty() {
+                        state.pop();
+                        if !content.is_empty() {
+                            // Match all states up to here.
+                            let mut conds = state_match.iter().map(|x| {
+                                ast::Expr::Arith(ast::Op::Eq,
+                                    Box::new(ast::Expr::Ref(ast::Ident("FSM".to_string()))),
+                                    Box::new(ast::Expr::Num(*x)))
+                            }).collect::<Vec<_>>();
 
-                        let mut cond = conds.remove(0);
-                        while !conds.is_empty() {
-                            cond = ast::Expr::Arith(ast::Op::Or,
-                                Box::new(cond),
-                                Box::new(conds.remove(0)))
+                            let mut cond = conds.remove(0);
+                            while !conds.is_empty() {
+                                cond = ast::Expr::Arith(ast::Op::Or,
+                                    Box::new(cond),
+                                    Box::new(conds.remove(0)))
+                            }
+
+                            state.push(FsmState::Block(vec![
+                                ast::Seq::If(
+                                    cond,
+                                    ast::SeqBlock(content),
+                                    None,
+                                )
+                            ]));
                         }
-
-                        state.push(FsmState::Block(vec![
-                            ast::Seq::If(
-                                cond,
-                                ast::SeqBlock(content),
-                                None,
-                            )
-                        ]));
                     }
                 }
 
@@ -720,9 +675,9 @@ fn fsm_rewrite(input: &ast::Seq) -> ast::Seq {
                             None,
                         )
                     ]));
+                    state_match.push(state_start);
+                    state_start += 1;
                 }
-                state_match.push(state_start);
-                state_start += 1;
 
                 // Add our loop sequence.
                 state.push(FsmState::Loop(expr, initial));
@@ -775,31 +730,26 @@ fsm {
     println!("OK:\n{}", out);
 
     assert_eq!(out, r#"case (FSM)
-    0, 1: begin
+    0: begin
         if (!tx_trigger) begin
             spi_tx <= 0;
-            FSM <= 1;
         end
         else begin
             read_index <= 7;
             spi_tx <= tx_byte[7];
             tx_ready <= 0;
-            FSM <= 2;
+            FSM <= 1;
         end
     end
-    2, 3, 4: begin
-        if (FSM != 4 && read_index > 0) begin
+    1: begin
+        if (FSM != 1 && read_index > 0) begin
             spi_tx <= tx_byte[read_index - 1];
             read_index <= read_index - 1;
-            FSM <= 3;
         end
         else begin
-            if (FSM == 2 || FSM == 3) begin
-                tx_ready <= 1;
-            end
-            FSM <= 4;
+            tx_ready <= 1;
         end
     end
 endcase
-"#)
+"#);
 }
