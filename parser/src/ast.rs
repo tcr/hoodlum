@@ -45,6 +45,7 @@ pub enum Seq {
     Loop(SeqBlock),
     Fsm(SeqBlock),
     Yield,
+    Await(Expr),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

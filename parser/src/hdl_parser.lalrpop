@@ -120,6 +120,9 @@ pub SeqStatement: ast::Seq = {
     "yield" ";" => {
         ast::Seq::Yield
     },
+    "await" <e:Expr> ";" => {
+        ast::Seq::Await(e)
+    },
 
     <i:Ident> "<=" <v:Expr> ";" => {
         ast::Seq::Set(i, v)
