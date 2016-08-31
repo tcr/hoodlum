@@ -8,7 +8,7 @@ fn main() {
     let code = hdl! {
 
 entity Second(clk: in, ready: out) {
-    reg index[0..1200000] = 0;
+    let index: uint{..1200000} = 0;
 
     on clk.posedge {
         if index == 12000000 - 1 {
@@ -21,13 +21,12 @@ entity Second(clk: in, ready: out) {
 }
 
 entity Entry(clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
-    reg rot[4] = 0b0001;
-    reg divider[0..1200000] = 0;
-    reg index[0..1200000] = 0;
+    let rot: reg[4] = 0b0001;
+    let divider: uint{..1200000} = 0;
+    let index: uint{..1200000} = 0;
+    let FSM: uint{..3} = 0;
 
-    reg FSM[0..3] = 0;
-
-    reg ready;
+    let ready;
     let sec = Second(clk, ready);
 
     on clk.posedge {

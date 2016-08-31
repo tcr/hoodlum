@@ -6,7 +6,7 @@ HDL generation library for hardware synthesis.
 let code = hdl! {
 
 entity Main (clk: in, LED1: out) {
-    reg light = 1;
+    let light: reg[1] = 1;
 
     on clk.posedge {
         light <= !light;

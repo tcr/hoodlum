@@ -53,10 +53,8 @@ entity SpiMaster(
     on internal_clk.negedge {
         reset rst {
             fsm {
-                while !tx_trigger {
-                    spi_tx <= 0;
-                    yield;
-                }
+                spi_tx <= 0;
+                await tx_trigger;
 
                 // Start sequence.
                 read_index <= 7;
@@ -67,91 +65,14 @@ entity SpiMaster(
                 // Continue.
                 while read_index > 0 {
                     spi_tx <= tx_byte[read_index - 1];
-                    read_index.next = read_index - 1;
+                    read_index <= read_index - 1;
                     yield;
                 }
 
                 tx_ready <= 1;
-
                 loop {
                     yield;
                 }
-            }
-        }
-    }
-
-
-    fsm {
-        Loop(0, 1) Some(!tx_trigger) {
-            spi_tx <= 0;
-            (next)
-        } {
-            // pass
-        }
-
-        0 | 1 => {
-            if !tx_trigger {
-                spi_tx <= 0;
-                FSM <= 1;
-            } else {
-
-            }
-        }
-
-        Block(1) {
-            // Start sequence.
-            read_index <= 7;
-            spi_tx <= tx_byte[7];
-            tx_ready <= 0;
-            (next)
-        }, (2) {
-            // pass
-        }
-        Loop(2, 3) read_index > 0 {
-            spi_tx <= tx_byte[read_index - 1];
-            read_index.next = read_index - 1;
-            (next)
-        } {
-            // pass
-        }
-        Block(3) {
-            tx_ready <= 1;
-        }
-        Loop(3) {
-        } {
-            // 3 | 4
-        }
-    }
-
-    reg FSM = 0;
-
-    // SPI output state machine.
-    on internal_clk.negedge {
-        reset rst {
-            match FSM {
-                0 => {
-                    if !tx_trigger {
-                        spi_tx <= 0;
-                        FSM <= 0;
-                    } else {
-                        // Start sequence.
-                        read_index <= 7;
-                        spi_tx <= tx_byte[7];
-                        tx_ready <= 0;
-                        FSM <= 1;
-                    }
-                }
-                1 => {
-                    // Continue.
-                    if read_index > 0 {
-                        spi_tx <= tx_byte[read_index - 1];
-                        read_index <= read_index - 1;
-                    } else {
-                        tx_ready <= 1;
-                        FSM <= 2;
-                    }
-                }
-                2 => { }
             }
         }
     }
