@@ -136,7 +136,17 @@ entity Ethernet(
     let tx_byte: reg[8] = 0;
     let spi_ready;
     let spi_rx_value: reg[8];
-    let spi = SpiMaster(rst, tx_clk, tx_valid, spi_ready, tx_byte, spi_rx_value, spi_clk, spi_bit, spi_rx);
+    let spi = SpiMaster {
+        rst: rst,
+        clk: tx_clk,
+        tx_trigger: tx_valid,
+        tx_ready: spi_ready,
+        tx_byte: tx_byte,
+        rx_byte: spi_rx_value,
+        spi_clk: spi_clk,
+        spi_tx: spi_bit,
+        spi_rx: spi_rx
+    };
 
 
     let FSM: uint{..32} = 0;
@@ -219,9 +229,19 @@ entity Main(
     // PMOD3 = MISO
     // PMOD4 = SCLK
     let ready;
-    let sec = Second(clk, ready);
-    let half = Second(clk, PMOD7);
-    let ether = Ethernet(ready, clk, LED1, LED2, LED3, PMOD1, PMOD2, PMOD3, PMOD4);
+    let sec = Second { clk: clk, ready: ready };
+    let half = Half { clk: clk, ready: PMOD7 };
+    let ether = Ethernet {
+        rst: ready,
+        tx_clk: clk,
+        LED1: LED1,
+        LED2: LED2,
+        LED3: LED3,
+        CS: PMOD1,
+        spi_bit: PMOD2,
+        spi_rx: PMOD3,
+        spi_clk: PMOD4,
+    };
 
     always {
         LED5 = !ready;

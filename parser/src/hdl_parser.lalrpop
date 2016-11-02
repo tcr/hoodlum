@@ -69,7 +69,7 @@ Decl: ast::Decl = {
         let width = u32::next_power_of_two(a.to_i32() as u32).trailing_zeros() + 3;
         ast::Decl::RegArray(i, ast::Expr::Num(width as i32), Some(v))
     },
-    "let" <i:Ident> "=" <e:Ident> "(" <args:Comma<Ident>> ")" ";" => {
+    "let" <i:Ident> "=" <e:Ident> "{" <args:Comma<KeyPair>> "}" ";" => {
         ast::Decl::Let(i, e, args)
     },
     "on" <sig:Ident> "." <edge:Edge> "{" <b:SeqStatements> "}" => {
@@ -77,6 +77,12 @@ Decl: ast::Decl = {
     },
     "always" "{" <b:CombStatements> "}" => {
         ast::Decl::Always(b)
+    },
+};
+
+KeyPair: (ast::Ident, ast::Ident) = {
+    <k:Ident> ":" <v:Ident> => {
+      (k, v)
     },
 };
 

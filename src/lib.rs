@@ -299,7 +299,7 @@ impl ToVerilog for ast::Decl {
                     entity=entity.to_verilog(v),
                     i=i.to_verilog(v),
                     args=args.iter().map(|x| {
-                        x.to_verilog(v)
+                        format!(".{} ({})", x.0.to_verilog(v), x.1.to_verilog(v))
                     }).collect::<Vec<_>>().join(", "))
             }
             ast::Decl::On(ref edge, ref block) => {
@@ -621,6 +621,7 @@ fn fsm_rewrite(input: &ast::Seq) -> ast::Seq {
             } else if let FsmState::Loop(cond, mut body) = item {
                 if let Some(mut cond) = cond {
                     //if last && loop_count > 0 {
+                    // TODO this is hardcoded to be too high...
                         exclude.push(state_match.pop().unwrap() + 1);
                         for item in &exclude {
                         //let item = *state_match.last().unwrap();
