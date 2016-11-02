@@ -84,13 +84,28 @@ entity SpiMaster(
     //    }
     }
 
+    let transmitting = 0;
+    let transmit_save = 1;
+
+    on clk.posedge {
+        reset rst {
+            // if tx_trigger is high, and we are not transmitting, start
+            if transmit_save == transmitting {
+                tx_ready <= 1;
+                transmit_save <= !transmitting;
+            } else if tx_trigger {
+                tx_ready <= 0;
+            }
+        }
+    }
+
     // SPI output state machine.
     on internal_clk.negedge {
         reset rst {
             fsm {
                 // Wait for transition trigger.
                 spi_tx <= 0;
-                await tx_trigger;
+                await tx_ready == 0;
 
                 // Enable output clock.
                 live_clk <= 1;
@@ -98,7 +113,6 @@ entity SpiMaster(
                 // Start sequence.
                 read_index <= 7;
                 spi_tx <= tx_byte[7];
-                tx_ready <= 0;
                 yield;
 
                 // Write bits.
@@ -110,7 +124,7 @@ entity SpiMaster(
 
                 // Disable output clock.
                 live_clk <= 0;
-                tx_ready <= 1;
+                transmitting <= !transmitting;
 
                 // Loop forever.
                 //loop {
@@ -158,16 +172,12 @@ entity Ethernet(
                 CS <= 0;
                 tx_valid <= 1;
                 tx_byte <= 0x22; //EWCRU;
-                await !spi_ready;
                 await spi_ready;
                 tx_byte <= 0x16; //EEUDASTL;
-                await !spi_ready;
                 await spi_ready;
                 tx_byte <= 0x34;
-                await !spi_ready;
                 await spi_ready;
                 tx_byte <= 0x12;
-                await !spi_ready;
                 await spi_ready;
 
                 CS <= 1;
@@ -179,20 +189,14 @@ entity Ethernet(
                 CS <= 0;
                 tx_valid <= 1;
                 tx_byte <= 0x20; //ERCRU;
-                await !spi_ready;
                 await spi_ready;
                 tx_byte <= 0x16; //EEUDASTL;
-                tx_valid <= 1;
-                await !spi_ready;
                 await spi_ready;
-                tx_valid <= 1;
-                await !spi_ready;
+                // noop
                 await spi_ready;
                 if spi_rx_value == 0x34 {
                     LED2 <= 1;
                 }
-                tx_valid <= 1;
-                await !spi_ready;
                 await spi_ready;
                 if spi_rx_value == 0x12 {
                     LED3 <= 1;

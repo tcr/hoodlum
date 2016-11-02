@@ -108,6 +108,10 @@ pub SeqStatement: ast::Seq = {
     "else" "{" <e:SeqStatements> "}" ";"? => {
         ast::Seq::If(c, t, Some(e))
     },
+    "if" <c:Expr> "{" <t:SeqStatements> "}"
+    "else" "if" <c2:Expr> "{" <e:SeqStatements> "}" ";"? => {
+        ast::Seq::If(c, t, Some(ast::SeqBlock(vec![ast::Seq::If(c2, e, None)])))
+    },
     "if" <c:Expr> "{" <t:SeqStatements> "}" ";"? => {
         ast::Seq::If(c, t, None)
     },

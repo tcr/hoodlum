@@ -445,7 +445,7 @@ impl ToVerilog for ast::Expr {
                     right=r.to_verilog(v))
             }
             ast::Expr::Unary(ref op, ref r) => {
-                format!("{op}{right}",
+                format!("{op}({right})",
                     op=op.to_verilog(v),
                     right=r.to_verilog(v))
             }
