@@ -149,22 +149,18 @@ entity Ethernet(
                 tx_valid <= 1;
                 tx_byte <= 0x22; //EWCRU;
                 await !spi_ready;
-                yield;
                 await spi_ready;
                 yield;
                 tx_byte <= 0x16; //EEUDASTL;
                 await !spi_ready;
-                yield;
                 await spi_ready;
                 yield;
                 tx_byte <= 0x34;
                 await !spi_ready;
-                yield;
                 await spi_ready;
                 yield;
                 tx_byte <= 0x12;
                 await !spi_ready;
-                yield;
                 await spi_ready;
                 yield;
 
@@ -178,18 +174,15 @@ entity Ethernet(
                 tx_valid <= 1;
                 tx_byte <= 0x20; //ERCRU;
                 await !spi_ready;
-                yield;
                 await spi_ready;
                 yield;
                 tx_byte <= 0x16; //EEUDASTL;
                 tx_valid <= 1;
                 await !spi_ready;
-                yield;
                 await spi_ready;
                 yield;
                 tx_valid <= 1;
                 await !spi_ready;
-                yield;
                 await spi_ready;
                 yield;
                 if spi_rx_value == 0x34 {
@@ -197,7 +190,6 @@ entity Ethernet(
                 }
                 tx_valid <= 1;
                 await !spi_ready;
-                yield;
                 await spi_ready;
                 yield;
                 if spi_rx_value == 0x12 {
