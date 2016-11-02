@@ -26,9 +26,10 @@ Entity: ast::Entity = { // (1)
 
 EntityArgs = Comma<EntityArg>;
 
-EntityArg: (ast::Ident, ast::Dir) = {
+EntityArg: (ast::Ident, ast::Dir, Option<i32>) = {
     //(r"[^{}]+" "{" Inner "}")* => (),
-    <i:Ident> ":" <d:EntityArgType> => (i, d),
+    <i:Ident> ":" <d:EntityArgType> "[" <a:Num> "]" => (i, d, Some(a.to_i32())),
+    <i:Ident> ":" <d:EntityArgType> => (i, d, None),
 };
 
 EntityArgType: ast::Dir = {
@@ -58,12 +59,15 @@ Decl: ast::Decl = {
         ast::Decl::Reg(i, Some(v))
     },
     "let" <i:Ident> ":" "reg" "[" <a:Num> "]" "=" <v:Expr> ";" => {
-        ast::Decl::RegArray(i, a, v)
+        ast::Decl::RegArray(i, a, Some(v))
+    },
+    "let" <i:Ident> ":" "reg" "[" <a:Num> "]" ";" => {
+        ast::Decl::RegArray(i, a, None)
     },
     "let" <i:Ident> ":" "uint" "{" <d:Num?> ".." <a:Num> "}" "=" <v:Expr> ";" => {
         //TODO need to adjust register approximation
         let width = u32::next_power_of_two(a.to_i32() as u32).trailing_zeros() + 3;
-        ast::Decl::RegArray(i, ast::Expr::Num(width as i32), v)
+        ast::Decl::RegArray(i, ast::Expr::Num(width as i32), Some(v))
     },
     "let" <i:Ident> "=" <e:Ident> "(" <args:Comma<Ident>> ")" ";" => {
         ast::Decl::Let(i, e, args)
@@ -126,6 +130,10 @@ pub SeqStatement: ast::Seq = {
 
     <i:Ident> "<=" <v:Expr> ";" => {
         ast::Seq::Set(i, v)
+    },
+
+    <i:Ident> "[" <idx:Expr> "]" "<=" <v:Expr> ";" => {
+        ast::Seq::SetIndex(i, idx, v)
     },
 };
 

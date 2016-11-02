@@ -11,7 +11,7 @@ pub enum Dir {
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Entity(pub Ident, pub Vec<(Ident, Dir)>, pub Vec<Decl>);
+pub struct Entity(pub Ident, pub Vec<(Ident, Dir, Option<i32>)>, pub Vec<Decl>);
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Edge {
@@ -25,7 +25,7 @@ pub struct EdgeRef(pub Ident, pub Edge);
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Decl {
     Reg(Ident, Option<Expr>),
-    RegArray(Ident, Expr, Expr),
+    RegArray(Ident, Expr, Option<Expr>),
     Let(Ident, Ident, Vec<Ident>),
     On(EdgeRef, SeqBlock),
     Always(CombBlock),
@@ -39,6 +39,7 @@ pub enum Seq {
     If(Expr, SeqBlock, Option<SeqBlock>),
     Reset(Ident, SeqBlock),
     Set(Ident, Expr),
+    SetIndex(Ident, Expr, Expr),
     Match(Expr, Vec<(Vec<Expr>, SeqBlock)>),
 
     While(Expr, SeqBlock),
@@ -54,7 +55,7 @@ pub struct CombBlock(pub Vec<Comb>);
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Comb {
     If(Expr, CombBlock, Option<CombBlock>),
-    Assign(Ident, Expr)
+    Assign(Ident, Expr),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

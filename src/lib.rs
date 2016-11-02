@@ -147,7 +147,9 @@ impl Walker for InitWalker {
                 }
             }
             ast::Decl::RegArray(ref ident, _, ref init) => {
-                self.init.insert(ident.clone(), init.clone());
+                if let &Some(ref init) = init {
+                    self.init.insert(ident.clone(), init.clone());
+                }
             }
             _ => { }
         }
@@ -284,11 +286,12 @@ impl ToVerilog for ast::Decl {
                         ""
                     })
             }
-            ast::Decl::RegArray(ref i, ref e, _) => {
-                format!("{ind}reg [({len})-1:0] {name} = 0;\n",
+            ast::Decl::RegArray(ref i, ref e, ref value) => {
+                format!("{ind}reg [({len})-1:0] {name}{value};\n",
                     ind=v.indent,
                     len=e.to_verilog(v),
-                    name=i.to_verilog(v))
+                    name=i.to_verilog(v),
+                    value=if value.is_some() { " = 0" } else { "" })
             }
             ast::Decl::Let(ref i, ref entity, ref args) => {
                 format!("{ind}{entity} {i}({args});\n",
@@ -348,6 +351,13 @@ impl ToVerilog for ast::Seq {
                 format!("{ind}{name} <= {value};\n",
                     ind=v.indent,
                     name=id.to_verilog(v),
+                    value=value.to_verilog(v))
+            }
+            ast::Seq::SetIndex(ref id, ref index, ref value) => {
+                format!("{ind}{name}[{index}] <= {value};\n",
+                    ind=v.indent,
+                    name=id.to_verilog(v),
+                    index=index.to_verilog(v),
                     value=value.to_verilog(v))
             }
             ast::Seq::Match(ref cond, ref arms) => {
@@ -455,7 +465,11 @@ impl ToVerilog for ast::Entity {
             ind=v.indent,
             name=self.0.to_verilog(&v),
             args=self.1.iter().map(|x| {
-                format!("{} {}", x.1.to_verilog(&v), x.0.to_verilog(&v))
+                if let Some(len) = x.2 {
+                    format!("{} [{}:0] {}", x.1.to_verilog(&v), len, x.0.to_verilog(&v))
+                } else {
+                    format!("{} {}", x.1.to_verilog(&v), x.0.to_verilog(&v))
+                }
             }).collect::<Vec<_>>().join(", "),
             body=self.2.iter().map(|x| {
                 x.to_verilog(&v.tab())

@@ -7,31 +7,28 @@ entity SpiMaster(
         rx_byte: out,
         spi_clk: out,
         spi_tx: out,
-        spi_rx: out) {
-    // Internal state.
-    SpiState = enum('IDLE', 'DATA', 'FINISH')
-    state = Signal(SpiState.IDLE)
+        spi_rx: out
+) {
+    let live_clk: reg[1] = 0;
 
-    # Internal signals.
-    read_index = Signal(intbv(0, min=0, max=8))
-    internal_clk = Signal(bool(0))
+    // Internal signals.
+    let read_index: uint{0..8} = 0;
+    let internal_clk: reg[1] = 0;
 
-    # Generate SPI signal from internal clock + SPI state.
+    // Generate SPI signal from internal clock + SPI state.
     always {
-        if state == SpiState.DATA {
+        if live_clk {
             spi_clk = internal_clk;
         } else {
             spi_clk = 0;
         }
     }
 
-    div = 4
-    div_idx = Signal(intbv(0, min=0, max=div))
-
     # Generate divided SPI clock.
+    let div_idx: uint{..4} = 0;
     on clk.negedge {
         reset rst {
-            if div_idx == div - 1 {
+            if div_idx == 4 - 1 {
                 internal_clk <= !internal_clk;
                 div_idx <= 0;
             } else {
@@ -53,8 +50,12 @@ entity SpiMaster(
     on internal_clk.negedge {
         reset rst {
             fsm {
+                // Wait for transition trigger.
                 spi_tx <= 0;
                 await tx_trigger;
+
+                // Enable output clock.
+                live_clk <= 1;
 
                 // Start sequence.
                 read_index <= 7;
@@ -62,14 +63,18 @@ entity SpiMaster(
                 tx_ready <= 0;
                 yield;
 
-                // Continue.
+                // Write bits.
                 while read_index > 0 {
                     spi_tx <= tx_byte[read_index - 1];
                     read_index <= read_index - 1;
                     yield;
                 }
 
+                // Disable output clock.
+                live_clk <= 0;
                 tx_ready <= 1;
+
+                // Loop forever.
                 loop {
                     yield;
                 }

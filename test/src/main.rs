@@ -20,6 +20,248 @@ entity Second(clk: in, ready: out) {
     }
 }
 
+entity Half(clk: in, ready: out) {
+    let index: uint{..1200000} = 0;
+
+    on clk.posedge {
+        if index == 10000000 - 1 {
+            ready <= 1;
+        } else {
+            index <= index + 1;
+            ready <= 0;
+        }
+    }
+}
+
+entity SpiMaster(
+    rst: in,
+    clk: in,
+    tx_trigger: in,
+    tx_ready: out,
+    tx_byte: in[8],
+    rx_byte: out[8],
+    spi_clk: out,
+    spi_tx: out,
+    spi_rx: in,
+) {
+    let live_clk: reg[1] = 0;
+
+    // Internal signals.
+    let read_index: uint{0..8} = 0;
+    let internal_clk: reg[1] = 0;
+
+    let FSM: uint{..32} = 0;
+
+    // Generate SPI signal from internal clock + SPI state.
+    always {
+    //    if live_clk {
+    //        spi_clk = internal_clk;
+    //    } else {
+            spi_clk = live_clk && internal_clk;
+    //    }
+    }
+
+    // Generate divided SPI clock.
+    let div_idx: uint{..40} = 0;
+    on clk.negedge {
+        reset rst {
+            if div_idx == 40 - 1 {
+                internal_clk <= !internal_clk;
+                div_idx <= 0;
+            } else {
+                div_idx <= div_idx + 1;
+            }
+        }
+    }
+
+    // Sample read values from positive clock edge.
+    on internal_clk.posedge {
+        rx_byte[read_index] <= spi_rx;
+    //    reset rst {
+    //        if state == SpiState.DATA {
+    //            rx_byte[read_index] <= spi_rx;
+    //        }
+    //    }
+    }
+
+    // SPI output state machine.
+    on internal_clk.negedge {
+        reset rst {
+            fsm {
+                // Wait for transition trigger.
+                spi_tx <= 0;
+                await tx_trigger;
+
+                // Enable output clock.
+                live_clk <= 1;
+
+                // Start sequence.
+                read_index <= 7;
+                spi_tx <= tx_byte[7];
+                tx_ready <= 0;
+                yield;
+
+                // Write bits.
+                while read_index > 0 {
+                    spi_tx <= tx_byte[read_index - 1];
+                    read_index <= read_index - 1;
+                    yield;
+                }
+
+                // Disable output clock.
+                live_clk <= 0;
+                tx_ready <= 1;
+
+                // Loop forever.
+                //loop {
+                //    yield;
+                //}
+            }
+        }
+    }
+}
+
+entity Ethernet(
+    rst: in,
+    tx_clk: in,
+    LED1: out,
+    LED2: out,
+    LED3: out,
+    CS: out,
+    spi_bit: out, // MOSI
+    spi_rx: in, // MISO
+    spi_clk: out,
+) {
+    let tx_valid = 0;
+    let tx_byte: reg[8] = 0;
+    let spi_ready;
+    let spi_rx_value: reg[8];
+    let spi = SpiMaster(rst, tx_clk, tx_valid, spi_ready, tx_byte, spi_rx_value, spi_clk, spi_bit, spi_rx);
+
+
+    let FSM: uint{..32} = 0;
+    on tx_clk.negedge {
+        reset rst {
+            fsm {
+                LED1 <= 1;
+
+                CS <= 0;
+                tx_valid <= 1;
+                tx_byte <= 0x22; //EWCRU;
+                await !spi_ready;
+                yield;
+                await spi_ready;
+                yield;
+                tx_byte <= 0x16; //EEUDASTL;
+                await !spi_ready;
+                yield;
+                await spi_ready;
+                yield;
+                tx_byte <= 0x34;
+                await !spi_ready;
+                yield;
+                await spi_ready;
+                yield;
+                tx_byte <= 0x12;
+                await !spi_ready;
+                yield;
+                await spi_ready;
+                yield;
+
+                CS <= 1;
+                tx_valid <= 0;
+                // Skip two clock cycles
+                yield;
+                yield;
+
+                CS <= 0;
+                tx_valid <= 1;
+                tx_byte <= 0x20; //ERCRU;
+                await !spi_ready;
+                yield;
+                await spi_ready;
+                yield;
+                tx_byte <= 0x16; //EEUDASTL;
+                tx_valid <= 1;
+                await !spi_ready;
+                yield;
+                await spi_ready;
+                yield;
+                tx_valid <= 1;
+                await !spi_ready;
+                yield;
+                await spi_ready;
+                yield;
+                if spi_rx_value == 0x34 {
+                    LED2 <= 1;
+                }
+                tx_valid <= 1;
+                await !spi_ready;
+                yield;
+                await spi_ready;
+                yield;
+                if spi_rx_value == 0x12 {
+                    LED3 <= 1;
+                }
+
+                CS <= 1;
+                tx_valid <= 0;
+                loop {
+                    yield;
+                }
+            }
+        }
+    }
+}
+
+entity Main(
+    clk: in,
+    LED1: out,
+    LED2: out,
+    LED3: out,
+    LED4: out,
+    LED5: out,
+    PMOD1: out,
+    PMOD2: out,
+    PMOD3: in,
+    PMOD4: out,
+    PMOD7: out,
+    //PMOD8: out,
+    //PMOD9: out,
+    //PMOD10: out,
+) {
+    // PMOD1 = CS
+    // PMOD2 = MOSI
+    // PMOD3 = MISO
+    // PMOD4 = SCLK
+    let ready;
+    let sec = Second(clk, ready);
+    let half = Second(clk, PMOD7);
+    let ether = Ethernet(ready, clk, LED1, LED2, LED3, PMOD1, PMOD2, PMOD3, PMOD4);
+
+    always {
+        LED5 = !ready;
+    }
+}
+
+};
+
+/*
+    let code = hdl! {
+
+entity Second(clk: in, ready: out) {
+    let index: uint{..1200000} = 0;
+
+    on clk.posedge {
+        if index == 12000000 - 1 {
+            ready <= 1;
+        } else {
+            index <= index + 1;
+            ready <= 0;
+        }
+    }
+}
+
 entity Entry(clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
     let rot: reg[4] = 0b0001;
     let divider: uint{..1200000} = 0;
@@ -62,6 +304,7 @@ entity Entry(clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
 }
 
 };
+*/
 
     //println!("");
     //println!("AST: {:?}", code);
