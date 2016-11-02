@@ -502,7 +502,16 @@ fn fsm_rewrite(input: &ast::Seq) -> ast::Seq {
         let item = input.remove(0);
         match item {
             ast::Seq::Await(cond) => {
-                // while (!cond) { yield; }
+                if let Some(&Fsm::Block(..)) = states.last() {
+                } else {
+                    states.push(Fsm::Block(vec![vec![]]));
+                }
+
+                if let &mut Fsm::Block(ref mut block) = states.last_mut().unwrap() {
+                    block.push(vec![])
+                }
+
+                // yield; while (!cond) { yield; }
                 states.push(Fsm::Loop(Some(ast::Expr::Unary(ast::UnaryOp::Not, Box::new(cond))), vec![vec![], vec![]]));
             }
             ast::Seq::While(cond, ast::SeqBlock(inner)) => {
