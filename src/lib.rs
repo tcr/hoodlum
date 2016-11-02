@@ -724,18 +724,18 @@ fn fsm_rewrite(input: &ast::Seq) -> ast::Seq {
                     false
                 };
 
-                let prev_loop = if let Some(FsmState::Loop(..)) = prev_item {
+                //let prev_loop = if let Some(FsmState::Loop(..)) = prev_item {
                     //process(&mut output, &state_match, vec![prev_item.unwrap()], false);
                     //state_match = vec![];
                     //state_match.push(state_start + 1);
                     //state_start += 1;
-                    true
-                } else {
-                    false
-                };
+                //    true
+                //} else {
+                //    false
+                //};
 
                 // Transition into the second state after the first iteration.
-                if !next.is_empty() || merged_prev_block || prev_loop {
+                if !next.is_empty() || merged_prev_block { // || prev_loop {
                     state_match.push(state_start);
                     initial.push(ast::Seq::Set(ast::Ident("FSM".to_string()), ast::Expr::Num(state_start)));
                     state_start += 1;
