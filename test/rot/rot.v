@@ -5,16 +5,16 @@ module Second (
     reg [(24)-1:0] index = 0;
     always @(posedge clk) begin
         if (index == 12000000 - 1) begin
-            ready <= 1;
+            signal <= 1;
         end
         else begin
             index <= index + 1;
-            ready <= 0;
+            signal <= 0;
         end
     end
 endmodule
 
-module Entry (
+module Main (
     input clk,
     output LED1,
     output LED2,
@@ -25,7 +25,7 @@ module Entry (
     reg [(4)-1:0] rot = 0;
     reg [(24)-1:0] divider = 0;
     reg [(24)-1:0] index = 0;
-    reg [(5)-1:0] FSM = 0;
+    reg [(5)-1:0] _FSM = 0;
     reg ready;
     Second sec(.clk (clk), .signal (ready));
     always @(posedge clk) begin
