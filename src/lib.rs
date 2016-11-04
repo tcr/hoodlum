@@ -4,6 +4,7 @@ extern crate hoodlum_parser;
 pub use hoodlum_parser::{ParseError, ast, hdl_parser};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
+use std::mem;
 
 pub fn codelist(code: &str) {
     for (i, line) in code.lines().enumerate() {
@@ -281,7 +282,7 @@ impl ToVerilog for ast::Decl {
             ast::Decl::Reg(ref i, ref init) => {
                 format!("{ind}reg {name}{init};\n", ind=v.indent, name=i.to_verilog(v),
                     init=if init.is_some() {
-                        "= 0"
+                        " = 0"
                     } else {
                         ""
                     })
@@ -483,291 +484,145 @@ impl ToVerilog for ast::Code {
     }
 }
 
-fn fsm_rewrite(input: &ast::Seq) -> ast::Seq {
-    #[derive(Clone, Debug)]
-    enum Fsm {
-        Loop(Option<ast::Expr>, Vec<Vec<ast::Seq>>),
-        Block(Vec<Vec<ast::Seq>>),
+struct FsmState {
+    counter: u32,
+}
+
+impl FsmState {
+    fn next(&mut self) -> u32 {
+        let ret = self.counter;
+        self.counter += 1;
+        ret
     }
+}
 
-    let mut input = if let &ast::Seq::Fsm(ast::SeqBlock(ref block)) = input {
-        block.clone()
-    } else {
-        panic!("Called fsm_rewrite with non-fsm");
-    };
-
-    // Convert input to Fsm tree.
-    let mut states = vec![];
-    while !input.is_empty() {
-        let item = input.remove(0);
-        match item {
+fn fsm_list(fsm: &mut FsmState, input: &[ast::Seq]) -> Vec<(Vec<u32>, Vec<ast::Seq>)> {
+    let mut ret = vec![];
+    let mut cur: (Vec<u32>, Vec<ast::Seq>) = (vec![fsm.next()], vec![]);
+    for item in input.iter().rev() {
+        let bundle = match item.clone() {
+            ast::Seq::Loop(body) => {
+                vec![ast::Seq::While(ast::Expr::Num(1), body)]
+            }
             ast::Seq::Await(cond) => {
-                if let Some(&Fsm::Block(..)) = states.last() {
-                } else {
-                    states.push(Fsm::Block(vec![vec![]]));
-                }
-
-                if let &mut Fsm::Block(ref mut block) = states.last_mut().unwrap() {
-                    block.push(vec![])
-                }
-
-                // yield; while (!cond) { yield; }
-                states.push(Fsm::Loop(Some(ast::Expr::Unary(ast::UnaryOp::Not, Box::new(cond))), vec![vec![], vec![]]));
-            }
-            ast::Seq::While(cond, ast::SeqBlock(inner)) => {
-                states.push(Fsm::Loop(Some(cond), vec![vec![]]));
-
-                for item in inner {
-                    match item {
-                        ast::Seq::While(..) => unreachable!(),
-                        ast::Seq::Loop(..) => unreachable!(),
-                        ast::Seq::Await(..) => unreachable!(),
-                        ast::Seq::Yield => {
-                            if let &mut Fsm::Loop(_, ref mut block) = states.last_mut().unwrap() {
-                                block.push(vec![])
-                            }
-                        }
-                        seq => {
-                            if let &mut Fsm::Loop(_, ref mut block) = states.last_mut().unwrap() {
-                                block.last_mut().unwrap().push(seq);
-                            }
-                        }
-                    }
-                }
-            }
-            ast::Seq::Loop(ast::SeqBlock(inner)) => {
-                states.push(Fsm::Loop(None, vec![vec![]]));
-
-                for item in inner {
-                    match item {
-                        ast::Seq::While(..) => unreachable!(),
-                        ast::Seq::Loop(..) => unreachable!(),
-                        ast::Seq::Await(..) => unreachable!(),
-                        ast::Seq::Yield => {
-                            if let &mut Fsm::Loop(_, ref mut block) = states.last_mut().unwrap() {
-                                block.push(vec![])
-                            }
-                        }
-                        seq => {
-                            if let &mut Fsm::Loop(_, ref mut block) = states.last_mut().unwrap() {
-                                block.last_mut().unwrap().push(seq);
-                            }
-                        }
-                    }
-                }
-            }
-            ast::Seq::Yield => {
-                if let Some(&Fsm::Block(..)) = states.last() {
-                } else {
-                    states.push(Fsm::Block(vec![vec![]]));
-                }
-
-                if let &mut Fsm::Block(ref mut block) = states.last_mut().unwrap() {
-                    block.push(vec![])
-                }
+                vec![ast::Seq::Yield, ast::Seq::While(ast::Expr::Unary(ast::UnaryOp::Not, Box::new(cond)), ast::SeqBlock(vec![ast::Seq::Yield]))]
             }
             seq => {
-                if let Some(&Fsm::Block(..)) = states.last() {
-                } else {
-                    states.push(Fsm::Block(vec![vec![]]));
-                }
-
-                if let &mut Fsm::Block(ref mut block) = states.last_mut().unwrap() {
-                    block.last_mut().unwrap().push(seq);
-                }
+                vec![seq]
             }
-        }
-    }
-
-    println!("State tree: {:#?}", states);
-
-    let mut output: Vec<(Vec<i32>, Vec<ast::Seq>)> = vec![];
-
-    #[derive(Debug, Clone)]
-    enum FsmState {
-        Block(Vec<ast::Seq>),
-        Loop(Option<ast::Expr>, Vec<ast::Seq>),
-    }
-
-    let mut state_start: i32 = 1;
-    let mut state_match = vec![0];
-    let mut state = vec![]; //FsmState::Block(vec![]);
-
-    fn process(output: &mut Vec<(Vec<i32>, Vec<ast::Seq>)>, outer_state_match: &Vec<i32>, state: Vec<FsmState>, last: bool) {
-        // TODO
-
-        let mut res = if !last {
-            vec![
-                ast::Seq::Set(ast::Ident("FSM".to_string()), ast::Expr::Num(*outer_state_match.last().unwrap() + 1)),
-            ]
-        } else {
-            vec![]
         };
 
-        let last_match = *outer_state_match.last().unwrap() + 1;
-        let mut state_match = outer_state_match.clone();
-        //if last {
-        //    state_match.push(last_match);
-        //}
+        for item in bundle.iter().rev() {
+            match item {
+                &ast::Seq::While(ref cond, ast::SeqBlock(ref inner)) => {
+                    let mut list = fsm_list(fsm, &inner);
 
-        println!("PROCESSING STEP {:#?}", state);
+                    // Make mutable clone of cond.
+                    let mut cond = cond.clone();
 
-        let mut loop_count = 0;
-        let mut exclude = vec![];
-        for item in state.into_iter().rev() {
-            if let FsmState::Block(mut body) = item {
-                body.extend(res);
-                res = body;
-            } else if let FsmState::Loop(cond, mut body) = item {
-                if let Some(mut cond) = cond {
-                    //if last && loop_count > 0 {
-                    // TODO this is hardcoded to be too high...
-                        exclude.push(state_match.pop().unwrap() + 1);
-                        for item in &exclude {
-                        //let item = *state_match.last().unwrap();
+                    // Remove current segment as else statement.
+                    let mut else_seq = if !cur.1.is_empty() {
+                        let mut new_cur = (vec![], vec![]);
+                        new_cur.0.extend(&cur.0);
+
+                        // If the last statement isn't a redundant FSM statement, need a transition
+                        if let Some(&ast::Seq::Set(..)) = cur.1.last() {
+                            cur.0.remove(0);
+                        } else {
+                            let id = cur.0[0];
+                            cur.1.insert(0, ast::Seq::Set(ast::Ident("_FSM".to_string()), ast::Expr::Num(id as i32)));
+                        }
+                        // Add all remaining states.
+                        for item in &cur.0 {
                             cond = ast::Expr::Arith(ast::Op::And,
                                 Box::new(ast::Expr::Arith(ast::Op::Ne,
-                                    Box::new(ast::Expr::Ref(ast::Ident("FSM".to_string()))),
-                                    Box::new(ast::Expr::Num(*item)))),
+                                    Box::new(ast::Expr::Ref(ast::Ident("_FSM".to_string()))),
+                                    Box::new(ast::Expr::Num(*item as i32)))),
                                 Box::new(cond));
                         }
-                    //}
 
-                    res = vec![ast::Seq::If(cond, ast::SeqBlock(body), Some(ast::SeqBlock(res)))];
-                } else {
-                    body.extend(res);
-                    res = body;
-                }
+                        Some(ast::SeqBlock(mem::replace(&mut cur, new_cur).1))
+                    } else {
+                        None
+                    };
 
-                loop_count += 1;
-            }
-        }
-
-        output.push((outer_state_match.clone(), res));
-    }
-
-    while !states.is_empty() {
-        let item = states.remove(0);
-
-        println!("\nProcessing block... {:#?}\n", item);
-        match item {
-            Fsm::Block(mut blocks) => {
-                let mut block = blocks.remove(0);
-                if states.is_empty() && blocks.is_empty() {
-                    block.push(ast::Seq::Set(ast::Ident("FSM".to_string()), ast::Expr::Num(0)));
-                }
-                state.push(FsmState::Block(block));
-
-                while !blocks.is_empty() {
-                    process(&mut output, &state_match, state, false);
-
-                    state = vec![];
-                    state_match = vec![state_start];
-                    state_start += 1;
-
-                    let mut block = blocks.remove(0);
-                    if states.is_empty() && blocks.is_empty() {
-                        block.push(ast::Seq::Set(ast::Ident("FSM".to_string()), ast::Expr::Num(0)));
+                    // Extract last statement
+                    if list.len() < 2 {
+                        panic!("Can't have empty while body");
                     }
-                    state.push(FsmState::Block(block));
+                    let last = list.pop().unwrap();
+                    let mut first = list.remove(0);
+                    ret.extend(list);
+
+                    // Extend matching states. (We adopt the first state)
+                    cur.0.extend(&first.0);
+                    if !last.1.is_empty() {
+                        cur.0.extend(&last.0);
+                        // TODO can we recover the trashed state number?
+                    }
+
+                    // Remove the last state transition.
+                    if last.1.is_empty() {
+                        first.1.pop();
+                    }
+                    // Construct if statement.
+                    cur.1.insert(0, ast::Seq::If(cond,
+                        ast::SeqBlock(first.1),
+                        else_seq));
+
+                    // Check last block.
+                    if !last.1.is_empty() {
+                        cur.1.insert(0, ast::Seq::If(ast::Expr::Num(1),
+                            ast::SeqBlock(last.1),
+                            None));
+                    }
                 }
-            }
-            Fsm::Loop(expr, mut blocks) => {
-                if blocks.len() < 2 {
-                    panic!("While construct must contain yield statement.");
+                &ast::Seq::Yield => {
+                    let prev = fsm.counter - 1;
+
+                    let old_cur = mem::replace(&mut cur, (vec![fsm.counter], vec![]));
+                    fsm.counter += 1;
+                    ret.insert(0, old_cur);
+
+                    cur.1.insert(0, ast::Seq::Set(ast::Ident("_FSM".to_string()), ast::Expr::Num(prev as i32)));
                 }
-
-                let mut initial = blocks.remove(0);
-
-                // Get the final loop entry.
-                let next = blocks.pop().unwrap();
-
-                // Intermediate loop sequences are new steps.
-                for item in blocks {
-                    process(&mut output, &vec![state_start], vec![FsmState::Block(item)], false);
-                    state_start += 1;
+                &ast::Seq::Fsm(..) => {
+                    panic!("Cannot deconstruct nested FSMs");
                 }
-
-                // Wrap previous block in an if statement.
-                let prev_item: Option<FsmState> = state.last().map(|x| x.clone());
-                let merged_prev_block = if let Some(FsmState::Block(ref content)) = prev_item {
-                    // Only do this if there is any loop content at all.
-                    //if !next.is_empty() || !initial.is_empty() {
-                        state.pop();
-                        if !content.is_empty() {
-                            // Match all states up to here.
-                            let mut conds = state_match.iter().map(|x| {
-                                ast::Expr::Arith(ast::Op::Eq,
-                                    Box::new(ast::Expr::Ref(ast::Ident("FSM".to_string()))),
-                                    Box::new(ast::Expr::Num(*x)))
-                            }).collect::<Vec<_>>();
-
-                            let mut cond = conds.remove(0);
-                            while !conds.is_empty() {
-                                cond = ast::Expr::Arith(ast::Op::Or,
-                                    Box::new(cond),
-                                    Box::new(conds.remove(0)))
-                            }
-
-                            state.push(FsmState::Block(vec![
-                                ast::Seq::If(
-                                    cond,
-                                    ast::SeqBlock(content.iter().cloned().collect()),
-                                    None,
-                                )
-                            ]));
-                            true
-                        } else {
-                            false
-                        }
-                    //}
-                } else {
-                    false
-                };
-
-                //let prev_loop = if let Some(FsmState::Loop(..)) = prev_item {
-                    //process(&mut output, &state_match, vec![prev_item.unwrap()], false);
-                    //state_match = vec![];
-                    //state_match.push(state_start + 1);
-                    //state_start += 1;
-                //    true
-                //} else {
-                //    false
-                //};
-
-                // Transition into the second state after the first iteration.
-                if !next.is_empty() || merged_prev_block { // || prev_loop {
-                    state_match.push(state_start);
-                    initial.push(ast::Seq::Set(ast::Ident("FSM".to_string()), ast::Expr::Num(state_start)));
-                    state_start += 1;
+                seq => {
+                    cur.1.insert(0, seq.clone());
                 }
-
-                // Include last loop entry as predecessor.
-                if !next.is_empty() {
-                    state.push(FsmState::Block(vec![
-                        ast::Seq::If(
-                            ast::Expr::Arith(ast::Op::Eq,
-                                Box::new(ast::Expr::Ref(ast::Ident("FSM".to_string()))),
-                                Box::new(ast::Expr::Num(state_start - 1))),
-                            ast::SeqBlock(next),
-                            None,
-                        )
-                    ]));
-                }
-
-                // Add our loop sequence.
-                state.push(FsmState::Loop(expr, initial));
             }
         }
     }
 
-    process(&mut output, &state_match, state, true);
+    ret.insert(0, cur);
+    ret
+}
 
-    ast::Seq::Match(
-        ast::Expr::Ref(ast::Ident("FSM".to_owned())),
-        output.into_iter().map(|(x, block)| {
-            (x.iter().map(|x| ast::Expr::Num(*x as i32)).collect(), ast::SeqBlock(block))
-        }).collect())
+fn fsm_rewrite(input: &ast::Seq) -> ast::Seq {
+    let mut fsm = FsmState {
+        counter: 0,
+    };
+
+    if let &ast::Seq::Fsm(ref inner) = input {
+        let mut res = inner.0.clone();
+        res.push(ast::Seq::Yield);
+
+        let mut ret = fsm_list(&mut fsm, &res);
+        // Remove last yield block.
+        ret.pop();
+        ret[0].0.insert(0, 0);
+
+        return ast::Seq::Match(ast::Expr::Ref(ast::Ident("_FSM".to_string())),
+            ret.iter().map(|mut x| {
+                let mut states = x.0.clone();
+                states.sort();
+                (states.iter().rev().map(|x| ast::Expr::Num(*x as _)).collect(), ast::SeqBlock(x.1.clone()))
+            }).collect())
+    } else {
+        panic!("not fsm");
+    }
 }
 
 
@@ -1086,6 +941,57 @@ fsm {
     await !spi_ready;
     await spi_ready;
     yield;
+    tx_byte <= 0x16;
+}
+"#;
+
+    let res = parse_results(code, self::hdl_parser::parse_SeqStatement(code));
+
+    let res = fsm_rewrite(&res);
+    let out = res.to_verilog(&Default::default());
+
+    println!("OK:\n{}", out);
+
+    assert_eq!(out, r#"case (FSM)
+    0, 1, 2: begin
+        if (FSM == 0) begin
+            LED1 <= 1;
+            CS <= 0;
+            tx_valid <= 1;
+            tx_byte <= 34;
+        end
+        if (FSM != 2 && FSM != 3 && !!spi_ready) begin
+            FSM <= 1;
+        end
+        else begin
+            if (FSM != 3 && !spi_ready) begin
+                FSM <= 2;
+            end
+            else begin
+                FSM <= 3;
+            end
+        end
+    end
+    3: begin
+        tx_byte <= 22;
+        FSM <= 0;
+    end
+endcase
+"#);
+}
+
+
+#[test]
+fn rewrite_await6() {
+    let code = r#"
+fsm {
+    LED1 <= 1;
+
+    CS <= 0;
+    tx_valid <= 1;
+    tx_byte <= 0x22;
+    while !spi_ready { yield; }
+    while spi_ready { yield; }
     tx_byte <= 0x16;
 }
 "#;
