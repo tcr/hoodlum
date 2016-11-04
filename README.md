@@ -34,7 +34,7 @@ Non-goals:
 
 1. Don't compile Rust into HDL. Rust's stdlib fits an entirely different computing
    model. The abstraction mismatch makes bad output.
-1. Don't support all features of Verilog 2005 or VHDL, just a functional subset.
+1. Don't support all features of Verilog-2001 or VHDL, just a functional subset.
 
 ## License
 

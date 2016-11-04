@@ -521,7 +521,7 @@ fn fsm_list(fsm: &mut FsmState, input: &[ast::Seq]) -> Vec<(Vec<u32>, Vec<ast::S
                     let mut cond = cond.clone();
 
                     // Remove current segment as else statement.
-                    let mut else_seq = if !cur.1.is_empty() {
+                    let else_seq = if !cur.1.is_empty() {
                         let mut new_cur = (vec![], vec![]);
                         new_cur.0.extend(&cur.0);
 
@@ -615,7 +615,7 @@ fn fsm_rewrite(input: &ast::Seq) -> ast::Seq {
         ret[0].0.insert(0, 0);
 
         return ast::Seq::Match(ast::Expr::Ref(ast::Ident("_FSM".to_string())),
-            ret.iter().map(|mut x| {
+            ret.iter().map(|x| {
                 let mut states = x.0.clone();
                 states.sort();
                 (states.iter().rev().map(|x| ast::Expr::Num(*x as _)).collect(), ast::SeqBlock(x.1.clone()))

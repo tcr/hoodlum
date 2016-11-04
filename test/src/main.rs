@@ -50,7 +50,7 @@ entity SpiMaster(
     let read_index: uint{0..8} = 0;
     let internal_clk: reg[1] = 0;
 
-    let _FSM: uint{..32} = 0;
+    let _FSM: reg[32] = 0;
 
     // Generate SPI signal from internal clock + SPI state.
     always {
@@ -163,7 +163,7 @@ entity Ethernet(
     };
 
 
-    let _FSM: uint{..32} = 0;
+    let _FSM: reg[32] = 0;
     on tx_clk.negedge {
         reset rst {
             fsm {
