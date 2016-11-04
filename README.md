@@ -1,10 +1,15 @@
 # hoodlum
 
-HDL generation library for hardware synthesis.
+A nice-looking hardware description language with FSM generation, simple reset
+generation, and more. Hackable so you can add your own constructs.
+
+```
+cargo install hoodlum
+```
+
+Add this to `test.hdl`:
 
 ```rust
-let code = hdl! {
-
 entity Main (clk: in, LED1: out) {
     let light: reg[1] = 1;
 
@@ -16,11 +21,15 @@ entity Main (clk: in, LED1: out) {
         LED1 = light;
     }
 }
-
-};
-
-let verilog = code.to_verilog(&Default::default());
 ```
+
+And run
+
+```
+hoodlum test.hdl output.v
+```
+
+---
 
 Goals:
 
