@@ -1,4 +1,4 @@
-entity Second(clk: in, ready: out) {
+entity Second(clk: in, signal: out) {
     let index: uint{..1200000} = 0;
 
     on clk.posedge {
@@ -18,7 +18,10 @@ entity Entry(clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
     let FSM: uint{..3} = 0;
 
     let ready;
-    let sec = Second(clk, ready);
+    let sec = Second {
+      clk: clk,
+      signal: ready
+    };
 
     on clk.posedge {
         reset ready {
