@@ -47,8 +47,8 @@ Ident: ast::Ident = {
 
 Num: ast::Expr = {
     r"\d+" => ast::Expr::Num(i32::from_str(<>).unwrap()),
-    r"0b\d+" => ast::Expr::Num(i32::from_str_radix(&<>[2..], 2).unwrap()),
-    r"0x\d+" => ast::Expr::Num(i32::from_str_radix(&<>[2..], 16).unwrap()),
+    r"0b[01]+" => ast::Expr::Num(i32::from_str_radix(&<>[2..], 2).unwrap()),
+    r"0x[0-9a-fA-F]+" => ast::Expr::Num(i32::from_str_radix(&<>[2..], 16).unwrap()),
 };
 
 Decl: ast::Decl = {
@@ -71,6 +71,9 @@ Decl: ast::Decl = {
     },
     "let" <i:Ident> "=" <e:Ident> "{" <args:Comma<KeyPair>> "}" ";" => {
         ast::Decl::Let(i, e, args)
+    },
+    "const" <i:Ident> "=" <v:Expr> ";" => {
+        ast::Decl::Const(i, v)
     },
     "on" <sig:Ident> "." <edge:Edge> "{" <b:SeqStatements> "}" => {
         ast::Decl::On(ast::EdgeRef(sig, edge), b)
@@ -164,6 +167,10 @@ Expr: ast::Expr = {
     <l:Expr> "&&" <r:Term> => ast::Expr::Arith(ast::Op::And, Box::new(l), Box::new(r)),
     <l:Expr> "<" <r:Term> => ast::Expr::Arith(ast::Op::Lt, Box::new(l), Box::new(r)),
     <l:Expr> ">" <r:Term> => ast::Expr::Arith(ast::Op::Gt, Box::new(l), Box::new(r)),
+    <l:Expr> "|" <r:Term> => ast::Expr::Arith(ast::Op::BinOr, Box::new(l), Box::new(r)),
+    <l:Expr> "&" <r:Term> => ast::Expr::Arith(ast::Op::BinAnd, Box::new(l), Box::new(r)),
+    <l:Expr> "<<" <r:Term> => ast::Expr::Arith(ast::Op::LShift, Box::new(l), Box::new(r)),
+    <l:Expr> ">>" <r:Term> => ast::Expr::Arith(ast::Op::RShift, Box::new(l), Box::new(r)),
     "!" <r:Term> => ast::Expr::Unary(ast::UnaryOp::Not, Box::new(r)),
     Term => <>,
 };

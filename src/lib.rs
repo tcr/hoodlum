@@ -264,6 +264,10 @@ impl ToVerilog for ast::Op {
             ast::Op::Lt => "<",
             ast::Op::Gt => ">",
             ast::Op::Ne => "!=",
+            ast::Op::BinAnd => "&",
+            ast::Op::BinOr => "|",
+            ast::Op::LShift => "<<",
+            ast::Op::RShift => ">>",
         }).to_string()
     }
 }
@@ -302,6 +306,12 @@ impl ToVerilog for ast::Decl {
                     args=args.iter().map(|x| {
                         format!(".{} ({})", x.0.to_verilog(v), x.1.to_verilog(v))
                     }).collect::<Vec<_>>().join(", "))
+            }
+            ast::Decl::Const(ref name, ref value) => {
+                format!("{ind}localparam {name} = {value};\n",
+                    ind=v.indent,
+                    name=name.to_verilog(v),
+                    value=value.to_verilog(v))
             }
             ast::Decl::On(ref edge, ref block) => {
                 format!("{ind}always @({edge}) begin\n{body}{ind}end\n",

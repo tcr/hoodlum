@@ -27,6 +27,7 @@ pub enum Decl {
     Reg(Ident, Option<Expr>),
     RegArray(Ident, Expr, Option<Expr>),
     Let(Ident, Ident, Vec<(Ident, Ident)>),
+    Const(Ident, Expr),
     On(EdgeRef, SeqBlock),
     Always(CombBlock),
 }
@@ -70,6 +71,10 @@ pub enum Op {
     Lt,
     Gt,
     Ne,
+    BinOr,
+    BinAnd,
+    LShift,
+    RShift,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

@@ -127,118 +127,292 @@ entity SpiMaster(
 }
 
 entity Ethernet(
-  rst: in,
-  tx_clk: in,
-  LED1: out,
-  LED2: out,
-  LED3: out,
-  CS: out,
-  spi_bit: out, // MOSI
-  spi_rx: in, // MISO
-  spi_clk: out,
+    rst: in,
+    tx_clk: in,
+    LED1: out,
+    LED2: out,
+    LED3: out,
+    CS: out,
+    spi_bit: out, // MOSI
+    spi_rx: in, // MISO
+    spi_clk: out,
 ) {
-  let tx_valid = 0;
-  let tx_byte: reg[8] = 0;
-  let spi_ready;
-  let spi_rx_value: reg[8];
-  let spi = SpiMaster {
-      rst: rst,
-      clk: tx_clk,
-      tx_trigger: tx_valid,
-      tx_ready: spi_ready,
-      tx_byte: tx_byte,
-      rx_byte: spi_rx_value,
-      spi_clk: spi_clk,
-      spi_tx: spi_bit,
-      spi_rx: spi_rx
-  };
+    let tx_valid = 0;
+    let tx_byte: reg[8] = 0;
+    let spi_ready;
+    let spi_rx_value: reg[8];
+    let spi = SpiMaster {
+        rst: rst,
+        clk: tx_clk,
+        tx_trigger: tx_valid,
+        tx_ready: spi_ready,
+        tx_byte: tx_byte,
+        rx_byte: spi_rx_value,
+        spi_clk: spi_clk,
+        spi_tx: spi_bit,
+        spi_rx: spi_rx
+    };
 
+    let sleep_counter: uint{..1200000} = 0;
 
-  let _FSM: reg[32] = 0;
-  on tx_clk.negedge {
-      reset rst {
-          fsm {
-              LED1 <= 1;
+    const ERCRU = 0x20;
+    const EWCRU = 0x22;
+    const EEUDASTL = (0x16 | 0x00);
+    const ESSETETHRST = 0b11001010;
+    const EECON2L = (0x0E | 0x60);
+    const EERXSTL = (0x04 | 0x00);
+    const EMAMXFLL = (0x0A | 0x40);
+    const EERXTAILL = (0x06 | 0x00);
 
-              CS <= 0;
-              tx_valid <= 1;
-              tx_byte <= 0x22; //EWCRU;
-              await spi_ready;
-              tx_byte <= 0x16; //EEUDASTL;
-              await spi_ready;
-              tx_byte <= 0x34;
-              await spi_ready;
-              tx_byte <= 0x12;
-              await spi_ready;
+    const EMAADR3L = (0x00 | 0x60);
+    const EMAADR3H = (0x01 | 0x60);
+    const EMAADR2L = (0x02 | 0x60);
+    const EMAADR2H = (0x03 | 0x60);
+    const EMAADR1L = (0x04 | 0x60);
+    const EMAADR1H = (0x05 | 0x60);
 
-              CS <= 1;
-              tx_valid <= 0;
-              // Skip two clock cycles
-              yield;
-              yield;
+    const ESENABLERX = 0b11101000;
 
-              CS <= 0;
-              tx_valid <= 1;
-              tx_byte <= 0x20; //ERCRU;
-              await spi_ready;
-              tx_byte <= 0x16; //EEUDASTL;
-              await spi_ready;
-              // noop
-              await spi_ready;
-              if spi_rx_value == 0x34 {
-                  LED2 <= 1;
-              }
-              await spi_ready;
-              if spi_rx_value == 0x12 {
-                  LED3 <= 1;
-              }
+    const ERCR = 0x00;
+    const EESTATL = (0x1A | 0x00);
 
-              CS <= 1;
-              tx_valid <= 0;
-              loop {
-                  yield;
-              }
-          }
-      }
-  }
+    const EERXRDPTL = (0x8A);
+
+    const ERRXDATA = 0b00101100;
+
+    //template write_16(reg, A, B) {
+    //    tx_byte <= EWCRU;
+    //    await spi_ready;
+    //    tx_byte <= reg;
+    //    await spi_ready;
+    //    tx_byte <= A;
+    //    await spi_ready;
+    //    tx_byte <= B;
+    //    await spi_ready;
+    //}
+
+    let receivedL: reg[8] = 0;
+    let receivedH: reg[8] = 0;
+    let NextPacketPointerL: reg[8] = 0x40;
+    let NextPacketPointerH: reg[8] = 0x53;
+    let _FSM: reg[32] = 0;
+    on tx_clk.negedge {
+        reset rst {
+            fsm {
+                LED1 <= 1;
+
+                CS <= 0;
+                tx_valid <= 1;
+
+                tx_byte <= EWCRU; //EWCRU;
+                await spi_ready;
+                tx_byte <= EEUDASTL;
+                await spi_ready;
+                tx_byte <= 0x34;
+                await spi_ready;
+                tx_byte <= 0x12;
+                await spi_ready;
+
+                CS <= 1;
+                tx_valid <= 0;
+                // Skip two clock cycles
+                yield;
+                yield;
+
+                CS <= 0;
+                tx_valid <= 1;
+                tx_byte <= ERCRU;
+                await spi_ready;
+                tx_byte <= EEUDASTL;
+                await spi_ready;
+                // noop
+                await spi_ready;
+                if spi_rx_value == 0x34 {
+                    //LED2 <= 1;
+                }
+                await spi_ready;
+                if spi_rx_value == 0x12 {
+                    LED2 <= 1;
+                }
+
+                tx_byte <= ESSETETHRST;
+                await spi_ready;
+
+                tx_valid <= 0;
+                sleep_counter <= 0;
+                while sleep_counter < 36 {
+                    sleep_counter <= sleep_counter + 1;
+                    yield;
+                }
+                tx_valid <= 1;
+
+                tx_byte <= EWCRU;
+                await spi_ready;
+                tx_byte <= EECON2L;
+                await spi_ready;
+                tx_byte <= 0x00;
+                await spi_ready;
+                tx_byte <= 0xCB;
+                await spi_ready;
+
+                tx_byte <= EWCRU;
+                await spi_ready;
+                tx_byte <= EERXSTL;
+                await spi_ready;
+                tx_byte <= 0x40; //RX_BUFFER_START
+                await spi_ready;
+                tx_byte <= 0x53;
+                await spi_ready;
+
+                tx_byte <= EWCRU;
+                await spi_ready;
+                tx_byte <= EMAMXFLL;
+                await spi_ready;
+                tx_byte <= 0x42; //MAX_FRAMELEN
+                await spi_ready;
+                tx_byte <= 0x02;
+                await spi_ready;
+
+                tx_byte <= EWCRU;
+                await spi_ready;
+                tx_byte <= EERXTAILL;
+                await spi_ready;
+                tx_byte <= 0xFE;
+                await spi_ready;
+                tx_byte <= 0x5F;
+                await spi_ready;
+
+                tx_byte <= ERCRU;
+                await spi_ready;
+                tx_byte <= EMAADR1L;
+                await spi_ready;
+                // TODO
+                await spi_ready;
+                // TODO
+                await spi_ready;
+
+                tx_byte <= ERCRU;
+                await spi_ready;
+                tx_byte <= EMAADR2L;
+                await spi_ready;
+                // TODO
+                await spi_ready;
+                // TODO
+                await spi_ready;
+
+                tx_byte <= ERCRU;
+                await spi_ready;
+                tx_byte <= EMAADR3L;
+                await spi_ready;
+                // TODO
+                await spi_ready;
+                // TODO
+                await spi_ready;
+
+                tx_byte <= ESENABLERX;
+                await spi_ready;
+
+                tx_byte <= ESENABLERX;
+                await spi_ready;
+
+                loop {
+                    tx_byte <= ERCR | EESTATL;
+                    await spi_ready;
+                    // noop
+                    await spi_ready;
+
+                    //if spi_rx_value > 0 { TODO
+                        tx_byte <= EWCRU;
+                        await spi_ready;
+                        tx_byte <= EERXRDPTL;
+                        await spi_ready;
+                        // TODO this should be reassignable
+                        tx_byte <= NextPacketPointerL;
+                        await spi_ready;
+                        tx_byte <= NextPacketPointerH;
+                        await spi_ready;
+
+                        tx_byte <= ERRXDATA;
+                        await spi_ready;
+
+                        // noop
+                        await spi_ready;
+                        NextPacketPointerL <= spi_rx_value;
+                        // noop
+                        await spi_ready;
+                        NextPacketPointerH <= spi_rx_value;
+
+                        // noop
+                        await spi_ready;
+                        receivedL <= spi_rx_value;
+                        // noop
+                        await spi_ready;
+                        receivedH <= spi_rx_value;
+
+                        // enc424j600_pop16LE();
+                        // noop
+                        await spi_ready;
+                        if spi_rx_value & (1 << 7) {
+                            LED3 <= 1;
+                        }
+                        // noop
+                        await spi_ready;
+
+                        // enc424j600_pop16LE();
+                        // noop
+                        await spi_ready;
+                        // noop
+                        await spi_ready;
+
+                        // TODO enc424j600_receivecallback
+                    //}
+                }
+
+                CS <= 1;
+                loop {
+                    yield;
+                }
+            }
+        }
+    }
 }
 
 entity Main(
-  clk: in,
-  LED1: out,
-  LED2: out,
-  LED3: out,
-  LED4: out,
-  LED5: out,
-  PMOD1: out,
-  PMOD2: out,
-  PMOD3: in,
-  PMOD4: out,
-  PMOD7: out,
-  //PMOD8: out,
-  //PMOD9: out,
-  //PMOD10: out,
+    clk: in,
+    LED1: out,
+    LED2: out,
+    LED3: out,
+    LED4: out,
+    LED5: out,
+    PMOD1: out,
+    PMOD2: out,
+    PMOD3: in,
+    PMOD4: out,
+    PMOD7: out,
+    //PMOD8: out,
+    //PMOD9: out,
+    //PMOD10: out,
 ) {
-  // PMOD1 = CS
-  // PMOD2 = MOSI
-  // PMOD3 = MISO
-  // PMOD4 = SCLK
-  let ready;
-  let sec = Second { clk: clk, ready: ready };
-  let half = Half { clk: clk, ready: PMOD7 };
-  let ether = Ethernet {
-      rst: ready,
-      tx_clk: clk,
-      LED1: LED1,
-      LED2: LED2,
-      LED3: LED3,
-      CS: PMOD1,
-      spi_bit: PMOD2,
-      spi_rx: PMOD3,
-      spi_clk: PMOD4,
-  };
+    // PMOD1 = CS
+    // PMOD2 = MOSI
+    // PMOD3 = MISO
+    // PMOD4 = SCLK
+    let ready;
+    let sec = Second { clk: clk, ready: ready };
+    let half = Half { clk: clk, ready: PMOD7 };
+    let ether = Ethernet {
+        rst: ready,
+        tx_clk: clk,
+        LED1: LED1,
+        LED2: LED2,
+        LED3: LED3,
+        CS: PMOD1,
+        spi_bit: PMOD2,
+        spi_rx: PMOD3,
+        spi_clk: PMOD4,
+    };
 
-  always {
-      LED5 = !ready;
-  }
+    always {
+        LED5 = !ready;
+    }
 }
