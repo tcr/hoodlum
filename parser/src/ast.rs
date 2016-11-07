@@ -35,12 +35,18 @@ pub enum Decl {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct SeqBlock(pub Vec<Seq>);
 
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq)]
+pub enum BlockType {
+    Blocking,
+    NonBlocking,
+}
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Seq {
     If(Expr, SeqBlock, Option<SeqBlock>),
     Reset(Ident, SeqBlock),
-    Set(Ident, Expr),
-    SetIndex(Ident, Expr, Expr),
+    Set(BlockType, Ident, Expr),
+    SetIndex(BlockType, Ident, Expr, Expr),
     Match(Expr, Vec<(Vec<Expr>, SeqBlock)>),
 
     While(Expr, SeqBlock),

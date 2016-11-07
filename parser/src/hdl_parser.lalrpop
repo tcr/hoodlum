@@ -141,13 +141,17 @@ pub SeqStatement: ast::Seq = {
         ast::Seq::Await(e)
     },
 
-    <i:Ident> "<=" <v:Expr> ";" => {
-        ast::Seq::Set(i, v)
+    <i:Ident> <b:BlockType> <v:Expr> ";" => {
+        ast::Seq::Set(b, i, v)
     },
+    <i:Ident> "[" <idx:Expr> "]" <b:BlockType> <v:Expr> ";" => {
+        ast::Seq::SetIndex(b, i, idx, v)
+    },
+};
 
-    <i:Ident> "[" <idx:Expr> "]" "<=" <v:Expr> ";" => {
-        ast::Seq::SetIndex(i, idx, v)
-    },
+BlockType: ast::BlockType = {
+  ":=" => ast::BlockType::Blocking,
+  "<=" => ast::BlockType::NonBlocking,
 };
 
 MatchArm: (Vec<ast::Expr>, ast::SeqBlock) = {

@@ -180,25 +180,9 @@ entity Ethernet(
 
     const ERRXDATA = 0b00101100;
 
-#define write_16(reg, A, B) \
-    tx_byte <= EWCRU; \
-    await spi_ready; \
-    tx_byte <= reg; \
-    await spi_ready; \
-    tx_byte <= A; \
-    await spi_ready; \
-    tx_byte <= B; \
-    await spi_ready
 
-#define read_16(reg, A, B) \
-    tx_byte <= ERCRU; \
-    await spi_ready; \
-    tx_byte <= reg; \
-    await spi_ready; \
-    await spi_ready; \
-    A <= spi_rx_value; \
-    await spi_ready; \
-    B := spi_rx_value
+
+
 
     let receivedL: reg[8] = 0;
     let receivedH: reg[8] = 0;
@@ -217,7 +201,7 @@ entity Ethernet(
                 CS <= 0;
                 tx_valid <= 1;
 
-                write_16(EEUDASTL, 0x34, 0x12);
+                tx_byte <= EWCRU; await spi_ready; tx_byte <= EEUDASTL; await spi_ready; tx_byte <=  0x34; await spi_ready; tx_byte <=  0x12; await spi_ready;
 
                 CS <= 1;
                 tx_valid <= 0;
@@ -228,7 +212,7 @@ entity Ethernet(
                 CS <= 0;
                 tx_valid <= 1;
 
-                read_16(EEUDASTL, checksumL, checksumH);
+                tx_byte <= ERCRU; await spi_ready; tx_byte <= EEUDASTL; await spi_ready; await spi_ready;  checksumL <= spi_rx_value; await spi_ready;  checksumH := spi_rx_value;
                 if checksumL == 0x34 && checksumH == 0x12 {
                     LED2 <= 1;
                 }
@@ -416,3 +400,4 @@ entity Main(
         LED5 = !ready;
     }
 }
+

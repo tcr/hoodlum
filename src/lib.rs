@@ -172,7 +172,7 @@ impl ResetWalker {
 impl Walker for ResetWalker {
     fn seq(&mut self, item: &ast::Seq) {
         match *item {
-            ast::Seq::Set(ref ident, _) => {
+            ast::Seq::Set(_, ref ident, _) => {
                 self.modified.insert(ident.clone());
             }
             _ => { }
@@ -359,20 +359,22 @@ impl ToVerilog for ast::Seq {
                     reset=v.init.iter()
                         .filter(|&(ident, _)| reset.modified.contains(ident))
                         .map(|(ident, init)| {
-                            ast::Seq::Set(ident.clone(), init.clone()).to_verilog(&v.tab())
+                            ast::Seq::Set(ast::BlockType::NonBlocking, ident.clone(), init.clone()).to_verilog(&v.tab())
                         }).collect::<Vec<_>>().join(""))
             },
-            ast::Seq::Set(ref id, ref value) => {
-                format!("{ind}{name} <= {value};\n",
+            ast::Seq::Set(ref block_type, ref id, ref value) => {
+                format!("{ind}{name} {block} {value};\n",
                     ind=v.indent,
+                    block=block_type.to_verilog(v),
                     name=id.to_verilog(v),
                     value=value.to_verilog(v))
             }
-            ast::Seq::SetIndex(ref id, ref index, ref value) => {
-                format!("{ind}{name}[{index}] <= {value};\n",
+            ast::Seq::SetIndex(ref block_type, ref id, ref index, ref value) => {
+                format!("{ind}{name}[{index}] {block} {value};\n",
                     ind=v.indent,
                     name=id.to_verilog(v),
                     index=index.to_verilog(v),
+                    block=block_type.to_verilog(v),
                     value=value.to_verilog(v))
             }
             ast::Seq::Match(ref cond, ref arms) => {
@@ -393,9 +395,10 @@ impl ToVerilog for ast::Seq {
                 res.to_verilog(&v_new)
             }
             ast::Seq::FsmTransition(n) => {
-                format!("{ind}_FSM <= {id};\n",
+                format!("{ind}_FSM = {id};\n",
                     ind=v.indent,
-                    id=v.fsm.get(&n).map(|x| x.to_string()).unwrap_or(format!("$$${}$$$", n))) //.expect(format!("Missing FSM state in generation step: {:?}!"))
+                    //id=v.fsm.get(&n).map(|x| x.to_string()).unwrap_or(format!("$$${}$$$", n))) //.expect(format!("Missing FSM state in generation step: {:?}!"))
+                    id=v.fsm.get(&n).expect(&format!("Missing FSM state in generation step: {:?}", n)))
             }
             ast::Seq::Await(..) => {
                 unreachable!("Cannot not compile Await statement to Verilog.")
@@ -416,6 +419,16 @@ impl ToVerilog for ast::Seq {
 impl ToVerilog for ast::CombBlock {
     fn to_verilog(&self, v: &VerilogState) -> String {
         self.0.iter().map(|x| x.to_verilog(v)).collect::<Vec<_>>().join("")
+    }
+}
+
+
+impl ToVerilog for ast::BlockType {
+    fn to_verilog(&self, v: &VerilogState) -> String {
+        match self {
+            &ast::BlockType::Blocking => "=".to_string(),
+            &ast::BlockType::NonBlocking => "<=".to_string(),
+        }
     }
 }
 
