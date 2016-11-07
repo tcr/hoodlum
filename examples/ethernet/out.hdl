@@ -184,6 +184,15 @@ entity Ethernet(
 
 
 
+
+
+
+
+
+
+
+
+
     let receivedL: reg[8] = 0;
     let receivedH: reg[8] = 0;
     let NextPacketPointerL: reg[8] = 0x40;
@@ -192,6 +201,8 @@ entity Ethernet(
 
     let checksumL: reg[8] = 0;
     let checksumH: reg[8] = 0;
+
+    let dummy: reg[8] = 0;
 
     on tx_clk.negedge {
         reset rst {
@@ -217,8 +228,7 @@ entity Ethernet(
                     LED2 <= 1;
                 }
 
-                tx_byte <= ESSETETHRST;
-                await spi_ready;
+                tx_byte <= ESSETETHRST; await spi_ready;
 
                 tx_valid <= 0;
                 sleep_counter <= 0;
@@ -230,108 +240,34 @@ entity Ethernet(
 
                 tx_valid <= 1;
 
-                tx_byte <= EWCRU;
-                await spi_ready;
-                tx_byte <= EECON2L;
-                await spi_ready;
-                tx_byte <= 0x00;
-                await spi_ready;
-                tx_byte <= 0xCB;
-                await spi_ready;
+                tx_byte <= EWCRU; await spi_ready; tx_byte <= EECON2L; await spi_ready; tx_byte <=  0x00; await spi_ready; tx_byte <=  0xCB; await spi_ready;
 
-                tx_byte <= EWCRU;
-                await spi_ready;
-                tx_byte <= EERXSTL;
-                await spi_ready;
-                tx_byte <= 0x40; //RX_BUFFER_START
-                await spi_ready;
-                tx_byte <= 0x53;
-                await spi_ready;
+                tx_byte <= EWCRU; await spi_ready; tx_byte <= EERXSTL; await spi_ready; tx_byte <=  0x40; await spi_ready; tx_byte <=  0x53; await spi_ready; //RX_BUFFER_START
 
-                tx_byte <= EWCRU;
-                await spi_ready;
-                tx_byte <= EMAMXFLL;
-                await spi_ready;
-                tx_byte <= 0x42; //MAX_FRAMELEN
-                await spi_ready;
-                tx_byte <= 0x02;
-                await spi_ready;
+                tx_byte <= EWCRU; await spi_ready; tx_byte <= EMAMXFLL; await spi_ready; tx_byte <=  0x42; await spi_ready; tx_byte <=  0x02; await spi_ready; //MAX_FRAMELEN
 
-                tx_byte <= EWCRU;
-                await spi_ready;
-                tx_byte <= EERXTAILL;
-                await spi_ready;
-                tx_byte <= 0xFE;
-                await spi_ready;
-                tx_byte <= 0x5F;
-                await spi_ready;
+                tx_byte <= EWCRU; await spi_ready; tx_byte <= EERXTAILL; await spi_ready; tx_byte <=  0xFE; await spi_ready; tx_byte <=  0x5F; await spi_ready; // (magic number)
 
-                tx_byte <= ERCRU;
-                await spi_ready;
-                tx_byte <= EMAADR1L;
-                await spi_ready;
-                // TODO
-                await spi_ready;
-                // TODO
-                await spi_ready;
+                tx_byte <= ERCRU; await spi_ready; tx_byte <= EMAADR1L; await spi_ready; await spi_ready;  dummy <= spi_rx_value; await spi_ready;  dummy := spi_rx_value; // MAC 0:1
+                tx_byte <= ERCRU; await spi_ready; tx_byte <= EMAADR2L; await spi_ready; await spi_ready;  dummy <= spi_rx_value; await spi_ready;  dummy := spi_rx_value; // MAC 2:3
+                tx_byte <= ERCRU; await spi_ready; tx_byte <= EMAADR3L; await spi_ready; await spi_ready;  dummy <= spi_rx_value; await spi_ready;  dummy := spi_rx_value; // MAC 4:5
 
-                tx_byte <= ERCRU;
-                await spi_ready;
-                tx_byte <= EMAADR2L;
-                await spi_ready;
-                // TODO
-                await spi_ready;
-                // TODO
-                await spi_ready;
-
-                tx_byte <= ERCRU;
-                await spi_ready;
-                tx_byte <= EMAADR3L;
-                await spi_ready;
-                // TODO
-                await spi_ready;
-                // TODO
-                await spi_ready;
-
-                tx_byte <= ESENABLERX;
-                await spi_ready;
-
-                tx_byte <= ESENABLERX;
-                await spi_ready;
+                tx_byte <= ESENABLERX; await spi_ready;
 
                 loop {
-                    tx_byte <= ERCR | EESTATL;
-                    await spi_ready;
-                    // noop
-                    await spi_ready;
+                    tx_byte <= ERCR | EESTATL; await spi_ready;
+                    await spi_ready; dummy <= spi_rx_value;
 
                     //if spi_rx_value > 0 { TODO
-                        tx_byte <= EWCRU;
-                        await spi_ready;
-                        tx_byte <= EERXRDPTL;
-                        await spi_ready;
-                        // TODO this should be reassignable
-                        tx_byte <= NextPacketPointerL;
-                        await spi_ready;
-                        tx_byte <= NextPacketPointerH;
-                        await spi_ready;
+                        tx_byte <= EWCRU; await spi_ready; tx_byte <= EERXRDPTL; await spi_ready; tx_byte <=  NextPacketPointerL; await spi_ready; tx_byte <=  NextPacketPointerH; await spi_ready;
 
-                        tx_byte <= ERRXDATA;
-                        await spi_ready;
+                        tx_byte <= ERRXDATA; await spi_ready;
 
-                        // noop
-                        await spi_ready;
-                        NextPacketPointerL <= spi_rx_value;
-                        // noop
-                        await spi_ready;
-                        NextPacketPointerH <= spi_rx_value;
+                        await spi_ready; NextPacketPointerL <= spi_rx_value;
+                        await spi_ready; NextPacketPointerH <= spi_rx_value;
 
-                        // noop
-                        await spi_ready;
-                        receivedL <= spi_rx_value;
-                        // noop
-                        await spi_ready;
-                        receivedH <= spi_rx_value;
+                        await spi_ready; receivedL <= spi_rx_value;
+                        await spi_ready; receivedH <= spi_rx_value;
 
                         // enc424j600_pop16LE();
                         // noop

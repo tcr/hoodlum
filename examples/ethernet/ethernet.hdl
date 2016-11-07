@@ -200,6 +200,15 @@ entity Ethernet(
     await spi_ready; \
     B := spi_rx_value
 
+#define write_byte(reg) \
+    tx_byte <= reg; \
+    await spi_ready
+
+
+#define read_byte(reg) \
+    await spi_ready; \
+    reg <= spi_rx_value
+
     let receivedL: reg[8] = 0;
     let receivedH: reg[8] = 0;
     let NextPacketPointerL: reg[8] = 0x40;
@@ -208,6 +217,8 @@ entity Ethernet(
 
     let checksumL: reg[8] = 0;
     let checksumH: reg[8] = 0;
+
+    let dummy: reg[8] = 0;
 
     on tx_clk.negedge {
         reset rst {
@@ -233,8 +244,7 @@ entity Ethernet(
                     LED2 <= 1;
                 }
 
-                tx_byte <= ESSETETHRST;
-                await spi_ready;
+                write_byte(ESSETETHRST);
 
                 tx_valid <= 0;
                 sleep_counter <= 0;
@@ -246,108 +256,34 @@ entity Ethernet(
 
                 tx_valid <= 1;
 
-                tx_byte <= EWCRU;
-                await spi_ready;
-                tx_byte <= EECON2L;
-                await spi_ready;
-                tx_byte <= 0x00;
-                await spi_ready;
-                tx_byte <= 0xCB;
-                await spi_ready;
+                write_16(EECON2L, 0x00, 0xCB);
 
-                tx_byte <= EWCRU;
-                await spi_ready;
-                tx_byte <= EERXSTL;
-                await spi_ready;
-                tx_byte <= 0x40; //RX_BUFFER_START
-                await spi_ready;
-                tx_byte <= 0x53;
-                await spi_ready;
+                write_16(EERXSTL, 0x40, 0x53); //RX_BUFFER_START
 
-                tx_byte <= EWCRU;
-                await spi_ready;
-                tx_byte <= EMAMXFLL;
-                await spi_ready;
-                tx_byte <= 0x42; //MAX_FRAMELEN
-                await spi_ready;
-                tx_byte <= 0x02;
-                await spi_ready;
+                write_16(EMAMXFLL, 0x42, 0x02); //MAX_FRAMELEN
 
-                tx_byte <= EWCRU;
-                await spi_ready;
-                tx_byte <= EERXTAILL;
-                await spi_ready;
-                tx_byte <= 0xFE;
-                await spi_ready;
-                tx_byte <= 0x5F;
-                await spi_ready;
+                write_16(EERXTAILL, 0xFE, 0x5F); // (magic number)
 
-                tx_byte <= ERCRU;
-                await spi_ready;
-                tx_byte <= EMAADR1L;
-                await spi_ready;
-                // TODO
-                await spi_ready;
-                // TODO
-                await spi_ready;
+                read_16(EMAADR1L, dummy, dummy); // MAC 0:1
+                read_16(EMAADR2L, dummy, dummy); // MAC 2:3
+                read_16(EMAADR3L, dummy, dummy); // MAC 4:5
 
-                tx_byte <= ERCRU;
-                await spi_ready;
-                tx_byte <= EMAADR2L;
-                await spi_ready;
-                // TODO
-                await spi_ready;
-                // TODO
-                await spi_ready;
-
-                tx_byte <= ERCRU;
-                await spi_ready;
-                tx_byte <= EMAADR3L;
-                await spi_ready;
-                // TODO
-                await spi_ready;
-                // TODO
-                await spi_ready;
-
-                tx_byte <= ESENABLERX;
-                await spi_ready;
-
-                tx_byte <= ESENABLERX;
-                await spi_ready;
+                write_byte(ESENABLERX);
 
                 loop {
-                    tx_byte <= ERCR | EESTATL;
-                    await spi_ready;
-                    // noop
-                    await spi_ready;
+                    write_byte(ERCR | EESTATL);
+                    read_byte(dummy);
 
                     //if spi_rx_value > 0 { TODO
-                        tx_byte <= EWCRU;
-                        await spi_ready;
-                        tx_byte <= EERXRDPTL;
-                        await spi_ready;
-                        // TODO this should be reassignable
-                        tx_byte <= NextPacketPointerL;
-                        await spi_ready;
-                        tx_byte <= NextPacketPointerH;
-                        await spi_ready;
+                        write_16(EERXRDPTL, NextPacketPointerL, NextPacketPointerH);
 
-                        tx_byte <= ERRXDATA;
-                        await spi_ready;
+                        write_byte(ERRXDATA);
 
-                        // noop
-                        await spi_ready;
-                        NextPacketPointerL <= spi_rx_value;
-                        // noop
-                        await spi_ready;
-                        NextPacketPointerH <= spi_rx_value;
+                        read_byte(NextPacketPointerL);
+                        read_byte(NextPacketPointerH);
 
-                        // noop
-                        await spi_ready;
-                        receivedL <= spi_rx_value;
-                        // noop
-                        await spi_ready;
-                        receivedH <= spi_rx_value;
+                        read_byte(receivedL);
+                        read_byte(receivedH);
 
                         // enc424j600_pop16LE();
                         // noop
