@@ -137,6 +137,79 @@ endcase
 
 
 #[test]
+fn rewrite_fsm3() {
+    let code = r#"
+fsm {
+    while !tx_trigger {
+        spi_tx <= 0;
+        yield;
+    }
+
+    read_index <= 7;
+    spi_tx <= tx_byte[7];
+    tx_ready <= 0;
+    yield;
+
+    while read_index > 0 {
+        spi_tx <= tx_byte[read_index - 1];
+        read_index <= read_index - 1;
+        yield;
+    }
+
+    tx_ready <= 1;
+
+    while r > 0 {
+        a <= 1;
+        yield;
+    }
+}
+"#;
+
+    let res = parse_results(code, hoodlum::hdl_parser::parse_SeqStatement(code));
+
+    let out = res.to_verilog(&VerilogState::new());
+
+    println!("OK:\n{}", out);
+
+    assert_eq!(out, r#"case (_FSM)
+    0: begin
+        if (!(tx_trigger)) begin
+            spi_tx <= 0;
+        end
+        else begin
+            read_index <= 7;
+            spi_tx <= tx_byte[7];
+            tx_ready <= 0;
+            _FSM <= 1;
+        end
+    end
+    1, 2, 3: begin
+        if (_FSM == 1) begin
+            if (read_index > 0) begin
+                spi_tx <= tx_byte[read_index - 1];
+                read_index <= read_index - 1;
+            end
+            else begin
+                _FSM <= 2;
+                tx_ready <= 1;
+            end
+        end
+        if (_FSM == 2 && _FSM == 3) begin
+            if (r > 0) begin
+                a <= 1;
+                _FSM <= 3;
+            end
+            else begin
+                _FSM <= 0;
+            end
+        end
+    end
+endcase
+"#);
+}
+
+
+#[test]
 fn rewrite_await1() {
     let code = r#"
 fsm {
@@ -316,10 +389,8 @@ fsm {
     CS <= 0;
     tx_valid <= 1;
     tx_byte <= 0x22;
-    yield;
-    while spi_ready { yield; }
-    yield;
-    while !spi_ready { yield; }
+    await !spi_ready;
+    await spi_ready;
     yield;
     tx_byte <= 0x16;
 }
@@ -331,29 +402,27 @@ fsm {
 
     println!("OK:\n{}", out);
 
-    assert_eq!(out, r#"case (FSM)
-    0, 1, 2: begin
-        if (FSM == 0) begin
-            LED1 <= 1;
-            CS <= 0;
-            tx_valid <= 1;
-            tx_byte <= 34;
+    assert_eq!(out, r#"case (_FSM)
+    0: begin
+        LED1 <= 1;
+        CS <= 0;
+        tx_valid <= 1;
+        tx_byte <= 34;
+        _FSM <= 1;
+    end
+    1: begin
+        if (!(spi_ready)) begin
+            _FSM <= 2;
         end
-        if (FSM != 2 && FSM != 3 && !!spi_ready) begin
-            FSM <= 1;
-        end
-        else begin
-            if (FSM != 3 && !spi_ready) begin
-                FSM <= 2;
-            end
-            else begin
-                FSM <= 3;
-            end
+    end
+    2: begin
+        if (spi_ready) begin
+            _FSM <= 3;
         end
     end
     3: begin
         tx_byte <= 22;
-        FSM <= 0;
+        _FSM <= 0;
     end
 endcase
 "#);
@@ -383,7 +452,7 @@ fsm {
 
     assert_eq!(out, r#"case (_FSM)
     0, 1, 2, 3: begin
-        if (_FSM == 0 && _FSM == 1 && _FSM == 2) begin
+        if (_FSM == 0 && _FSM == 1) begin
             if (_FSM == 0) begin
                 LED1 <= 1;
                 CS <= 0;
@@ -392,6 +461,7 @@ fsm {
             end
             if (!(spi_ready)) begin
                 _FSM <= 1;
+            end
             else begin
                 _FSM <= 2;
             end
@@ -479,7 +549,7 @@ fsm {
 
     assert_eq!(out, r#"case (_FSM)
     0, 1, 2, 3: begin
-        if (_FSM == 0 && _FSM == 1 && _FSM == 2) begin
+        if (_FSM == 0 && _FSM == 1) begin
             if (_FSM == 0) begin
                 tx_valid <= 0;
                 sleep_counter <= 0;

@@ -395,7 +395,7 @@ impl ToVerilog for ast::Seq {
             ast::Seq::FsmTransition(n) => {
                 format!("{ind}_FSM <= {id};\n",
                     ind=v.indent,
-                    id=v.fsm.get(&n).unwrap_or(&-999)) //.expect(format!("Missing FSM state in generation step: {:?}!"))
+                    id=v.fsm.get(&n).map(|x| x.to_string()).unwrap_or(format!("$$${}$$$", n))) //.expect(format!("Missing FSM state in generation step: {:?}!"))
             }
             ast::Seq::Await(..) => {
                 unreachable!("Cannot not compile Await statement to Verilog.")
@@ -561,7 +561,7 @@ fn fsm_match_list(op: ast::Op, list: &[u32]) -> Option<ast::Expr> {
     Some(cond)
 }
 
-fn fsm_list(fsm: &mut FsmCounter, input: &[ast::Seq]) -> Vec<FsmState> {
+fn fsm_list(fsm: &mut FsmCounter, input: &[ast::Seq], has_prev: bool) -> Vec<FsmState> {
     let mut ret: Vec<FsmState> = vec![];
     let mut cur = FsmState {
         id: fsm.next(),
@@ -591,9 +591,7 @@ fn fsm_list(fsm: &mut FsmCounter, input: &[ast::Seq]) -> Vec<FsmState> {
     while let Some(item) = new_input.pop() {
         match item {
             ast::Seq::While(ref cond, ast::SeqBlock(ref inner)) => {
-                println!("WOW {:?}", cur.id);
-
-                let mut list = fsm_list(fsm, &inner);
+                let mut list = fsm_list(fsm, &inner, false);
 
                 // Remove our last and first states.
                 if list.len() < 2 {
@@ -607,7 +605,7 @@ fn fsm_list(fsm: &mut FsmCounter, input: &[ast::Seq]) -> Vec<FsmState> {
 
                 // What output we've transformed so far, we use as the else { ... }
                 // block in an if statement that functions as our loop.
-                let else_seq = if !cur.body.is_empty() {
+                let else_seq = if !cur.body.is_empty() || has_prev {
                     let mut new_cur = FsmState {
                         id: cur.id,
                         contains: cur.contains.clone(),
@@ -676,7 +674,6 @@ fn fsm_list(fsm: &mut FsmCounter, input: &[ast::Seq]) -> Vec<FsmState> {
 
                 // The last block gets inserted before our if block, as it is
                 // run first.
-                // TODO I think this needs to change to exclude states
                 if !last.body.is_empty() {
                     cur.body.insert(0, ast::Seq::If(fsm_match_list(ast::Op::Eq, &[last.id]).unwrap(),
                         ast::SeqBlock(last.body),
@@ -688,23 +685,38 @@ fn fsm_list(fsm: &mut FsmCounter, input: &[ast::Seq]) -> Vec<FsmState> {
                 // it on every loop iteration. So we nest it in an if statement
                 // exclusive to its FSM states.
                 if !new_input.is_empty() {
-                    let mut rest = fsm_list(fsm, &new_input);
+                    let has_yield = if let Some(&ast::Seq::Yield) = new_input.last() {
+                        true
+                    } else {
+                        false
+                    };
+
+                    if has_yield {
+                        println!("ADJUSTING {:?}", cur.id);
+                        fsm.counter = cur.id;
+                        if cur.contains.len() > 0 {
+                            fsm.counter += 1;
+                        }
+                    }
+
+                    let mut rest = fsm_list(fsm, &new_input, true);
 
                     // If we actually have states to process, process them.
-                    if rest.last().unwrap().body.len() != 0 {
+                    if !has_yield {
                         let rest_last = rest.pop().unwrap();
 
                         // Create a condition matching all FSM states.
-                        let mut states = rest_last.contains.clone();
-                        if states.len() == 0 {
-                            states.push(rest_last.id);
+                        let mut states = rest_last.all_states();
+                        states.sort();
+                        if states.len() > 1 {
+                            states.remove(0);
                         }
                         let if_cond = fsm_match_list(ast::Op::Eq, &states).unwrap();
 
                         // Create a condition matching else FSM states.
                         let else_seq = mem::replace(&mut cur.body, vec![]);
                         let mut states = cur.all_states();
-                        states.push(rest_last.id);
+                        states.push(*rest_last.all_states().iter().min().unwrap());
                         let else_cond = fsm_match_list(ast::Op::Eq, &states).unwrap();
 
                         // Extend matching states.
@@ -721,15 +733,28 @@ fn fsm_list(fsm: &mut FsmCounter, input: &[ast::Seq]) -> Vec<FsmState> {
                             ast::SeqBlock(rest_last.body),
                             None));
                     } else {
-                        cur.id = rest.last().unwrap().id;
-                        if let &mut ast::Seq::If(_, ast::SeqBlock(ref mut body), _) = &mut cur.body[0] {
+                        //let last_id = cur.id;
+                        //cur.id = rest.last().unwrap().id;
+                        println!("cur {:?}", rest);
+                        if let &mut ast::Seq::If(ref mut cond, ast::SeqBlock(ref mut body), ref mut else_seq) = &mut cur.body[0] {
+                            //if let &mut Some(ast::SeqBlock(ref mut else_seq)) = else_seq {
+                            //    if let Some(&mut ast::Seq::FsmTransition(ref mut id)) = else_seq.get_mut(0) {
+                            //        if *id == last_id {
+                            //            *id = cur.id;
+                            //        }
+                            //    }
+                            //}
                             body.pop();
+                            if body.is_empty() && else_seq.is_some() {
+                                *body = mem::replace(else_seq, None).unwrap().0;
+                                *cond = invert_expr(cond.clone());
+                            }
                         }
-                        rest.pop();
+                            rest.pop();
                     }
 
                     ret.insert(0, cur);
-                    for item in rest {
+                    for item in rest.into_iter().rev() {
                         ret.insert(0, item);
                     }
                     return ret;
@@ -767,7 +792,7 @@ fn fsm_rewrite(input: &ast::Seq, v: &VerilogState) -> (ast::Seq, VerilogState) {
         let mut res = inner.0.clone();
         res.push(ast::Seq::Yield);
 
-        let mut ret = fsm_list(&mut fsm, &res);
+        let mut ret = fsm_list(&mut fsm, &res, false);
         // Remove last yield block.
         ret.pop();
 
