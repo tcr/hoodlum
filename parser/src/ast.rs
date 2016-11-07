@@ -48,6 +48,8 @@ pub enum Seq {
     Fsm(SeqBlock),
     Yield,
     Await(Expr),
+
+    FsmTransition(u32),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -90,6 +92,8 @@ pub enum Expr {
     Arith(Op, Box<Expr>, Box<Expr>),
     Unary(UnaryOp, Box<Expr>),
     Num(i32),
+
+    FsmValue(u32),
 }
 
 impl Expr {
