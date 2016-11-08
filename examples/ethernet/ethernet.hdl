@@ -247,7 +247,7 @@ entity Ethernet(
                 write_byte(ESSETETHRST);
 
                 tx_valid <= 0;
-                sleep_counter <= 0;
+                sleep_counter := 0;
                 while sleep_counter < 36 {
                     sleep_counter <= sleep_counter + 1;
                     yield;

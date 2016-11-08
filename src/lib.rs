@@ -565,7 +565,10 @@ fn fsm_match_list(op: ast::Op, list: &[u32]) -> Option<ast::Expr> {
         Box::new(ast::Expr::Ref(ast::Ident("_FSM".to_string()))),
         Box::new(ast::Expr::FsmValue(list[0])));
     for item in &list[1..] {
-        cond = ast::Expr::Arith(ast::Op::And,
+        cond = ast::Expr::Arith(match op {
+            ast::Op::Eq => ast::Op::Or,
+            _ => ast::Op::And,
+        },
             Box::new(ast::Expr::Arith(op.clone(),
                 Box::new(ast::Expr::Ref(ast::Ident("_FSM".to_string()))),
                 Box::new(ast::Expr::FsmValue(*item)))),
