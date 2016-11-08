@@ -31,6 +31,14 @@ hoodlum test.hdl output.v
 
 ---
 
+Examples are being tested with the iCEstick evaluation board and the [IceStorm
+open source compiler toolchain](http://www.clifford.at/icestorm/).
+
+**NOTE:** I'm learning Verilog and VHDL as I go along. Feel free to suggest ideas
+or best practices!
+
+---
+
 Goals:
 
 1. Emit compatible Verilog and VHDL code.
