@@ -322,14 +322,15 @@ entity Ethernet(
 
                 // enc424j600_recvpack()
 
+                do_cs_toggle;
+
                 loop {
-                    do_cs_toggle;
                     write_byte(ESENABLERX);
                     do_cs_toggle;
                     write_byte(ERCR | EESTATL);
                     read_byte(dummy);
 
-                    if dummy > 0 {
+                    //if dummy > 0 { TODO
                         //Configure ERXDATA for reading.
                         do_cs_toggle;
                         write_16(EERXRDPTL, NextPacketPointerL, NextPacketPointerH);
@@ -352,13 +353,61 @@ entity Ethernet(
                             LED3 <= 1;
                         }
                         // else {
-                          // ERROR: Bad packet
-                          // I have never observed tis code getting called, even when I saw dropped packets.
+                        // ERROR: Bad packet
+		                // I have never observed tis code getting called, even when I saw dropped packets.
                         // }
-                    }
 
-                    tx_valid <= 0;
-                    yield;
+                        // More dummy bytes
+                        read_byte(dummy);
+                        read_byte(dummy);
+
+                        // DO enc424j600_receivecallback
+
+                        //First and foremost, make sure we have a big enough packet to work with.
+                        //if (packetlen < 8) {
+                        //	// ERROR: Received runt packet
+                        //	return 1;
+                        //}
+                        //write_byte(receivedL);
+                        //write_byte(receivedH);
+                        //tx_valid <= 0;
+                        //CS <= 1;
+                        //loop { yield; }
+
+                        //macto (ignore) our mac filter handles this.
+                    	read_byte(dummy);
+                        read_byte(dummy);
+                        read_byte(dummy);
+                        read_byte(dummy);
+                        read_byte(dummy);
+                        read_byte(dummy);
+
+                        // TODO read macfrom
+                        read_byte(dummy);
+                        read_byte(dummy);
+                        read_byte(dummy);
+                        read_byte(dummy);
+                        read_byte(dummy);
+                        read_byte(dummy);
+
+                        //Make sure its ethernet!
+                        read_byte(dummy); // TODO check
+                        if dummy == 0x08 {
+                            LED4 <= 1;
+                        }
+
+                        //Make sure its ethernet!
+                        read_byte(dummy); // TODO check
+                        if dummy == 0x06 {
+                            LED4 <= 1;
+                        }
+
+                        tx_valid <= 0;
+                        CS <= 1;
+                        loop { yield; }
+
+                        yield;
+                    //}
                 }
 
                 CS <= 1;

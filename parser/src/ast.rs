@@ -55,6 +55,7 @@ pub enum Seq {
     Yield,
     Await(Expr),
 
+    FsmLoop(Expr, SeqBlock, Option<SeqBlock>, bool),
     FsmTransition(u32),
 }
 

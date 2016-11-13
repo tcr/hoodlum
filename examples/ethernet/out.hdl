@@ -24,6 +24,23 @@ entity Half(clk: in, ready: out) {
   }
 }
 
+
+
+entity MiniCounter(clk: in, rst: in, ready: out) {
+  let index: uint{..400} = 0;
+
+  on clk.posedge {
+      reset rst {
+          if index == 240 - 1 {
+              ready <= 1;
+          } else {
+              index <= index + 1;
+              ready <= 0;
+          }
+      }
+  }
+}
+
 entity SpiMaster(
   rst: in,
   clk: in,
@@ -132,6 +149,7 @@ entity Ethernet(
     LED1: out,
     LED2: out,
     LED3: out,
+    LED4: out,
     CS: out,
     spi_bit: out, // MOSI
     spi_rx: in, // MISO
@@ -181,6 +199,19 @@ entity Ethernet(
     const ERRXDATA = 0b00101100;
 
 
+    let mini_delay_trigger;
+    let mini_delay_result;
+    let mini_delay = MiniCounter {
+      clk: tx_clk,
+      rst: mini_delay_trigger,
+      ready: mini_delay_result,
+    };
+
+
+
+
+
+
 
 
 
@@ -197,12 +228,13 @@ entity Ethernet(
     let receivedH: reg[8] = 0;
     let NextPacketPointerL: reg[8] = 0x40;
     let NextPacketPointerH: reg[8] = 0x53;
-    let _FSM: reg[32] = 0;
+    let _FSM: reg[9] = 0;
 
     let checksumL: reg[8] = 0;
     let checksumH: reg[8] = 0;
 
     let dummy: reg[8] = 0;
+    let status_vector: reg[8] = 0;
 
     on tx_clk.negedge {
         reset rst {
@@ -212,80 +244,105 @@ entity Ethernet(
                 CS <= 0;
                 tx_valid <= 1;
 
+                // enc424j600_init()
+
                 tx_byte <= EWCRU; await spi_ready; tx_byte <= EEUDASTL; await spi_ready; tx_byte <=  0x34; await spi_ready; tx_byte <=  0x12; await spi_ready;
 
-                CS <= 1;
-                tx_valid <= 0;
-                // Skip two clock cycles
-                yield;
-                yield;
-
-                CS <= 0;
-                tx_valid <= 1;
+                tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
 
                 tx_byte <= ERCRU; await spi_ready; tx_byte <= EEUDASTL; await spi_ready; await spi_ready;  checksumL <= spi_rx_value; await spi_ready;  checksumH := spi_rx_value;
                 if checksumL == 0x34 && checksumH == 0x12 {
                     LED2 <= 1;
                 }
 
+                tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
+
                 tx_byte <= ESSETETHRST; await spi_ready;
 
                 tx_valid <= 0;
                 sleep_counter := 0;
-                while sleep_counter < 36 {
-                    sleep_counter <= sleep_counter + 1;
+                while sleep_counter < 360 {
+                    sleep_counter := sleep_counter + 1;
                     yield;
                 }
                 yield;
 
                 tx_valid <= 1;
 
-                tx_byte <= EWCRU; await spi_ready; tx_byte <= EECON2L; await spi_ready; tx_byte <=  0x00; await spi_ready; tx_byte <=  0xCB; await spi_ready;
-
-                tx_byte <= EWCRU; await spi_ready; tx_byte <= EERXSTL; await spi_ready; tx_byte <=  0x40; await spi_ready; tx_byte <=  0x53; await spi_ready; //RX_BUFFER_START
-
-                tx_byte <= EWCRU; await spi_ready; tx_byte <= EMAMXFLL; await spi_ready; tx_byte <=  0x42; await spi_ready; tx_byte <=  0x02; await spi_ready; //MAX_FRAMELEN
-
+                tx_byte <= EWCRU; await spi_ready; tx_byte <= EECON2L; await spi_ready; tx_byte <=  0x00; await spi_ready; tx_byte <=  0xCB; await spi_ready; // (magic number)
+                tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
+                tx_byte <= EWCRU; await spi_ready; tx_byte <= EERXSTL; await spi_ready; tx_byte <=  0x40; await spi_ready; tx_byte <=  0x53; await spi_ready; // RX_BUFFER_START 0x5340
+                tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
+                tx_byte <= EWCRU; await spi_ready; tx_byte <= EMAMXFLL; await spi_ready; tx_byte <=  0x42; await spi_ready; tx_byte <=  0x02; await spi_ready; // MAX_FRAMELEN 0x0242
+                tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
                 tx_byte <= EWCRU; await spi_ready; tx_byte <= EERXTAILL; await spi_ready; tx_byte <=  0xFE; await spi_ready; tx_byte <=  0x5F; await spi_ready; // (magic number)
+                tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
 
+                // Read MAC address
                 tx_byte <= ERCRU; await spi_ready; tx_byte <= EMAADR1L; await spi_ready; await spi_ready;  dummy <= spi_rx_value; await spi_ready;  dummy := spi_rx_value; // MAC 0:1
+                tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
                 tx_byte <= ERCRU; await spi_ready; tx_byte <= EMAADR2L; await spi_ready; await spi_ready;  dummy <= spi_rx_value; await spi_ready;  dummy := spi_rx_value; // MAC 2:3
+                tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
                 tx_byte <= ERCRU; await spi_ready; tx_byte <= EMAADR3L; await spi_ready; await spi_ready;  dummy <= spi_rx_value; await spi_ready;  dummy := spi_rx_value; // MAC 4:5
 
+                tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
                 tx_byte <= ESENABLERX; await spi_ready;
 
+                //Memory configuration
+                //The ENC424j600 has 0x6000 (24kB) bytes of memory
+                //We have to make good use of it.
+                // 0x0000
+                //  [Scratchpad]
+                // 0x0400
+                //  [TCP packets (578+42)*TCP_SOCKETS
+                // 0x1b84 (assuming 10 sockets)
+                //  [unused area]
+                // 0x5340 (RX_BUFFER_START (0x6000-RX_BUFFER_SIZE))
+                //  [RX Buffer]
+                // 0x6000 (End of standard SRAM)
+
+                NextPacketPointerL <= 0x40;
+                NextPacketPointerH <= 0x53;
+
+                // enc424j600_recvpack()
+
                 loop {
+                    tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
+                    tx_byte <= ESENABLERX; await spi_ready;
+                    tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
                     tx_byte <= ERCR | EESTATL; await spi_ready;
                     await spi_ready; dummy <= spi_rx_value;
 
-                    //if spi_rx_value > 0 { TODO
+                    if dummy > 0 {
+                        //Configure ERXDATA for reading.
+                        tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
                         tx_byte <= EWCRU; await spi_ready; tx_byte <= EERXRDPTL; await spi_ready; tx_byte <=  NextPacketPointerL; await spi_ready; tx_byte <=  NextPacketPointerH; await spi_ready;
+                        tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
 
+                        //Start reading!!!
                         tx_byte <= ERRXDATA; await spi_ready;
 
+                        // Read next packet pointer.
                         await spi_ready; NextPacketPointerL <= spi_rx_value;
                         await spi_ready; NextPacketPointerH <= spi_rx_value;
 
+                        // Read received byte count.
                         await spi_ready; receivedL <= spi_rx_value;
                         await spi_ready; receivedH <= spi_rx_value;
 
-                        // enc424j600_pop16LE();
-                        // noop
-                        await spi_ready;
-                        if spi_rx_value & (1 << 7) {
+                        await spi_ready; status_vector <= spi_rx_value;
+                        await spi_ready; dummy <= spi_rx_value;
+                        if status_vector & (1 << 7) {
                             LED3 <= 1;
                         }
-                        // noop
-                        await spi_ready;
+                        // else {
+                          // ERROR: Bad packet
+                          // I have never observed tis code getting called, even when I saw dropped packets.
+                        // }
+                    }
 
-                        // enc424j600_pop16LE();
-                        // noop
-                        await spi_ready;
-                        // noop
-                        await spi_ready;
-
-                        // TODO enc424j600_receivecallback
-                    //}
+                    tx_valid <= 0;
+                    yield;
                 }
 
                 CS <= 1;
@@ -326,6 +383,7 @@ entity Main(
         LED1: LED1,
         LED2: LED2,
         LED3: LED3,
+        LED4: LED4,
         CS: PMOD1,
         spi_bit: PMOD2,
         spi_rx: PMOD3,

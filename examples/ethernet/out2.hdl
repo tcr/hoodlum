@@ -1,0 +1,33 @@
+  entity SpiMaster(   rst: in,   clk: in,   tx_trigger: in,   tx_ready: out,   tx_byte: in[8],   rx_byte: out[8],   spi_clk: out,   spi_tx: out,   spi_rx: in, ) {   let live_clk: reg[1] = 0;    // Internal signals.
+let transmitting = 0;   let transmit_save = 1;
+on clk.posedge {
+  reset rst {
+    if transmit_save == transmitting {
+      tx_ready <= 1;
+      transmit_save <= !transmitting;
+    } else if tx_trigger {
+      tx_ready <= 0;
+    }
+  }
+}
+    on internal_clk.negedge {       reset rst {           fsm {
+    loop {                     tx_valid <= 0;
+    yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0;
+    tx_valid <= 1;                     tx_byte <= ESENABLERX; await spi_ready;
+         tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0;
+          CS <= 0; tx_valid <= 1;
+ tx_byte <= ERCR | EESTATL;
+    await spi_ready;
+    await spi_ready;
+    dummy <= spi_rx_value;
+     if dummy > 0 {
+    }                      tx_valid <= 0;
+        yield;
+                }
+     CS <= 1;                 loop {
+                     yield;
+                         }
+                              }
+                                     }
+                                       }
+                                       }
