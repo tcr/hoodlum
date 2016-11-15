@@ -1,0 +1,41 @@
+delta settings:
+	granularity: line
+	input: src/lib.rs
+
+delta start                             0 sec/00:00:00	Sun Nov 13 16:12:38 2016
+src/lib.rs, lines: 693                  3 sec/00:00:03	Sun Nov 13 16:12:41 2016
+src/lib.rs, lines: 682                  58 sec/00:00:58	Sun Nov 13 16:13:36 2016
+delta settings:
+	granularity: line
+	input: src/lib2.rs
+
+delta start                             0 sec/00:00:00	Sun Nov 13 16:17:49 2016
+src/lib2.rs, lines: 57                  4 sec/00:00:04	Sun Nov 13 16:17:53 2016
+src/lib2.rs, lines: 56                  41 sec/00:00:41	Sun Nov 13 16:18:30 2016
+src/lib2.rs, lines: 55                  45 sec/00:00:45	Sun Nov 13 16:18:34 2016
+src/lib2.rs, lines: 53                  59 sec/00:00:59	Sun Nov 13 16:18:48 2016
+src/lib2.rs, lines: 51                  63 sec/00:01:03	Sun Nov 13 16:18:52 2016
+src/lib2.rs, lines: 49                  68 sec/00:01:08	Sun Nov 13 16:18:57 2016
+src/lib2.rs, lines: 49                  96 sec/00:01:36	Sun Nov 13 16:19:25 2016
+src/lib2.rs, lines: 48                  99 sec/00:01:39	Sun Nov 13 16:19:28 2016
+src/lib2.rs, lines: 47                  107 sec/00:01:47	Sun Nov 13 16:19:36 2016
+src/lib2.rs, lines: 46                  115 sec/00:01:55	Sun Nov 13 16:19:44 2016
+src/lib2.rs, lines: 45                  118 sec/00:01:58	Sun Nov 13 16:19:47 2016
+src/lib2.rs, lines: 44                  122 sec/00:02:02	Sun Nov 13 16:19:51 2016
+src/lib2.rs, lines: 43                  126 sec/00:02:06	Sun Nov 13 16:19:55 2016
+src/lib2.rs, lines: 42                  133 sec/00:02:13	Sun Nov 13 16:20:02 2016
+src/lib2.rs, lines: 41                  136 sec/00:02:16	Sun Nov 13 16:20:05 2016
+src/lib2.rs, lines: 40                  146 sec/00:02:26	Sun Nov 13 16:20:15 2016
+src/lib2.rs, lines: 39                  159 sec/00:02:39	Sun Nov 13 16:20:28 2016
+src/lib2.rs, lines: 38                  163 sec/00:02:43	Sun Nov 13 16:20:32 2016
+src/lib2.rs, lines: 37                  167 sec/00:02:47	Sun Nov 13 16:20:36 2016
+delta done                              205 sec/00:03:25	Sun Nov 13 16:21:14 2016
+delta settings:
+	granularity: line
+	input: src/lib2.rs
+
+delta start                             0 sec/00:00:00	Sun Nov 13 17:02:59 2016
+src/lib2.rs, lines: 48                  3 sec/00:00:03	Sun Nov 13 17:03:02 2016
+src/lib2.rs, lines: 48                  61 sec/00:01:01	Sun Nov 13 17:04:00 2016
+src/lib2.rs, lines: 47                  66 sec/00:01:06	Sun Nov 13 17:04:05 2016
+delta done                              122 sec/00:02:02	Sun Nov 13 17:05:01 2016

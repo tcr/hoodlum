@@ -1,0 +1,26 @@
+verify the script passes now
+making a backup copy of src/lib.rs
+cp -f src/lib.rs src/lib.rs.bak
+flattening src/lib.rs
+/usr/local/bin/topformflat 10 <src/lib.rs.bak >src/lib.rs
+verify still passes script
+applying delta to src/lib.rs
+/usr/local/bin/delta -in_place -test=./test.sh src/lib.rs
+verify the script passes now
+verify the script passes now
+verify the script passes now
+making a backup copy of src/lib2.rs
+cp -f src/lib2.rs src/lib2.rs.bak
+flattening src/lib2.rs
+/usr/local/bin/topformflat 1 <src/lib2.rs.bak >src/lib2.rs
+verify still passes script
+applying delta to src/lib2.rs
+/usr/local/bin/delta -in_place -test=./test.sh src/lib2.rs
+verify the script passes now
+making a backup copy of src/lib2.rs
+cp -f src/lib2.rs src/lib2.rs.bak
+flattening src/lib2.rs
+/usr/local/bin/topformflat 2 <src/lib2.rs.bak >src/lib2.rs
+verify still passes script
+applying delta to src/lib2.rs
+/usr/local/bin/delta -in_place -test=./test.sh src/lib2.rs
