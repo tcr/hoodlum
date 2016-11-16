@@ -834,10 +834,14 @@ fsm {
     loop {
         a <= 1;
         yield;
+        b <= 1;
         yield;
+        c <= 1;
         while !result {
+            d <= 1;
             yield;
         }
+        e <= 1;
     }
 }
 "#;
@@ -963,6 +967,35 @@ fsm {
             a <= 4;
             _FSM = 0;
         end
+    end
+endcase
+"#);
+}
+
+#[test]
+fn rewrite_fsm_2() {
+    let code = r#"
+fsm {
+    a <= 1;
+    yield;
+    a <= 2;
+}
+"#;
+
+    let res = parse_results(code, hoodlum::hdl_parser::parse_SeqStatement(code));
+
+    let out = res.to_verilog(&VerilogState::new());
+
+    println!("OK:\n{}", out);
+
+    assert_eq!(out, r#"case (_FSM)
+    0: begin
+        a <= 1;
+        _FSM = 1;
+    end
+    1: begin
+        a <= 2;
+        _FSM = 0;
     end
 endcase
 "#);
