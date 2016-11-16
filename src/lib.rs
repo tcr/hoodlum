@@ -1,6 +1,7 @@
 extern crate lalrpop_util;
 extern crate hoodlum_parser;
 #[macro_use] extern crate itertools;
+#[macro_use] extern crate matches;
 
 pub mod fsm;
 
