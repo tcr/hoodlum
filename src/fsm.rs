@@ -1,7 +1,6 @@
 use VerilogState;
 use ast;
 
-use itertools::Itertools;
 use std::mem;
 use CountWalker;
 use Walkable;
@@ -134,11 +133,22 @@ fn fsm_split_yield(body: Vec<ast::Seq>) -> Vec<Vec<ast::Seq>> {
     ret
 }
 
+fn yield_count(seq: &ast::Seq) -> usize {
+    let mut count = CountWalker::new();
+    seq.walk(&mut count);
+    count.yield_count
+}
+
 
 fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body: Vec<ast::Seq>, transition: Transition) -> (Option<FsmCase>, Vec<FsmCase>) {
     // Base conditions.
     let other_cases = vec![];
     let mut case = FsmCase::empty();
+
+    // Terminate early for empty content.
+    if body.is_empty() && matches!(transition, Transition::Precede(..)) && after.body.is_empty() {
+        return (None, other_cases);
+    }
 
     // Iterate span from last sequence to first.
     while let Some(seq) = body.pop() {
@@ -148,9 +158,7 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
             ast::Seq::If(..) => {
                 // Check to see if this is a structure if { ... } block.
                 if let ast::Seq::If(..) = seq {
-                    let mut count = CountWalker::new();
-                    seq.walk(&mut count);
-                    if count.yield_count == 0 {
+                    if yield_count(&seq) == 0 {
                         case.body.insert(0, seq);
                         continue;
                     }
@@ -162,16 +170,9 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
 
                 // Parse the "following" content as its own span.
                 let following = mem::replace(&mut case.body, vec![]);
-                let following_transition = match transition {
-                    Transition::Precede(ref next) => {
-                        let mut n = next.clone();
-                        n.insert(global.counter.value());
-                        Transition::Precede(n)
-                    }
-                    Transition::Yield(..) => {
-                        //TODO when does this happen?
-                        transition.clone()
-                    }
+                let mut following_transition = transition.clone();
+                if let Transition::Precede(ref mut next) = following_transition {
+                    next.insert(global.counter.value());
                 };
                 let following_id = global.counter;
                 let (case, mut other_cases) = fsm_span(global, following_id, after, following, following_transition);
@@ -349,13 +350,16 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
                         ast::SeqBlock(after.body),
                         None);
                     case.body.push(seq);
+
+                    //TODO
+                    panic!("when do we actually reach this case?");
                 }
             } else {
                 let first = first_block.expect("Lacking first case in loop.");
                 case.states.extend(first.substates());
                 case.body.extend(first.body.clone());
 
-                // TODO remove this logic
+                // TODO refactor this logic
                 // see rewrite_fsm_while_4
                 if base_state != id && first.states.len() > 1 {
                     let seq = ast::Seq::If(fsm_match_list(ast::Op::Eq, &btreeset![base_state.value()]),
@@ -432,7 +436,7 @@ pub fn fsm_rewrite(input: &ast::Seq, v: &VerilogState) -> (ast::Seq, VerilogStat
     let mut output: Vec<(Vec<ast::Expr>, ast::SeqBlock)> = vec![];
     for case in cases {
         output.push((
-            case.all_states().iter().unique().into_iter().sorted().into_iter().map(|x| ast::Expr::Num(*x)).collect(),
+            case.all_states().into_iter().map(|x| ast::Expr::Num(x)).collect(),
             ast::SeqBlock(case.body)));
     }
 
