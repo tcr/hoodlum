@@ -456,7 +456,6 @@ fn fsm_span(global: &mut FsmGlobal, mut body: Vec<ast::Seq>, after: FsmCase, tra
 
                 // Parse loop with our merged "after" and "following" blocks.
                 let (structure, other) = fsm_structure(global, case.clone(), seq);
-                println!("STRUCTURE {:?}", structure);
                 case.states.extend(&structure.states);
                 mem::replace(&mut case.body, structure.body);
                 other_cases.extend(other);
@@ -545,6 +544,14 @@ fn fsm_span(global: &mut FsmGlobal, mut body: Vec<ast::Seq>, after: FsmCase, tra
                 Transition::Precede(targets) => {
                     let mut states: Vec<u32> = targets.iter().map(|x| *x as _).collect();
                     states = normalize(&states);
+
+                    let n = normalize(&after.states);
+                    // TODO this is weird logic to make rewrite_await8 work
+                    if n.len() > 1 && targets.len() > 1 {
+                        println!("MANY SYTATES {:?}", n);
+                        inner.push(ast::Seq::FsmTransition(n[0] as u32));
+                    }
+
                     case.body.push(ast::Seq::If(fsm_match_list(ast::Op::Eq, &states).unwrap(),
                         ast::SeqBlock(inner),
                         None));
@@ -628,12 +635,15 @@ fn fsm_structure(global: &mut FsmGlobal, after: FsmCase, seq: ast::Seq) -> (FsmC
                 inner_cases.extend(span_cases);
             }
 
+            println!("WHAT {:?}", global.counter);
             global.counter -= 1; // see below
             // Parse the first block.
             let (first_block, first_cases) = fsm_span(global, first, FsmCase {
                 body: vec![],
                 states: vec![]
             }, Transition::Yield(last_id));
+
+            println!("FIRST {:?} {:?}", first_block, first_cases);
 
             let mut case = FsmCase {
                 states: vec![id],
@@ -646,13 +656,11 @@ fn fsm_structure(global: &mut FsmGlobal, after: FsmCase, seq: ast::Seq) -> (FsmC
                 state_whitelist.push(item as u32);
             }
             state_whitelist = normalize(&state_whitelist);
+            println!("-----> LOOP WHITELIST {:?} {:?}", state_whitelist, id);
 
             // Generate initial "first" case. Output depends on if we have a
             // condition (if/while) or not (loop)
             if let Some(mut cond) = cond {
-                // Change our condition to also check our FSM states.
-                cond = ast::Expr::Arith(ast::Op::And, Box::new(fsm_match_list(ast::Op::Eq, &state_whitelist).unwrap()), Box::new(cond));
-
                 // If our first case has content, generate an if {...} else {...}
                 // loop. Otherwise, invert the conditional, just generate an
                 // if !cond {...}
@@ -660,12 +668,18 @@ fn fsm_structure(global: &mut FsmGlobal, after: FsmCase, seq: ast::Seq) -> (FsmC
                     states: first_states,
                     body: first_body,
                 }) = first_block {
+                    // Change our condition to also check our FSM states.
+                    cond = ast::Expr::Arith(ast::Op::And, Box::new(fsm_match_list(ast::Op::Eq, &state_whitelist).unwrap()), Box::new(cond));
+
                     let seq = ast::Seq::If(cond,
                         ast::SeqBlock(first_body),
                         Some(ast::SeqBlock(after.body)));
                     case.states.extend(&first_states[1..]);
                     case.body.push(seq);
                 } else {
+                    // Change our condition to also check our FSM states.
+                    cond = ast::Expr::Arith(ast::Op::And, Box::new(fsm_match_list(ast::Op::Eq, &state_whitelist).unwrap()), Box::new(cond));
+
                     let seq = ast::Seq::If(invert_expr(cond),
                         ast::SeqBlock(after.body),
                         None);

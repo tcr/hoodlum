@@ -166,6 +166,17 @@ fsm {
 }
 "#;
 
+    let code = r#"
+fsm {
+    while !tx_trigger {
+        yield;
+    }
+
+    yield;
+
+}
+"#;
+
     let res = parse_results(code, hoodlum::hdl_parser::parse_SeqStatement(code));
 
     let out = res.to_verilog(&VerilogState::new());
@@ -173,9 +184,10 @@ fsm {
     println!("OK:\n{}", out);
 
     assert_eq!(out, r#"case (_FSM)
-    0: begin
-        if (!(tx_trigger)) begin
+    0, 4: begin
+        if ((((_FSM == 0) || (_FSM == 4)) && !(tx_trigger))) begin
             spi_tx <= 0;
+            _FSM = 4;
         end
         else begin
             read_index <= 7;
@@ -185,20 +197,19 @@ fsm {
         end
     end
     1, 2, 3: begin
-        if ((_FSM == 1)) begin
-            if ((read_index > 0)) begin
-                spi_tx <= tx_byte[(read_index - 1)];
-                read_index <= (read_index - 1);
-            end
-            else begin
-                _FSM = 2;
-                tx_ready <= 1;
-            end
+        if ((((_FSM == 1) || (_FSM == 3)) && (read_index > 0))) begin
+            spi_tx <= tx_byte[(read_index - 1)];
+            read_index <= (read_index - 1);
+            _FSM = 3;
         end
-        if (((_FSM == 2) || (_FSM == 3))) begin
-            if ((r > 0)) begin
+        else begin
+            if (((_FSM == 1) || (_FSM == 3))) begin
+                tx_ready <= 1;
+                _FSM = 1;
+            end
+            if ((((_FSM == 1) || (_FSM == 2)) && (r > 0))) begin
                 a <= 1;
-                _FSM = 3;
+                _FSM = 2;
             end
             else begin
                 _FSM = 0;
@@ -367,6 +378,7 @@ fsm {
         else begin
             if (((_FSM == 0) || (_FSM == 2))) begin
                 spi_tx <= 1;
+                _FSM = 0;
             end
             a <= 1;
             _FSM = 1;
@@ -405,21 +417,27 @@ fsm {
         CS <= 0;
         tx_valid <= 1;
         tx_byte <= 34;
-        _FSM = 1;
+        _FSM = 4;
     end
     1: begin
-        if (!(spi_ready)) begin
-            _FSM = 2;
-        end
-    end
-    2: begin
-        if (spi_ready) begin
-            _FSM = 3;
-        end
-    end
-    3: begin
         tx_byte <= 22;
         _FSM = 0;
+    end
+    2, 3: begin
+        if ((((_FSM == 2) || (_FSM == 3)) && !(spi_ready))) begin
+            _FSM = 3;
+        end
+        else begin
+            _FSM = 1;
+        end
+    end
+    4, 5: begin
+        if ((((_FSM == 4) || (_FSM == 5)) && spi_ready)) begin
+            _FSM = 5;
+        end
+        else begin
+            _FSM = 2;
+        end
     end
 endcase
 "#);
@@ -503,7 +521,7 @@ fsm {
             tx_valid <= 0;
             sleep_counter <= 0;
         end
-        if ((sleep_counter < 36)) begin
+        if ((((_FSM == 0) || (_FSM == 1)) && (sleep_counter < 36))) begin
             sleep_counter <= (sleep_counter + 1);
             _FSM = 1;
         end
@@ -545,26 +563,24 @@ fsm {
     println!("OK:\n{}", out);
 
     assert_eq!(out, r#"case (_FSM)
-    0, 1, 2, 3: begin
-        if (((_FSM == 0) || (_FSM == 1))) begin
-            if ((_FSM == 0)) begin
+    0, 1, 2: begin
+        if ((_FSM == 0)) begin
+            tx_valid <= 0;
+            sleep_counter <= 0;
+        end
+        if ((((_FSM == 0) || (_FSM == 2)) && (sleep_counter < 36))) begin
+            sleep_counter <= (sleep_counter + 1);
+            _FSM = 2;
+        end
+        else begin
+            if (((_FSM == 0) || (_FSM == 2))) begin
                 tx_valid <= 0;
                 sleep_counter <= 0;
+                _FSM = 0;
             end
-            if ((sleep_counter < 36)) begin
+            if ((((_FSM == 0) || (_FSM == 1)) && (sleep_counter < 36))) begin
                 sleep_counter <= (sleep_counter + 1);
                 _FSM = 1;
-            end
-            else begin
-                _FSM = 2;
-                tx_valid <= 0;
-                sleep_counter <= 0;
-            end
-        end
-        if (((_FSM == 2) || (_FSM == 3))) begin
-            if ((sleep_counter < 36)) begin
-                sleep_counter <= (sleep_counter + 1);
-                _FSM = 3;
             end
             else begin
                 tx_valid <= 1;
