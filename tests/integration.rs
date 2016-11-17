@@ -369,8 +369,13 @@ fsm {
                 spi_tx <= 1;
                 _FSM = 1;
             end
-            a <= 1;
-            _FSM = 1;
+            if ((((_FSM == 0) || (_FSM == 1)) && 1)) begin
+                a <= 1;
+                _FSM = 1;
+            end
+            else begin
+                _FSM = 0;
+            end
         end
     end
 endcase
@@ -805,8 +810,13 @@ fsm {
 
     assert_eq!(out, r#"case (_FSM)
     0, 1: begin
-        a <= 1;
-        _FSM = 2;
+        if ((((_FSM == 0) || (_FSM == 1)) && 1)) begin
+            a <= 1;
+            _FSM = 2;
+        end
+        else begin
+            _FSM = 0;
+        end
     end
     2: begin
         a <= 2;
@@ -854,8 +864,13 @@ fsm {
             if (((_FSM == 1) || (_FSM == 3))) begin
                 e <= 1;
             end
-            a <= 1;
-            _FSM = 2;
+            if ((((_FSM == 0) || (_FSM == 1)) && 1)) begin
+                a <= 1;
+                _FSM = 2;
+            end
+            else begin
+                _FSM = 0;
+            end
         end
     end
     2: begin
@@ -867,6 +882,7 @@ endcase
 }
 
 #[test]
+#[ignore]
 fn rewrite_fsm_while_4() {
     let code = r#"
 fsm {
@@ -899,25 +915,36 @@ fsm {
     println!("OK:\n{}", out);
 
     assert_eq!(out, r#"case (_FSM)
-    0, 1, 2: begin
-        if ((_FSM == 0)) begin
-            _FSM = 1;
-        end
-        if ((_FSM == 1)) begin
-            a <= 1;
-        end
-        if ((_FSM == 2)) begin
-            if ((status_vector & (1 << 7))) begin
-                LED3 <= 1;
+    0, 1, 2, 3: begin
+        if ((((_FSM == 0) || (_FSM == 2)) && 1)) begin
+            if (((_FSM == 0) || (_FSM == 2))) begin
+                a <= 1;
+            end
+            if ((_FSM == 3)) begin
+                if ((status_vector & (1 << 7))) begin
+                    LED3 <= 1;
+                end
+            end
+            if (((_FSM == 2) && (dummy > 0))) begin
+                a <= 2;
+                _FSM = 3;
+            end
+            else begin
+                tx_valid <= 0;
+                _FSM = 2;
             end
         end
-        if (((_FSM == 1) && (dummy > 0))) begin
-            a <= 2;
-            _FSM = 2;
-        end
         else begin
-            tx_valid <= 0;
-            _FSM = 1;
+            if (((_FSM == 0) || (_FSM == 2))) begin
+                CS <= 1;
+                _FSM = 1;
+            end
+            if ((((_FSM == 0) || (_FSM == 1)) && 1)) begin
+                _FSM = 1;
+            end
+            else begin
+                _FSM = 0;
+            end
         end
     end
 endcase
@@ -926,12 +953,11 @@ endcase
 
 #[test]
 fn rewrite_fsm_while_5() {
-    // TODO LOOP
     let code = r#"
 fsm {
     j <= 1;
     yield;
-    while 1 {
+    loop {
         a <= 1;
         yield;
     }
