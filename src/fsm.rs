@@ -100,7 +100,7 @@ fn normalize<T: ::std::hash::Hash + Eq + Clone + Ord>(input: &[T]) -> Vec<T> {
     input.to_vec().into_iter().unique().sorted()
 }
 
-fn fsm_span(global: &mut FsmGlobal, mut body: Vec<ast::Seq>, before: Option<i32>, after: FsmCase, transition: Transition) -> (Option<FsmCase>, Vec<FsmCase>) {
+fn fsm_span(global: &mut FsmGlobal, mut body: Vec<ast::Seq>, base_state: i32, after: FsmCase, transition: Transition) -> (Option<FsmCase>, Vec<FsmCase>) {
     // Base conditions.
     let other_cases = vec![];
     let mut case = FsmCase {
@@ -134,7 +134,7 @@ fn fsm_span(global: &mut FsmGlobal, mut body: Vec<ast::Seq>, before: Option<i32>
 
                 // Parse the "following" content as its own span.
                 let following = mem::replace(&mut case.body, vec![]);
-                println!("--------> {:?} {:?}", transition, before);
+                println!("--------> {:?} {:?}", transition, base_state);
                 let following_transition = match transition {
                     Transition::Precede(ref next) => {
                         let mut n = next.clone();
@@ -146,24 +146,20 @@ fn fsm_span(global: &mut FsmGlobal, mut body: Vec<ast::Seq>, before: Option<i32>
                     }
                 };
                 let gc = global.counter;
-                let (case, mut other_cases) = fsm_span(global, following, Some(gc), after, following_transition);
+                let (case, mut other_cases) = fsm_span(global, following, gc, after, following_transition);
                 let mut case = case.expect("missing a case");
 
                 // Parse loop with our merged "after" and "following" blocks.
-                println!("STRUCT {:?} {:?}", before, case);
-                let (structure, other) = fsm_structure(global, before, case.clone(), seq);
+                println!("STRUCT {:?} {:?}", base_state, case);
+                let (structure, other) = fsm_structure(global, base_state, case.clone(), seq);
                 case.states.extend(&structure.states);
                 mem::replace(&mut case.body, structure.body);
                 other_cases.extend(other);
 
                 // Parse the remaining content in "body" as its own span.
                 assert!(case.states.len() > 0);
-                let next_transition = if let Some(before) = before {
-                    Transition::Precede(vec![before])
-                } else {
-                    Transition::Precede(vec![case.states[0]])
-                };
-                if let (Some(preceding), other) = fsm_span(global, body, before, case.clone(), next_transition) {
+                let next_transition = Transition::Precede(vec![base_state]);
+                if let (Some(preceding), other) = fsm_span(global, body, base_state, case.clone(), next_transition) {
                     case.states.extend(preceding.states);
                     mem::replace(&mut case.body, preceding.body);
                     other_cases.extend(other);
@@ -240,7 +236,7 @@ fn fsm_span(global: &mut FsmGlobal, mut body: Vec<ast::Seq>, before: Option<i32>
 }
 
 /// Converts a sequence Loop, While, or If statement into a set of cases.
-fn fsm_structure(global: &mut FsmGlobal, before: Option<i32>, after: FsmCase, seq: ast::Seq) -> (FsmCase, Vec<FsmCase>) {
+fn fsm_structure(global: &mut FsmGlobal, base_state: i32, after: FsmCase, seq: ast::Seq) -> (FsmCase, Vec<FsmCase>) {
     let id = global.counter;
     global.counter += 1;
 
@@ -278,7 +274,7 @@ fn fsm_structure(global: &mut FsmGlobal, before: Option<i32>, after: FsmCase, se
             for span in spans.into_iter().rev() {
                 // Parse this span as its own content.
                 let glob_id = global.counter;
-                let (case, span_cases) = fsm_span(global, span, Some(glob_id), FsmCase {
+                let (case, span_cases) = fsm_span(global, span, glob_id, FsmCase {
                     body: vec![],
                     states: vec![]
                 }, Transition::Yield(last_id));
@@ -293,8 +289,8 @@ fn fsm_structure(global: &mut FsmGlobal, before: Option<i32>, after: FsmCase, se
             //TODO explain this
             global.counter -= 1;
             // Parse the first block.
-            println!("FIRST {:?} {:?}", id, before);
-            let (first_block, first_cases) = fsm_span(global, first, Some(id), FsmCase {
+            println!("FIRST {:?} {:?}", id, base_state);
+            let (first_block, first_cases) = fsm_span(global, first, id, FsmCase {
                 body: vec![],
                 states: vec![]
             }, Transition::Yield(last_id));
@@ -309,9 +305,7 @@ fn fsm_structure(global: &mut FsmGlobal, before: Option<i32>, after: FsmCase, se
             if !is_if {
                 state_whitelist.push(id);
             }
-            if let Some(before) = before {
-                state_whitelist.push(before);
-            }
+            state_whitelist.push(base_state);
             state_whitelist = normalize(&state_whitelist);
 
             // Generate initial "first" case. Output depends on if we have a
@@ -349,15 +343,13 @@ fn fsm_structure(global: &mut FsmGlobal, before: Option<i32>, after: FsmCase, se
 
                 // TODO remove this logic
                 // see rewrite_fsm_while_4
-                if let Some(before) = before {
-                    if before != id && first_case.states.len() > 1 {
-                        let seq = ast::Seq::If(fsm_match_list(ast::Op::Eq, &[before]),
-                            ast::SeqBlock(vec![
-                                ast::Seq::FsmTransition(id as u32),
-                            ]),
-                            None);
-                        case.body.insert(0, seq);
-                    }
+                if base_state != id && first_case.states.len() > 1 {
+                    let seq = ast::Seq::If(fsm_match_list(ast::Op::Eq, &[base_state]),
+                        ast::SeqBlock(vec![
+                            ast::Seq::FsmTransition(id as u32),
+                        ]),
+                        None);
+                    case.body.insert(0, seq);
                 }
             }
 
@@ -375,7 +367,7 @@ fn fsm_structure(global: &mut FsmGlobal, before: Option<i32>, after: FsmCase, se
             // use our generated loop construct as its "after" condition to ensure
             // our state matching generation is consistent.
             let last = last.expect("missing last span");
-            let (last_block, last_cases) = fsm_span(global, last, Some(id), case.clone(), Transition::Precede(vec![id]));
+            let (last_block, last_cases) = fsm_span(global, last, id, case.clone(), Transition::Precede(vec![id]));
             if let Some(mut last_block) = last_block {
                 last_block.states.extend(case.states);
 
@@ -417,7 +409,7 @@ pub fn fsm_rewrite(input: &ast::Seq, v: &VerilogState) -> (ast::Seq, VerilogStat
     let mut global = FsmGlobal {
         counter: 0
     };
-    let (case, mut cases) = fsm_structure(&mut global, Some(0), FsmCase {
+    let (case, mut cases) = fsm_structure(&mut global, 0, FsmCase {
         body: vec![],
         states: vec![],
     }, loop_seq);
