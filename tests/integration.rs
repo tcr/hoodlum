@@ -683,7 +683,7 @@ fsm {
         if ((_FSM == 1)) begin
             a <= 2;
         end
-        if (((_FSM != 1) && (test > 0))) begin
+        if (((_FSM == 0) && (test > 0))) begin
             a <= 1;
             _FSM = 1;
         end
@@ -899,21 +899,64 @@ fsm {
     println!("OK:\n{}", out);
 
     assert_eq!(out, r#"case (_FSM)
-    0, 1: begin
-        if ((result && ((_FSM == 0) || (_FSM == 1)))) begin
+    0, 1, 2: begin
+        if ((_FSM == 0)) begin
             _FSM = 1;
         end
-        else begin
-            if (1) begin
-                _FSM = 2;
-            end
-            else begin
-                _FSM = 0;
+        if ((_FSM == 1)) begin
+            a <= 1;
+        end
+        if ((_FSM == 2)) begin
+            if ((status_vector & (1 << 7))) begin
+                LED3 <= 1;
             end
         end
+        if (((_FSM == 1) && (dummy > 0))) begin
+            a <= 2;
+            _FSM = 2;
+        end
+        else begin
+            tx_valid <= 0;
+            _FSM = 1;
+        end
     end
-    2: begin
-        _FSM = 0;
+endcase
+"#);
+}
+
+#[test]
+fn rewrite_fsm_while_5() {
+    // TODO LOOP
+    let code = r#"
+fsm {
+    j <= 1;
+    yield;
+    while 1 {
+        a <= 1;
+        yield;
+    }
+}
+"#;
+
+    let res = parse_results(code, hoodlum::hdl_parser::parse_SeqStatement(code));
+
+    let out = res.to_verilog(&VerilogState::new());
+
+    println!("OK:\n{}", out);
+
+    assert_eq!(out, r#"case (_FSM)
+    0: begin
+        j <= 1;
+        _FSM = 1;
+    end
+    1, 2: begin
+        if ((((_FSM == 1) || (_FSM == 2)) && 1)) begin
+            a <= 1;
+            _FSM = 2;
+        end
+        else begin
+            _FSM = 0;
+        end
     end
 endcase
 "#);
