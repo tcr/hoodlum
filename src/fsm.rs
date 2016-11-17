@@ -430,7 +430,7 @@ fn fsm_span(global: &mut FsmGlobal, mut body: Vec<ast::Seq>, before: Option<i32>
     };
 
     // Terminate early.
-    if body.is_empty() && matches!(transition, Transition::Precede(..)) {
+    if body.is_empty() && matches!(transition, Transition::Precede(..)) && after.body.is_empty() {
         return (None, other_cases);
     }
 
@@ -453,7 +453,7 @@ fn fsm_span(global: &mut FsmGlobal, mut body: Vec<ast::Seq>, before: Option<i32>
                 };
                 let gc = global.counter;
                 let (mut case, mut other_cases) = fsm_span(global, following, Some(gc), after, following_transition);
-                let mut case = case.expect("No case exists");
+                let mut case = case.expect("missing a case");
 
                 // Parse loop with our merged "after" and "following" blocks.
                 let (structure, other) = fsm_structure(global, before, case.clone(), seq);
@@ -463,12 +463,16 @@ fn fsm_span(global: &mut FsmGlobal, mut body: Vec<ast::Seq>, before: Option<i32>
 
                 // Parse the remaining content in "body" as its own span.
                 let next_transition = if case.states.len() > 0 {
-                    Transition::Precede(vec![case.states[0]])
+                    if let Some(before) = before {
+                        Transition::Precede(vec![before])
+                    } else {
+                        Transition::Precede(vec![case.states[0]])
+                    }
                 } else {
                     Transition::Yield(999)
                 };
                 println!("1 {:?} vs {:?}", transition, case.states);
-                if let (Some(preceding), other) = fsm_span(global, body, Some(case.states[0]), case.clone(), next_transition) {
+                if let (Some(preceding), other) = fsm_span(global, body, before, case.clone(), next_transition) {
                     case.states.extend(preceding.states);
                     mem::replace(&mut case.body, preceding.body);
                 }

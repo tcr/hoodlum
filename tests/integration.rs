@@ -455,24 +455,19 @@ fsm {
     println!("OK:\n{}", out);
 
     assert_eq!(out, r#"case (_FSM)
-    0, 1, 2, 3: begin
-        if (((_FSM == 0) || (_FSM == 1))) begin
-            if ((_FSM == 0)) begin
-                LED1 <= 1;
-                CS <= 0;
-                tx_valid <= 1;
-                tx_byte <= 34;
-            end
-            if (!(spi_ready)) begin
-                _FSM = 1;
-            end
-            else begin
-                _FSM = 2;
-            end
+    0, 1, 2: begin
+        if ((_FSM == 0)) begin
+            LED1 <= 1;
+            CS <= 0;
+            tx_valid <= 1;
+            tx_byte <= 34;
         end
-        if (((_FSM == 2) || (_FSM == 3))) begin
-            if (spi_ready) begin
-                _FSM = 3;
+        if ((((_FSM == 0) || (_FSM == 2)) && !(spi_ready))) begin
+            _FSM = 2;
+        end
+        else begin
+            if ((((_FSM == 0) || (_FSM == 1)) && spi_ready)) begin
+                _FSM = 1;
             end
             else begin
                 tx_byte <= 22;
@@ -725,18 +720,14 @@ fsm {
 
     assert_eq!(out, r#"case (_FSM)
     0, 1, 2: begin
-        if ((_FSM == 0)) begin
-            if ((a < 10)) begin
-                a <= (a + 1);
-            end
-            else begin
-                _FSM = 1;
-            end
+        if ((((_FSM == 0) || (_FSM == 2)) && (a < 10))) begin
+            a <= (a + 1);
+            _FSM = 2;
         end
-        if (((_FSM == 1) || (_FSM == 2))) begin
-            if ((test > 0)) begin
+        else begin
+            if ((((_FSM == 0) || (_FSM == 1)) && (test > 0))) begin
                 a <= 1;
-                _FSM = 2;
+                _FSM = 1;
             end
             else begin
                 _FSM = 0;
