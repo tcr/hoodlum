@@ -140,11 +140,6 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
     let other_cases = vec![];
     let mut case = FsmCase::empty();
 
-    // Terminate early for empty content.
-    if body.is_empty() && matches!(transition, Transition::Precede(..)) && after.body.is_empty() {
-        return (None, other_cases);
-    }
-
     // Iterate span from last sequence to first.
     while let Some(seq) = body.pop() {
         match seq {
@@ -234,7 +229,6 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
 
                     let n = after.all_states();
                     // TODO this is weird logic to make rewrite_await8 work
-                    println!("~~~~~~~~> {:?} {:?}", n, targets);
                     if n.len() > 1 && targets.len() > 1 {
                         inner.push(ast::Seq::FsmTransition(*n.iter().last().unwrap() as u32));
                     }
@@ -259,7 +253,7 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
                 case.current = Some(id.value());
             }
             Transition::Precede(..) => {
-                // ignore
+                // do nothing
             }
         }
     }
