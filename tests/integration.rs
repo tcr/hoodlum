@@ -881,8 +881,8 @@ endcase
 "#);
 }
 
-#[test]
 #[ignore]
+#[test]
 fn rewrite_fsm_while_4() {
     let code = r#"
 fsm {
@@ -979,6 +979,57 @@ fsm {
         if ((((_FSM == 1) || (_FSM == 2)) && 1)) begin
             a <= 1;
             _FSM = 2;
+        end
+        else begin
+            _FSM = 0;
+        end
+    end
+endcase
+"#);
+}
+
+
+#[test]
+fn rewrite_fsm_while_6() {
+    let code = r#"
+fsm {
+    while 1 {
+        a <= 1;
+
+        if condition {
+            dummy <= 0;
+            yield;
+            b <= 1;
+        }
+        c <= 1;
+        yield;
+    }
+    while 2 {
+        d2 <= 1;
+        yield;
+    }
+}
+"#;
+
+    let res = parse_results(code, hoodlum::hdl_parser::parse_SeqStatement(code));
+
+    let out = res.to_verilog(&VerilogState::new());
+
+    println!("OK:\n{}", out);
+
+    assert_eq!(out, r#"case (_FSM)
+    0, 1, 2: begin
+        if ((((_FSM == 0) || (_FSM == 1)) && 1)) begin
+            if ((_FSM == 0)) begin
+                a <= 1;
+            end
+            if (((_FSM == 0) && condition)) begin
+                dummy <= 0;
+                _FSM = 2;
+            end
+            else begin
+                _FSM = 1;
+            end
         end
         else begin
             _FSM = 0;
