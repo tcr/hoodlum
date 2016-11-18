@@ -64,7 +64,7 @@ struct FsmGlobal {
 
 #[derive(Clone, Debug)]
 enum Transition {
-    Yield(i32),
+    Yield(i32, Option<i32>),
     Precede(BTreeSet<i32>),
 }
 
@@ -181,7 +181,7 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
                     next.insert(global.counter.value());
                 };
                 let following_id = global.counter;
-                let (case, mut other_cases) = fsm_span(global, following_id, after, following, following_transition);
+                let (case, mut other_cases) = fsm_span(global, base_state, after, following, following_transition);
                 let mut case = case.expect("missing a case");
 
                 // We now have a case with our merged "after" and "following" content.
@@ -195,8 +195,12 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
                 // Finally, parse the remaining span content preceding this yielding
                 // sequence as its own span, with the new case as its after content.
                 assert!(case.all_states().len() > 0);
-                let next_transition = Transition::Precede(btreeset![base_state.value()]);
-                println!("BASE {:?}", base_state);
+                let mut targets = btreeset![base_state.value()];
+                if let Some(current) = case.current {
+                    targets.insert(current);
+                }
+                let next_transition = Transition::Precede(targets);
+                println!("BASE {:?} ----> {:?}", base_state, case);
                 if let (Some(preceding), other) = fsm_span(global, base_state, case.clone(), body, next_transition) {
                     case.states.extend(preceding.all_states());
                     mem::replace(&mut case.body, preceding.body);
@@ -226,12 +230,13 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
 
             // Only include a case if content actually exists.
             if inner.len() > 0 {
-                let states = targets.clone();
+                let mut states = targets.clone();
+                states.insert(base_state.value());
 
                 let n = after.all_states();
                 // TODO this is weird logic to make rewrite_await8 work
                 if n.len() > 1 && targets.len() > 1 {
-                    inner.push(ast::Seq::FsmTransition(*n.iter().last().unwrap() as u32));
+                    inner.push(ast::Seq::FsmTransition(base_state.value() as u32));
                 }
 
                 case.body.push(ast::Seq::If(fsm_match_list(ast::Op::Eq, &states),
@@ -243,14 +248,19 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
             // Insert "after" content.
             case.body.extend(after.body);
         }
-        Transition::Yield(target) => {
+        Transition::Yield(target, source) => {
             assert!(after.body.len() == 0, "when do we have yield with content?");
 
-            let id = global.counter;
-            global.counter.incr();
+            let source_id = if let Some(source) = source {
+                source
+            } else {
+                let id = global.counter.value();
+                global.counter.incr();
+                id
+            };
 
             case.body.push(ast::Seq::FsmTransition(target as u32));
-            case.current = Some(id.value());
+            case.current = Some(source_id);
         }
     }
 
@@ -259,6 +269,7 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
 
 /// Converts a sequence Loop, While, or If statement into a set of cases.
 fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq: ast::Seq) -> (FsmCase, Vec<FsmCase>) {
+    // TODO does base_State differ from id ever
     let id = global.counter;
     global.counter.incr();
 
@@ -296,7 +307,7 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
             for span in spans.into_iter().rev() {
                 // Parse this span as its own content.
                 let intermediate_id = global.counter;
-                let (case, span_cases) = fsm_span(global, intermediate_id, FsmCase::empty(), span, Transition::Yield(last_id.value()));
+                let (case, span_cases) = fsm_span(global, intermediate_id, FsmCase::empty(), span, Transition::Yield(last_id.value(), None));
                 if let Some(case) = case {
                     last_id = FsmId(case.current_state());
                     inner_cases.push(case);
@@ -304,14 +315,9 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
                 inner_cases.extend(span_cases);
             }
 
-            // Decrease global counter?
-            //TODO explain this
-            global.counter.decr();
             // Parse the first block.
-            println!("FIRST {:?} {:?} --- {:?}", id, base_state, global.counter);
-            let (first_block, first_cases) = fsm_span(global, id, FsmCase::empty(), first, Transition::Yield(last_id.value()));
-
-                println!("F I R S T: {:?}", first_block);
+            let (first_block, first_cases) = fsm_span(global, base_state, FsmCase::empty(), first, Transition::Yield(last_id.value(), Some(id.value())));
+            println!("F I R S T: {:?}", first_block);
 
             let mut case = FsmCase::empty();
             case.current = Some(id.value());
@@ -330,9 +336,11 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
                 // loop. Otherwise, invert the conditional, just generate an
                 // if !cond {...}
                 if let Some(first) = first_block {
-                    //for item in first.all_states() {
-                    //    state_whitelist.insert(item);
-                    //}
+                    if !is_if {
+                        for item in first.all_states() {
+                            state_whitelist.insert(item);
+                        }
+                    }
 
                     // Expand our condition to also check our FSM states.
                     cond = ast::Expr::Arith(ast::Op::And, Box::new(fsm_match_list(ast::Op::Eq, &state_whitelist)), Box::new(cond));

@@ -194,7 +194,7 @@ fsm {
         else begin
             if (((_FSM == 1) || (_FSM == 3))) begin
                 tx_ready <= 1;
-                _FSM = 2;
+                _FSM = 1;
             end
             if ((((_FSM == 1) || (_FSM == 2)) && (r > 0))) begin
                 a <= 1;
@@ -367,7 +367,7 @@ fsm {
         else begin
             if (((_FSM == 0) || (_FSM == 2))) begin
                 spi_tx <= 1;
-                _FSM = 1;
+                _FSM = 0;
             end
             if ((((_FSM == 0) || (_FSM == 1)) && 1)) begin
                 a <= 1;
@@ -565,7 +565,7 @@ fsm {
             if (((_FSM == 0) || (_FSM == 2))) begin
                 tx_valid <= 0;
                 sleep_counter <= 0;
-                _FSM = 1;
+                _FSM = 0;
             end
             if ((((_FSM == 0) || (_FSM == 1)) && (sleep_counter < 36))) begin
                 sleep_counter <= (sleep_counter + 1);
@@ -881,7 +881,6 @@ endcase
 "#);
 }
 
-#[ignore]
 #[test]
 fn rewrite_fsm_while_4() {
     let code = r#"
@@ -916,16 +915,17 @@ fsm {
 
     assert_eq!(out, r#"case (_FSM)
     0, 1, 2, 3: begin
-        if ((((_FSM == 0) || (_FSM == 2)) && 1)) begin
+        if ((((_FSM == 0) || ((_FSM == 2) || (_FSM == 3))) && 1)) begin
             if (((_FSM == 0) || (_FSM == 2))) begin
                 a <= 1;
+                _FSM = 0;
             end
             if ((_FSM == 3)) begin
                 if ((status_vector & (1 << 7))) begin
                     LED3 <= 1;
                 end
             end
-            if (((_FSM == 2) && (dummy > 0))) begin
+            if (((_FSM == 0) && (dummy > 0))) begin
                 a <= 2;
                 _FSM = 3;
             end
@@ -937,7 +937,7 @@ fsm {
         else begin
             if (((_FSM == 0) || (_FSM == 2))) begin
                 CS <= 1;
-                _FSM = 1;
+                _FSM = 0;
             end
             if ((((_FSM == 0) || (_FSM == 1)) && 1)) begin
                 _FSM = 1;
@@ -1018,21 +1018,32 @@ fsm {
     println!("OK:\n{}", out);
 
     assert_eq!(out, r#"case (_FSM)
-    0, 1, 2: begin
-        if ((((_FSM == 0) || (_FSM == 1)) && 1)) begin
-            if ((_FSM == 0)) begin
+    0, 1, 2, 3: begin
+        if ((((_FSM == 0) || ((_FSM == 2) || (_FSM == 3))) && 1)) begin
+            if (((_FSM == 0) || (_FSM == 2))) begin
                 a <= 1;
+                _FSM = 0;
+            end
+            if ((_FSM == 3)) begin
+                b <= 1;
             end
             if (((_FSM == 0) && condition)) begin
                 dummy <= 0;
-                _FSM = 2;
+                _FSM = 3;
             end
             else begin
-                _FSM = 1;
+                c <= 1;
+                _FSM = 2;
             end
         end
         else begin
-            _FSM = 0;
+            if ((((_FSM == 0) || (_FSM == 1)) && 2)) begin
+                d2 <= 1;
+                _FSM = 1;
+            end
+            else begin
+                _FSM = 0;
+            end
         end
     end
 endcase
