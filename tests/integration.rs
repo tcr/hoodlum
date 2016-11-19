@@ -413,9 +413,13 @@ fsm {
         tx_byte <= 34;
         _FSM = 4;
     end
-    1: begin
-        tx_byte <= 22;
-        _FSM = 0;
+    4, 5: begin
+        if ((((_FSM == 4) || (_FSM == 5)) && spi_ready)) begin
+            _FSM = 5;
+        end
+        else begin
+            _FSM = 2;
+        end
     end
     2, 3: begin
         if ((((_FSM == 2) || (_FSM == 3)) && !(spi_ready))) begin
@@ -425,13 +429,9 @@ fsm {
             _FSM = 1;
         end
     end
-    4, 5: begin
-        if ((((_FSM == 4) || (_FSM == 5)) && spi_ready)) begin
-            _FSM = 5;
-        end
-        else begin
-            _FSM = 2;
-        end
+    1: begin
+        tx_byte <= 22;
+        _FSM = 0;
     end
 endcase
 "#);
@@ -603,12 +603,12 @@ fsm {
         tx <= 0;
         _FSM = 2;
     end
-    1: begin
-        _FSM = 0;
-    end
     2: begin
         tx <= 1;
         _FSM = 1;
+    end
+    1: begin
+        _FSM = 0;
     end
 endcase
 "#);
@@ -1139,6 +1139,10 @@ fsm {
         a <= 1;
         _FSM = 3;
     end
+    3: begin
+        a <= 2;
+        _FSM = 1;
+    end
     1, 2: begin
         if ((((_FSM == 1) || (_FSM == 2)) && !(result))) begin
             a <= 3;
@@ -1148,10 +1152,6 @@ fsm {
             a <= 4;
             _FSM = 0;
         end
-    end
-    3: begin
-        a <= 2;
-        _FSM = 1;
     end
 endcase
 "#);
@@ -1224,15 +1224,6 @@ fsm {
             end
         end
     end
-    2, 3: begin
-        if ((((_FSM == 2) || (_FSM == 3)) && !(spi_ready))) begin
-            _FSM = 3;
-        end
-        else begin
-            tx_byte <= 3;
-            _FSM = 1;
-        end
-    end
     4, 5: begin
         if ((((_FSM == 4) || (_FSM == 5)) && !(spi_ready))) begin
             _FSM = 5;
@@ -1240,6 +1231,15 @@ fsm {
         else begin
             tx_byte <= 2;
             _FSM = 2;
+        end
+    end
+    2, 3: begin
+        if ((((_FSM == 2) || (_FSM == 3)) && !(spi_ready))) begin
+            _FSM = 3;
+        end
+        else begin
+            tx_byte <= 3;
+            _FSM = 1;
         end
     end
 endcase

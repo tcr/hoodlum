@@ -303,11 +303,12 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
             for span in spans.into_iter().rev() {
                 // Parse this span as its own content.
                 let intermediate_id = global.counter;
-                let (case, span_cases) = fsm_span(global, intermediate_id, FsmCase::empty(), span, Transition::Yield(last_id.value(), None));
+                let (case, mut span_cases) = fsm_span(global, intermediate_id, FsmCase::empty(), span, Transition::Yield(last_id.value(), None));
                 last_id = FsmId(case.current_state());
                 inner_cases.push(case);
                 inner_cases.extend(span_cases);
             }
+            inner_cases.reverse();
 
             // Parse the first block.
             let (first_block, first_cases) = fsm_span(global, base_state, FsmCase::empty(), first, Transition::Yield(last_id.value(), Some(id.value())));
