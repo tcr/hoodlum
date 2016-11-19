@@ -1051,6 +1051,67 @@ endcase
 }
 
 
+#[ignore]
+#[test]
+fn rewrite_fsm_while_7() {
+    let code = r#"
+fsm {
+    while 1 {
+        if condition {
+            dummy <= 0;
+            yield;
+            b <= 1;
+        }
+        c <= 1;
+        yield;
+    }
+    while 2 {
+        d2 <= 1;
+        yield;
+    }
+}
+"#;
+
+    let res = parse_results(code, hoodlum::hdl_parser::parse_SeqStatement(code));
+
+    let out = res.to_verilog(&VerilogState::new());
+
+    println!("OK:\n{}", out);
+
+    assert_eq!(out, r#"case (_FSM)
+    0, 1, 2, 3: begin
+        if ((((_FSM == 0) || ((_FSM == 2) || (_FSM == 3))) && 1)) begin
+            if (((_FSM == 0) || (_FSM == 2))) begin
+                a <= 1;
+                _FSM = 0;
+            end
+            if ((_FSM == 3)) begin
+                b <= 1;
+            end
+            if (((_FSM == 0) && condition)) begin
+                dummy <= 0;
+                _FSM = 3;
+            end
+            else begin
+                c <= 1;
+                _FSM = 2;
+            end
+        end
+        else begin
+            if ((((_FSM == 0) || (_FSM == 1)) && 2)) begin
+                d2 <= 1;
+                _FSM = 1;
+            end
+            else begin
+                _FSM = 0;
+            end
+        end
+    end
+endcase
+"#);
+}
+
+
 #[test]
 fn rewrite_fsm_rewrite() {
     let code = r#"
@@ -1120,6 +1181,66 @@ fsm {
     1: begin
         a <= 2;
         _FSM = 0;
+    end
+endcase
+"#);
+}
+
+#[test]
+fn eth_1() {
+    let code = r#"
+fsm {
+    loop {
+        tx_byte <= 1;
+        await spi_ready;
+
+        tx_byte <= 2;
+        await spi_ready;
+
+        tx_byte <= 3;
+        await spi_ready;
+    }
+}
+"#;
+
+    let res = parse_results(code, hoodlum::hdl_parser::parse_SeqStatement(code));
+
+    let out = res.to_verilog(&VerilogState::new());
+
+    println!("OK:\n{}", out);
+
+    assert_eq!(out, r#"case (_FSM)
+    0, 1, 6: begin
+        if ((((_FSM == 1) || (_FSM == 6)) && !(spi_ready))) begin
+            _FSM = 6;
+        end
+        else begin
+            if ((((_FSM == 0) || (_FSM == 1)) && 1)) begin
+                tx_byte <= 1;
+                _FSM = 4;
+            end
+            else begin
+                _FSM = 0;
+            end
+        end
+    end
+    2, 3: begin
+        if ((((_FSM == 2) || (_FSM == 3)) && !(spi_ready))) begin
+            _FSM = 3;
+        end
+        else begin
+            tx_byte <= 3;
+            _FSM = 1;
+        end
+    end
+    4, 5: begin
+        if ((((_FSM == 4) || (_FSM == 5)) && !(spi_ready))) begin
+            _FSM = 5;
+        end
+        else begin
+            tx_byte <= 2;
+            _FSM = 2;
+        end
     end
 endcase
 "#);
