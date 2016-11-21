@@ -58,10 +58,10 @@ Decl: ast::Decl = {
     "let" <i:Ident> "=" <v:Expr> ";" => {
         ast::Decl::Reg(i, Some(v))
     },
-    "let" <i:Ident> ":" "reg" "[" <a:Num> "]" "=" <v:Expr> ";" => {
+    "let" <i:Ident> ":" "bit" "[" <a:Num> "]" "=" <v:Expr> ";" => {
         ast::Decl::RegArray(i, a, Some(v))
     },
-    "let" <i:Ident> ":" "reg" "[" <a:Num> "]" ";" => {
+    "let" <i:Ident> ":" "bit" "[" <a:Num> "]" ";" => {
         ast::Decl::RegArray(i, a, None)
     },
     "let" <i:Ident> ":" "uint" "{" <d:Num?> ".." <a:Num> "}" "=" <v:Expr> ";" => {

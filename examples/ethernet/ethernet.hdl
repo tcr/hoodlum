@@ -52,13 +52,13 @@ entity SpiMaster(
   spi_tx: out,
   spi_rx: in,
 ) {
-  let live_clk: reg[1] = 0;
+  let live_clk: bit[1] = 0;
 
   // Internal signals.
   let read_index: uint{0..8} = 0;
-  let internal_clk: reg[1] = 0;
+  let internal_clk: bit[1] = 0;
 
-  let _FSM: reg[32] = 0;
+  let _FSM: bit[32] = 0;
 
   // Generate SPI signal from internal clock + SPI state.
   always {
@@ -156,9 +156,9 @@ entity Ethernet(
     spi_clk: out,
 ) {
     let tx_valid = 0;
-    let tx_byte: reg[8] = 0;
+    let tx_byte: bit[8] = 0;
     let spi_ready;
-    let spi_rx_value: reg[8];
+    let spi_rx_value: bit[8];
     let spi = SpiMaster {
         rst: rst,
         clk: tx_clk,
@@ -240,17 +240,17 @@ entity Ethernet(
     await spi_ready; \
     reg <= spi_rx_value
 
-    let receivedL: reg[8] = 0;
-    let receivedH: reg[8] = 0;
-    let NextPacketPointerL: reg[8] = 0x40;
-    let NextPacketPointerH: reg[8] = 0x53;
-    let _FSM: reg[9] = 0;
+    let receivedL: bit[8] = 0;
+    let receivedH: bit[8] = 0;
+    let NextPacketPointerL: bit[8] = 0x40;
+    let NextPacketPointerH: bit[8] = 0x53;
+    let _FSM: bit[9] = 0;
 
-    let checksumL: reg[8] = 0;
-    let checksumH: reg[8] = 0;
+    let checksumL: bit[8] = 0;
+    let checksumH: bit[8] = 0;
 
-    let dummy: reg[8] = 0;
-    let status_vector: reg[8] = 0;
+    let dummy: bit[8] = 0;
+    let status_vector: bit[8] = 0;
 
     on tx_clk.negedge {
         reset rst {
