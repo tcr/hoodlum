@@ -1223,3 +1223,50 @@ fsm {
 endcase
 "#);
 }
+
+
+#[test]
+fn double_ids() {
+    let code = r#"
+fsm {
+    yield; while !mini_delay_result { yield; }
+    yield; while !spi_ready { yield; }
+
+    while sleep_counter < 360 {
+        yield;
+    }
+    yield;
+}
+"#;
+
+    let res = parse_results(code, hoodlum::hdl_parser::parse_SeqStatement(code));
+
+    let out = res.to_verilog(&VerilogState::new());
+
+    println!("OK:\n{}", out);
+
+    assert_eq!(out, r#"case (_FSM)
+    0: begin
+        _FSM = 4;
+    end
+    4: begin
+        if (mini_delay_result) begin
+            _FSM = 2;
+        end
+    end
+    2, 3: begin
+        if (((_FSM != 2) || spi_ready)) begin
+            if ((((_FSM == 2) || (_FSM == 3)) && (sleep_counter < 360))) begin
+                _FSM = 3;
+            end
+            else begin
+                _FSM = 1;
+            end
+        end
+    end
+    1: begin
+        _FSM = 0;
+    end
+endcase
+"#);
+}

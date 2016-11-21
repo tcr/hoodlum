@@ -175,6 +175,7 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
                 let following = mem::replace(&mut case.body, vec![]);
                 let mut following_transition = transition.clone();
                 if let Transition::Precede(ref mut next) = following_transition {
+                    //TODO fix this
                     next.insert(global.counter.value());
                 };
                 let following_id = global.counter;
@@ -198,6 +199,7 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
                     targets.insert(current);
                 }
                 let next_transition = Transition::Precede(targets);
+                //let next_transition = Transition::Precede(case.all_states());
                 println!("BASE {:?} ----> {:?}", base_state, case);
                 let (preceding, other) = fsm_span(global, base_state, case.clone(), body, next_transition);
                 case.states.extend(preceding.all_states());
@@ -220,6 +222,10 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
     // can just insert our content directly.
     match transition {
         Transition::Precede(targets) => {
+            //if targets.iter().find(|x| **x == 4).is_some() {
+            //    println!("\n\nWOW {:?}\n\n", targets);
+            //}
+
             assert!(after.body.len() > 0, "when do we have precede without content?");
 
             // Get our inner, preceding content.
@@ -371,8 +377,6 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
                     // Expand our condition to also check our FSM states.
                     if !(is_first && after.substates().len() == 0) || is_if {
                         cond = ast::Expr::Arith(ast::Op::And, Box::new(fsm_match_list(ast::Op::Eq, &state_whitelist)), Box::new(cond));
-                    } else {
-                        println!("\nYES {:?}\n", after);
                     }
 
                     let seq = ast::Seq::If(cond,
@@ -411,7 +415,10 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
             // use our generated loop construct as its "after" condition to ensure
             // our state matching generation is consistent.
             let last = last.expect("missing last span");
-            let (mut last_block, last_cases) = fsm_span(global, id, case.clone(), last, Transition::Precede(btreeset![id.value()]));
+            let mut targets = btreeset![];
+            targets.insert(id.value());
+            //targets.extend(case.all_states());
+            let (mut last_block, last_cases) = fsm_span(global, id, case.clone(), last, Transition::Precede(targets));
             last_block.states.extend(case.all_states());
 
             let mut other_cases = vec![];
