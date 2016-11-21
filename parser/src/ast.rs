@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Code(pub Vec<Entity>);
 
@@ -55,7 +57,6 @@ pub enum Seq {
     Yield,
     Await(Expr),
 
-    FsmLoop(Expr, SeqBlock, Option<SeqBlock>, bool),
     FsmTransition(u32),
 }
 
@@ -100,6 +101,8 @@ pub enum Expr {
     Unary(UnaryOp, Box<Expr>),
     Num(i32),
 
+    FsmEq(BTreeSet<i32>),
+    FsmNe(BTreeSet<i32>),
     FsmValue(u32),
 }
 

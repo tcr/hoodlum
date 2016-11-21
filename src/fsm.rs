@@ -76,28 +76,6 @@ fn invert_expr(expr: ast::Expr) -> ast::Expr {
     }
 }
 
-fn fsm_match_list(op: ast::Op, list: &BTreeSet<i32>) -> ast::Expr {
-    assert!(list.len() > 0);
-
-    let mut list = list.iter().cloned().collect::<Vec<_>>();
-    list.reverse();
-
-    let mut cond = ast::Expr::Arith(op.clone(),
-        Box::new(ast::Expr::Ref(ast::Ident("_FSM".to_string()))),
-        Box::new(ast::Expr::FsmValue(list[0] as u32)));
-    for item in &list[1..] {
-        cond = ast::Expr::Arith(match op {
-            ast::Op::Eq => ast::Op::Or,
-            _ => ast::Op::And,
-        },
-            Box::new(ast::Expr::Arith(op.clone(),
-                Box::new(ast::Expr::Ref(ast::Ident("_FSM".to_string()))),
-                Box::new(ast::Expr::FsmValue(*item as u32)))),
-            Box::new(cond));
-    }
-    cond
-}
-
 fn expand_await(body: Vec<ast::Seq>) -> Vec<ast::Seq> {
     // Expand and normalize sequences "await" and "loop".
     let mut block = vec![];
@@ -242,7 +220,7 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
                     inner.push(ast::Seq::FsmTransition(base_state.value() as u32));
                 }
 
-                case.body.push(ast::Seq::If(fsm_match_list(ast::Op::Eq, &states),
+                case.body.push(ast::Seq::If(ast::Expr::FsmEq(states),
                     ast::SeqBlock(inner),
                     None));
             }
@@ -365,7 +343,7 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
                     // Expand our condition to also check our FSM states.
                     cond = invert_expr(cond);
                     if !(is_first && after.substates().len() == 0) || is_if {
-                        cond = ast::Expr::Arith(ast::Op::Or, Box::new(fsm_match_list(ast::Op::Ne, &state_whitelist)), Box::new(cond));
+                        cond = ast::Expr::Arith(ast::Op::Or, Box::new(ast::Expr::FsmNe(state_whitelist)), Box::new(cond));
                     }
 
                     let seq = ast::Seq::If(cond,
@@ -376,7 +354,7 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
                 } else {
                     // Expand our condition to also check our FSM states.
                     if !(is_first && after.substates().len() == 0) || is_if {
-                        cond = ast::Expr::Arith(ast::Op::And, Box::new(fsm_match_list(ast::Op::Eq, &state_whitelist)), Box::new(cond));
+                        cond = ast::Expr::Arith(ast::Op::And, Box::new(ast::Expr::FsmEq(state_whitelist)), Box::new(cond));
                     }
 
                     let seq = ast::Seq::If(cond,
@@ -392,7 +370,7 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
                 // TODO refactor this logic
                 // see rewrite_fsm_while_4
                 if base_state != id && first_block.states.len() > 1 {
-                    let seq = ast::Seq::If(fsm_match_list(ast::Op::Eq, &btreeset![base_state.value()]),
+                    let seq = ast::Seq::If(ast::Expr::FsmEq(btreeset![base_state.value()]),
                         ast::SeqBlock(vec![
                             ast::Seq::FsmTransition(id.value() as u32),
                         ]),

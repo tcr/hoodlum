@@ -133,13 +133,6 @@ impl Walkable for ast::Seq {
                 // TODO cond
                 body.walk(walker);
             }
-            ast::Seq::FsmLoop(_, ref body, ref else_body, _) => {
-                // TODO cond
-                body.walk(walker);
-                if let &Some(ref block) = else_body {
-                    block.walk(walker);
-                }
-            }
             _ => { }
         }
     }
@@ -449,9 +442,6 @@ impl ToVerilog for ast::Seq {
                     //id=v.fsm.get(&n).map(|x| x.to_string()).unwrap_or(format!("$$${}$$$", n))) //.expect(format!("Missing FSM state in generation step: {:?}!"))
                     //id=v.fsm.get(&n).expect(&format!("Missing FSM state in generation step: {:?}", n)))
             }
-            ast::Seq::FsmLoop(..) => {
-                unreachable!("Cannot not compile Await statement to Verilog.")
-            }
             ast::Seq::Await(..) => {
                 unreachable!("Cannot not compile Await statement to Verilog.")
             }
@@ -539,6 +529,18 @@ impl ToVerilog for ast::Expr {
                 format!("{state}",
                     //state=v.fsm.get(state).expect("Missing FsmValue value!"))
                     state=state)
+            }
+            ast::Expr::FsmEq(ref set) => {
+                format!("({})", set.iter()
+                    .map(|x| format!("_FSM == {}", x))
+                    .collect::<Vec<_>>()
+                    .join(" || "))
+            }
+            ast::Expr::FsmNe(ref set) => {
+                format!("({})", set.iter()
+                    .map(|x| format!("_FSM != {}", x))
+                    .collect::<Vec<_>>()
+                    .join(" && "))
             }
         }
     }

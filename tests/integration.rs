@@ -192,11 +192,11 @@ fsm {
             _FSM = 1;
         end
         else begin
-            if (((_FSM == 1) || (_FSM == 3))) begin
+            if ((_FSM == 1 || _FSM == 3)) begin
                 tx_ready <= 1;
                 _FSM = 1;
             end
-            if ((((_FSM == 1) || (_FSM == 2)) && (r > 0))) begin
+            if (((_FSM == 1 || _FSM == 2) && (r > 0))) begin
                 a <= 1;
                 _FSM = 2;
             end
@@ -240,7 +240,7 @@ fsm {
         if ((_FSM == 1)) begin
             b <= 1;
         end
-        if ((((_FSM == 0) || (_FSM == 1)) && !(tx_trigger))) begin
+        if (((_FSM == 0 || _FSM == 1) && !(tx_trigger))) begin
             a <= 1;
             _FSM = 1;
         end
@@ -280,7 +280,7 @@ fsm {
         if ((_FSM == 0)) begin
             spi_tx <= 0;
         end
-        if ((((_FSM == 0) || (_FSM == 1)) && !(tx_trigger))) begin
+        if (((_FSM == 0 || _FSM == 1) && !(tx_trigger))) begin
             a <= 1;
             _FSM = 1;
         end
@@ -318,7 +318,7 @@ fsm {
         if ((_FSM == 0)) begin
             spi_tx <= 0;
         end
-        if ((((_FSM == 0) || (_FSM == 1)) && !(tx_trigger))) begin
+        if (((_FSM == 0 || _FSM == 1) && !(tx_trigger))) begin
             _FSM = 1;
         end
         else begin
@@ -361,15 +361,15 @@ fsm {
         if ((_FSM == 0)) begin
             spi_tx <= 0;
         end
-        if ((((_FSM == 0) || (_FSM == 2)) && !(tx_trigger))) begin
+        if (((_FSM == 0 || _FSM == 2) && !(tx_trigger))) begin
             _FSM = 2;
         end
         else begin
-            if (((_FSM == 0) || (_FSM == 2))) begin
+            if ((_FSM == 0 || _FSM == 2)) begin
                 spi_tx <= 1;
                 _FSM = 0;
             end
-            if ((((_FSM == 0) || (_FSM == 1)) && 1)) begin
+            if (((_FSM == 0 || _FSM == 1) && 1)) begin
                 a <= 1;
                 _FSM = 1;
             end
@@ -461,11 +461,11 @@ fsm {
             tx_valid <= 1;
             tx_byte <= 34;
         end
-        if ((((_FSM == 0) || (_FSM == 2)) && !(spi_ready))) begin
+        if (((_FSM == 0 || _FSM == 2) && !(spi_ready))) begin
             _FSM = 2;
         end
         else begin
-            if ((((_FSM == 0) || (_FSM == 1)) && spi_ready)) begin
+            if (((_FSM == 0 || _FSM == 1) && spi_ready)) begin
                 _FSM = 1;
             end
             else begin
@@ -504,7 +504,7 @@ fsm {
             tx_valid <= 0;
             sleep_counter <= 0;
         end
-        if ((((_FSM == 0) || (_FSM == 1)) && (sleep_counter < 36))) begin
+        if (((_FSM == 0 || _FSM == 1) && (sleep_counter < 36))) begin
             sleep_counter <= (sleep_counter + 1);
             _FSM = 1;
         end
@@ -551,17 +551,17 @@ fsm {
             tx_valid <= 0;
             sleep_counter <= 0;
         end
-        if ((((_FSM == 0) || (_FSM == 2)) && (sleep_counter < 36))) begin
+        if (((_FSM == 0 || _FSM == 2) && (sleep_counter < 36))) begin
             sleep_counter <= (sleep_counter + 1);
             _FSM = 2;
         end
         else begin
-            if (((_FSM == 0) || (_FSM == 2))) begin
+            if ((_FSM == 0 || _FSM == 2)) begin
                 tx_valid <= 0;
                 sleep_counter <= 0;
                 _FSM = 0;
             end
-            if ((((_FSM == 0) || (_FSM == 1)) && (sleep_counter < 36))) begin
+            if (((_FSM == 0 || _FSM == 1) && (sleep_counter < 36))) begin
                 sleep_counter <= (sleep_counter + 1);
                 _FSM = 1;
             end
@@ -724,7 +724,7 @@ fsm {
             _FSM = 0;
         end
         else begin
-            if ((((_FSM == 0) || (_FSM == 1)) && (test > 0))) begin
+            if (((_FSM == 0 || _FSM == 1) && (test > 0))) begin
                 a <= 1;
                 _FSM = 1;
             end
@@ -850,12 +850,12 @@ fsm {
         if ((_FSM == 1)) begin
             c <= 1;
         end
-        if ((((_FSM == 1) || (_FSM == 3)) && !(result))) begin
+        if (((_FSM == 1 || _FSM == 3) && !(result))) begin
             d <= 1;
             _FSM = 3;
         end
         else begin
-            if (((_FSM == 1) || (_FSM == 3))) begin
+            if ((_FSM == 1 || _FSM == 3)) begin
                 e <= 1;
             end
             if (1) begin
@@ -909,7 +909,7 @@ fsm {
 
     assert_eq!(out, r#"case (_FSM)
     0, 1, 2: begin
-        if ((((_FSM == 0) || (_FSM == 2)) && 1)) begin
+        if (((_FSM == 0 || _FSM == 2) && 1)) begin
             if ((_FSM == 0)) begin
                 a <= 1;
             end
@@ -928,11 +928,11 @@ fsm {
             end
         end
         else begin
-            if (((_FSM == 0) || (_FSM == 2))) begin
+            if ((_FSM == 0 || _FSM == 2)) begin
                 CS <= 1;
                 _FSM = 0;
             end
-            if ((((_FSM == 0) || (_FSM == 1)) && 1)) begin
+            if (((_FSM == 0 || _FSM == 1) && 1)) begin
                 _FSM = 1;
             end
             else begin
@@ -1012,7 +1012,7 @@ fsm {
 
     assert_eq!(out, r#"case (_FSM)
     0, 1, 2: begin
-        if ((((_FSM == 0) || (_FSM == 2)) && 1)) begin
+        if (((_FSM == 0 || _FSM == 2) && 1)) begin
             if ((_FSM == 0)) begin
                 a <= 1;
             end
@@ -1029,7 +1029,7 @@ fsm {
             end
         end
         else begin
-            if ((((_FSM == 0) || (_FSM == 1)) && 2)) begin
+            if (((_FSM == 0 || _FSM == 1) && 2)) begin
                 d2 <= 1;
                 _FSM = 1;
             end
@@ -1071,7 +1071,7 @@ fsm {
 
     assert_eq!(out, r#"case (_FSM)
     0, 1, 2: begin
-        if ((((_FSM == 0) || (_FSM == 2)) && 1)) begin
+        if (((_FSM == 0 || _FSM == 2) && 1)) begin
             if ((_FSM == 2)) begin
                 b <= 1;
             end
@@ -1085,7 +1085,7 @@ fsm {
             end
         end
         else begin
-            if ((((_FSM == 0) || (_FSM == 1)) && 2)) begin
+            if (((_FSM == 0 || _FSM == 1) && 2)) begin
                 d2 <= 1;
                 _FSM = 1;
             end
