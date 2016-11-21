@@ -185,7 +185,7 @@ fsm {
             _FSM = 1;
         end
     end
-    1, 2, 3: begin
+    1, 2: begin
         if (((_FSM == 1) && (read_index > 0))) begin
             spi_tx <= tx_byte[(read_index - 1)];
             read_index <= (read_index - 1);
@@ -718,7 +718,7 @@ fsm {
     println!("OK:\n{}", out);
 
     assert_eq!(out, r#"case (_FSM)
-    0, 1, 2: begin
+    0, 1: begin
         if (((_FSM == 0) && (a < 10))) begin
             a <= (a + 1);
             _FSM = 0;
@@ -1197,7 +1197,7 @@ fsm {
     println!("OK:\n{}", out);
 
     assert_eq!(out, r#"case (_FSM)
-    0, 1, 4: begin
+    0, 1: begin
         if (((_FSM != 1) || spi_ready)) begin
             if (1) begin
                 tx_byte <= 1;
@@ -1256,7 +1256,7 @@ fsm {
     end
     2, 3: begin
         if (((_FSM != 2) || spi_ready)) begin
-            if ((((_FSM == 2) || (_FSM == 3)) && (sleep_counter < 360))) begin
+            if (((_FSM == 2 || _FSM == 3) && (sleep_counter < 360))) begin
                 _FSM = 3;
             end
             else begin

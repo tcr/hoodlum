@@ -150,13 +150,13 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
                 // Parse the content "following" this structure (which we already
                 // walked through in this function) as its own span, using the
                 // "after" content passed into this function as its after content.
-                let following = mem::replace(&mut case.body, vec![]);
+                let mut following = mem::replace(&mut case.body, vec![]);
                 let mut following_transition = transition.clone();
                 if let Transition::Precede(ref mut next) = following_transition {
                     //TODO fix this
                     next.insert(global.counter.value());
                 };
-                let following_id = global.counter;
+                //let following_id = global.counter;
                 println!("INPUT {:?} --> {:?}", after, following_transition);
                 let (mut case, mut other_cases) = fsm_span(global, base_state, after, following, following_transition);
                 println!("STRUCT {:?} {:?}", base_state, case);
@@ -200,9 +200,9 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
     // can just insert our content directly.
     match transition {
         Transition::Precede(targets) => {
-            //if targets.iter().find(|x| **x == 4).is_some() {
-            //    println!("\n\nWOW {:?}\n\n", targets);
-            //}
+            if targets.iter().find(|x| **x == 4).is_some() {
+                println!("\n\nWOW {:?}\n\n", targets);
+            }
 
             assert!(after.body.len() > 0, "when do we have precede without content?");
 
@@ -228,7 +228,7 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
             // Insert "after" content.
             //TODO assert all_states is subset of targets
             case.states.extend(after.all_states());
-            case.states.extend(targets);
+            //case.states.extend(targets);
             case.body.extend(after.body);
         }
         Transition::Yield(target, source) => {
@@ -437,6 +437,19 @@ pub fn fsm_rewrite(input: &ast::Seq, v: &VerilogState) -> (ast::Seq, VerilogStat
     cases.insert(0, case);
 
     println!("cases {:?}", cases);
+
+    // Verify output cases.
+    //{
+    //    let mut state_check = btreeset![];
+    //    for case in &cases {
+    //        for state in case.all_states() {
+    //            if state_check.contains(&state) {
+    //                panic!("duplicate state {:?} in output.", state);
+    //            }
+    //            state_check.insert(state);
+    //        }
+    //    }
+    //}
 
     // Generate match cases from our case output.
     let mut output: Vec<(Vec<ast::Expr>, ast::SeqBlock)> = vec![];
