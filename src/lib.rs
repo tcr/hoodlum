@@ -169,29 +169,6 @@ impl Walker for InitWalker {
     }
 }
 
-pub struct ResetWalker {
-    modified: HashSet<ast::Ident>,
-}
-
-impl ResetWalker {
-    fn new() -> ResetWalker {
-        ResetWalker {
-            modified: HashSet::new(),
-        }
-    }
-}
-
-impl Walker for ResetWalker {
-    fn seq(&mut self, item: &ast::Seq) {
-        match *item {
-            ast::Seq::Set(_, ref ident, _) => {
-                self.modified.insert(ident.clone());
-            }
-            _ => { }
-        }
-    }
-}
-
 
 pub struct CountWalker {
     yield_count: usize,
@@ -388,20 +365,6 @@ impl ToVerilog for ast::Seq {
                             ind=v.indent,
                             body=e.to_verilog(&v.tab()))
                     }))
-            },
-            ast::Seq::Reset(ref c, ref b) => {
-                let mut reset = ResetWalker::new();
-                b.walk(&mut reset);
-
-                format!("{ind}if ({cond}) begin\n{body}{ind}end\n{ind}else begin\n{reset}{ind}end\n",
-                    ind=v.indent,
-                    cond=c.to_verilog(v),
-                    body=b.to_verilog(&v.tab()),
-                    reset=v.init.iter()
-                        .filter(|&(ident, _)| reset.modified.contains(ident))
-                        .map(|(ident, init)| {
-                            ast::Seq::Set(ast::BlockType::NonBlocking, ident.clone(), init.clone()).to_verilog(&v.tab())
-                        }).collect::<Vec<_>>().join(""))
             },
             ast::Seq::Set(ref block_type, ref id, ref value) => {
                 format!("{ind}{name} {block} {value};\n",

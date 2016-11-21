@@ -118,9 +118,6 @@ pub SeqStatement: ast::Seq = {
     "if" <c:Expr> "{" <t:SeqStatements> "}" ";"? => {
         ast::Seq::If(c, t, None)
     },
-    "reset" <c:Ident> "{" <b:SeqStatements> "}" ";"? => {
-        ast::Seq::Reset(c, b)
-    },
     "match" <cond:Expr> "{" <arms:MatchArm+> "}" ";"? => {
         ast::Seq::Match(cond, arms)
     },

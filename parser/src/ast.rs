@@ -46,7 +46,6 @@ pub enum BlockType {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Seq {
     If(Expr, SeqBlock, Option<SeqBlock>),
-    Reset(Ident, SeqBlock),
     Set(BlockType, Ident, Expr),
     SetIndex(BlockType, Ident, Expr, Expr),
     Match(Expr, Vec<(Vec<Expr>, SeqBlock)>),

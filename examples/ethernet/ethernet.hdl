@@ -30,7 +30,9 @@ entity MiniCounter(clk: in, rst: in, ready: out) {
   let index: uint{..400} = 0;
 
   on clk.posedge {
-      reset rst {
+      if !rst {
+          ready <= 0;
+      } else {
           if index == 240 - 1 {
               ready <= 1;
           } else {
@@ -72,7 +74,10 @@ entity SpiMaster(
   // Generate divided SPI clock.
   let div_idx: uint{..40} = 0;
   on clk.negedge {
-      reset rst {
+      if !rst {
+          div_idx <= 0;
+          internal_clk <= 0;
+      } else {
           if div_idx == 40 - 1 {
               internal_clk <= !internal_clk;
               div_idx <= 0;
@@ -85,18 +90,16 @@ entity SpiMaster(
   // Sample read values from positive clock edge.
   on internal_clk.posedge {
       rx_byte[read_index] <= spi_rx;
-  //    reset rst {
-  //        if state == SpiState.DATA {
-  //            rx_byte[read_index] <= spi_rx;
-  //        }
-  //    }
   }
 
   let transmitting = 0;
   let transmit_save = 1;
 
   on clk.posedge {
-      reset rst {
+      if !rst {
+          tx_ready <= 0;
+          transmit_save <= 0;
+      } else {
           // if tx_trigger is high, and we are not transmitting, start
           if transmit_save == transmitting {
               tx_ready <= 1;
@@ -109,36 +112,34 @@ entity SpiMaster(
 
   // SPI output state machine.
   on internal_clk.negedge {
-      reset rst {
-          fsm {
-              // Wait for transition trigger.
-              spi_tx <= 0;
-              await tx_ready == 0;
+      fsm {
+          // Wait for transition trigger.
+          spi_tx <= 0;
+          await tx_ready == 0;
 
-              // Enable output clock.
-              live_clk <= 1;
+          // Enable output clock.
+          live_clk <= 1;
 
-              // Start sequence.
-              read_index <= 7;
-              spi_tx <= tx_byte[7];
+          // Start sequence.
+          read_index <= 7;
+          spi_tx <= tx_byte[7];
+          yield;
+
+          // Write bits.
+          while read_index > 0 {
+              spi_tx <= tx_byte[read_index - 1];
+              read_index <= read_index - 1;
               yield;
-
-              // Write bits.
-              while read_index > 0 {
-                  spi_tx <= tx_byte[read_index - 1];
-                  read_index <= read_index - 1;
-                  yield;
-              }
-
-              // Disable output clock.
-              live_clk <= 0;
-              transmitting <= !transmitting;
-
-              // Loop forever.
-              //loop {
-              //    yield;
-              //}
           }
+
+          // Disable output clock.
+          live_clk <= 0;
+          transmitting <= !transmitting;
+
+          // Loop forever.
+          //loop {
+          //    yield;
+          //}
       }
   }
 }
@@ -253,7 +254,9 @@ entity Ethernet(
     let status_vector: bit[8] = 0;
 
     on tx_clk.negedge {
-        reset rst {
+        if !rst {
+            CS <= 1;
+        } else {
             fsm {
                 LED1 <= 1;
 
