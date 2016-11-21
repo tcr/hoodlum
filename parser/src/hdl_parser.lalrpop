@@ -165,18 +165,22 @@ MatchArm: (Vec<ast::Expr>, ast::SeqBlock) = {
 
 Expr: ast::Expr = {
     "{" <v:Comma<Expr>> "}" => ast::Expr::Concat(v),
-    <l:Expr> "==" <r:Term> => ast::Expr::Arith(ast::Op::Eq, Box::new(l), Box::new(r)),
-    <l:Expr> "+" <r:Term> => ast::Expr::Arith(ast::Op::Add, Box::new(l), Box::new(r)),
-    <l:Expr> "-" <r:Term> => ast::Expr::Arith(ast::Op::Sub, Box::new(l), Box::new(r)),
-    <l:Expr> "&&" <r:Term> => ast::Expr::Arith(ast::Op::And, Box::new(l), Box::new(r)),
-    <l:Expr> "<" <r:Term> => ast::Expr::Arith(ast::Op::Lt, Box::new(l), Box::new(r)),
-    <l:Expr> ">" <r:Term> => ast::Expr::Arith(ast::Op::Gt, Box::new(l), Box::new(r)),
-    <l:Expr> "|" <r:Term> => ast::Expr::Arith(ast::Op::BinOr, Box::new(l), Box::new(r)),
-    <l:Expr> "&" <r:Term> => ast::Expr::Arith(ast::Op::BinAnd, Box::new(l), Box::new(r)),
-    <l:Expr> "<<" <r:Term> => ast::Expr::Arith(ast::Op::LShift, Box::new(l), Box::new(r)),
-    <l:Expr> ">>" <r:Term> => ast::Expr::Arith(ast::Op::RShift, Box::new(l), Box::new(r)),
     "!" <r:Term> => ast::Expr::Unary(ast::UnaryOp::Not, Box::new(r)),
-    Term => <>,
+    <l:Expr> "+" <r:Expr2> => ast::Expr::Arith(ast::Op::Add, Box::new(l), Box::new(r)),
+    <l:Expr> "-" <r:Expr2> => ast::Expr::Arith(ast::Op::Sub, Box::new(l), Box::new(r)),
+    <l:Expr> "&&" <r:Expr2> => ast::Expr::Arith(ast::Op::And, Box::new(l), Box::new(r)),
+    <l:Expr> "<" <r:Expr2> => ast::Expr::Arith(ast::Op::Lt, Box::new(l), Box::new(r)),
+    <l:Expr> ">" <r:Expr2> => ast::Expr::Arith(ast::Op::Gt, Box::new(l), Box::new(r)),
+    <l:Expr> "|" <r:Expr2> => ast::Expr::Arith(ast::Op::BinOr, Box::new(l), Box::new(r)),
+    <l:Expr> "&" <r:Expr2> => ast::Expr::Arith(ast::Op::BinAnd, Box::new(l), Box::new(r)),
+    <l:Expr> "<<" <r:Expr2> => ast::Expr::Arith(ast::Op::LShift, Box::new(l), Box::new(r)),
+    <l:Expr> ">>" <r:Expr2> => ast::Expr::Arith(ast::Op::RShift, Box::new(l), Box::new(r)),
+    Expr2 => <>,
+};
+
+Expr2: ast::Expr = {
+  <l:Expr2> "==" <r:Term> => ast::Expr::Arith(ast::Op::Eq, Box::new(l), Box::new(r)),
+  Term => <>,
 };
 
 Term: ast::Expr = {
