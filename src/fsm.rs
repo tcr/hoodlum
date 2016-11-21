@@ -18,11 +18,6 @@ impl FsmId {
         self.0 += 1;
         FsmId(self.0)
     }
-
-    fn decr(&mut self) -> FsmId {
-        self.0 -= 1;
-        FsmId(self.0)
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -150,10 +145,11 @@ fn fsm_span(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, mut body:
                 // Parse the content "following" this structure (which we already
                 // walked through in this function) as its own span, using the
                 // "after" content passed into this function as its after content.
-                let mut following = mem::replace(&mut case.body, vec![]);
+                let following = mem::replace(&mut case.body, vec![]);
                 let mut following_transition = transition.clone();
                 if let Transition::Precede(ref mut next) = following_transition {
-                    //TODO fix this
+                    // Add global counter state, which is the last state a
+                    // "following" section might leave us in.
                     next.insert(global.counter.value());
                 };
                 //let following_id = global.counter;
@@ -303,7 +299,7 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
             for span in spans.into_iter().rev() {
                 // Parse this span as its own content.
                 let intermediate_id = global.counter;
-                let (case, mut span_cases) = fsm_span(global, intermediate_id, FsmCase::empty(), span, Transition::Yield(last_id.value(), None));
+                let (case, span_cases) = fsm_span(global, intermediate_id, FsmCase::empty(), span, Transition::Yield(last_id.value(), None));
                 last_id = FsmId(case.current_state());
                 inner_cases.push(case);
                 inner_cases.extend(span_cases);
@@ -439,17 +435,17 @@ pub fn fsm_rewrite(input: &ast::Seq, v: &VerilogState) -> (ast::Seq, VerilogStat
     println!("cases {:?}", cases);
 
     // Verify output cases.
-    //{
-    //    let mut state_check = btreeset![];
-    //    for case in &cases {
-    //        for state in case.all_states() {
-    //            if state_check.contains(&state) {
-    //                panic!("duplicate state {:?} in output.", state);
-    //            }
-    //            state_check.insert(state);
-    //        }
-    //    }
-    //}
+    {
+        let mut state_check = btreeset![];
+        for case in &cases {
+            for state in case.all_states() {
+                if state_check.contains(&state) {
+                    panic!("duplicate state {:?} in output.", state);
+                }
+                state_check.insert(state);
+            }
+        }
+    }
 
     // Generate match cases from our case output.
     let mut output: Vec<(Vec<ast::Expr>, ast::SeqBlock)> = vec![];
