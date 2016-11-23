@@ -1,0 +1,178 @@
+
+entity Ntsc (
+    input  wire       clk,
+    input  wire [2:0] pixel_data, // 0 ( black )..5 (bright white)
+    output wire       h_sync_out, // single clock tick indicating pixel_y will incrememt on next clock ( for debugging )
+    output wire       v_sync_out, // single clock tick indicating pixel_y will reset to 0 or 1 on next clock, depending on the field ( for debugging )
+    output wire [9:0] pixel_y,    // which line
+    output wire [9:0] pixel_x,
+    output wire       pixel_is_visible,
+    output reg  [2:0] ntsc_out
+) {
+    const BASE_PIXEL_X = 184;
+    const RESOLUTION_HORIZONTAL = 560;
+    const BASE_PIXEL_Y = 89;
+    const RESOLUTION_VERTICAL = 400;
+
+
+    reg         [2:0] luminance;  // TODO: Make a better interface for inputting luminance
+
+    reg         [9:0] line_count_reg,
+                      line_count_reg_next; // 0..524
+
+    reg         [1:0] line_type_reg,
+                      line_type_reg_next;
+
+    reg        [11:0] horizontal_count_reg,
+                      horizontal_count_reg_next;
+
+    const LINE_TYPE_EQ              = 0b00,
+                      LINE_TYPE_VERTICAL_BLANK  = 0b01,
+                      LINE_TYPE_SCANLINE        = 0b10;
+
+    localparam        WIDTH_FRONT_PORCH         = 75,     // 1.5 uS @ 50 MHz
+                      WIDTH_SYNC_TIP            = 235,    // 4.7 uS @ 50 MHz
+                      WIDTH_BACK_PORCH          = 235,    // 4.7  uS @ 50 MHz
+                      WIDTH_VIDEO               = 2630,   // 52.6 uS @ 50 MHz
+                      WIDTH_WHOLE_LINE          = 3175,   // 63.5 uS @ 50 MHz
+                      WIDTH_HALF_LINE           = 1588,   // 31.75 uS @ 50 MHz
+                      WIDTH_EQ_PULSE            = 117,    // 2.35 uS @ 50 MHz
+                      WIDTH_V_SYNC_PULSE        = 1353;   // 27.05 uS @ 50 MHz
+
+    const  SIGNAL_LEVEL_SYNC         = 0b000; // 0 V
+                      SIGNAL_LEVEL_BLANK        = 0b001, // 0.3 V
+                      SIGNAL_LEVEL_BLACK        = 0b010,
+                      SIGNAL_LEVEL_DARK_GREY    = 0b011,
+                      SIGNAL_LEVEL_GREY         = 0b100,
+                      SIGNAL_LEVEL_LIGHT_GREY   = 0b101,
+                      SIGNAL_LEVEL_WHITE        = 0b110,
+                      SIGNAL_LEVEL_BRIGHT_WHITE = 0b111; // 1 V
+
+    const        HALF_LINE_EVEN_FIELD      = 18,
+                      HALF_LINE_ODD_FIELD       = 527;
+
+
+
+
+//  ____ _   _ _  _ ____    ____ _ ____ _  _ ____ _    ____
+//  [__   \_/  |\ | |       [__  | | __ |\ | |__| |    [__
+//  ___]   |   | \| |___    ___] | |__] | \| |  | |___ ___]
+//
+    let at_half_line_width: bit = ( horizontal_count_reg >= WIDTH_HALF_LINE );                                        // signals that the current line has
+                                                                                                                  // reached a half scanline's 31.75
+    let at_full_line_width: bit = ( horizontal_count_reg >= WIDTH_WHOLE_LINE );                                       // signals that the current line has
+                                                                                                                  // reached a normal scanline's 63.5us
+    let is_a_half_line: bit = ( line_count_reg == HALF_LINE_EVEN_FIELD ) | ( line_count_reg == HALF_LINE_ODD_FIELD ); // signals current line should be treaded as a half
+    let is_a_whole_line: bit = ~ is_a_half_line;                                                                      // signals current line should be treaded as a whole
+
+    let h_sync: bit = ( is_a_half_line & at_half_line_width ) | ( is_a_whole_line & at_full_line_width );
+    let v_sync: bit = h_sync & line_count_reg >= 526;
+
+    let h_sync_out: bit = h_sync;
+    let v_sync_out: bit = v_sync;
+
+
+    let pixel_is_visible: bit = horizontal_count_reg[11:2] >= BASE_PIXEL_X & horizontal_count_reg[11:2] < BASE_PIXEL_X + RESOLUTION_HORIZONTAL & line_count_reg >= BASE_PIXEL_Y & line_count_reg < BASE_PIXEL_Y + RESOLUTION_VERTICAL;
+    let pixel_x: bit          = pixel_is_visible ? horizontal_count_reg[11:2] - BASE_PIXEL_X : 0;
+    let pixel_y: bit          = pixel_is_visible ? line_count_reg - BASE_PIXEL_Y : 0;
+
+
+//  _  _ ____ _ _  _    ____ ____ ____ _ ____ ___ ____ ____
+//  |\/| |__| | |\ |    |__/ |___ | __ | [__   |  |___ |__/
+//  |  | |  | | | \|    |  \ |___ |__] | ___]  |  |___ |  \
+//  ___ ____ ____ _  _ ____ ____ ____ ____
+//   |  |__/ |__| |\ | [__  |___ |___ |__/
+//   |  |  \ |  | | \| ___] |    |___ |  \
+//
+    on clk.posedge {
+      horizontal_count_reg  <= horizontal_count_reg_next; // all registers that are needed for decision
+      line_count_reg        <= line_count_reg_next;       // keeping are buffered so they hold their
+      line_type_reg         <= line_type_reg_next;        // current value until the next clock cycle
+    }
+
+
+
+//  _    _ _  _ ____    ____ ___ ____ ___ ____
+//  |    | |\ | |___    [__   |  |__|  |  |___
+//  |___ | | \| |___    ___]  |  |  |  |  |___
+//
+    // always @*
+    always {                                                                // TODO: might be able to move this to a wire signal
+        if ( line_count_reg <= 5 || ( line_count_reg >= 12 && line_count_reg <= 18 ) ) // is this an equalizing pulse line?
+            line_type_reg_next = LINE_TYPE_EQ;
+        else if ( line_count_reg >= 6 && line_count_reg <= 11 )                        // is this a vertical blanking line?
+            line_type_reg_next = LINE_TYPE_VERTICAL_BLANK;
+        else
+            line_type_reg_next = LINE_TYPE_SCANLINE;                                   // must be a normal scanline
+    }
+
+//  ____ _ ____ _  _ ____ _     ___ _ _  _ _ _  _ ____
+//  [__  | | __ |\ | |__| |      |  | |\/| | |\ | | __
+//  ___] | |__] | \| |  | |___   |  | |  | | | \| |__]
+//
+    // always @*
+    always {
+        if ( h_sync )                                             // reached the end of the current line?
+            horizontal_count_reg_next = 0;                        // yes, reset counter to 0
+        else
+            horizontal_count_reg_next = horizontal_count_reg + 1; // nope, advance
+    }
+
+// this section below used to be signals, but it was hard to read
+// generates the proper signals depending on line type
+    always {
+      if ( line_type_reg == LINE_TYPE_EQ )
+        if ( horizontal_count_reg < WIDTH_EQ_PULSE || (horizontal_count_reg > WIDTH_HALF_LINE && horizontal_count_reg < WIDTH_HALF_LINE + WIDTH_EQ_PULSE ))
+          ntsc_out = SIGNAL_LEVEL_SYNC;
+        else
+          ntsc_out = SIGNAL_LEVEL_BLANK;
+      else if ( line_type_reg == LINE_TYPE_VERTICAL_BLANK )
+        if ( horizontal_count_reg < WIDTH_V_SYNC_PULSE || (horizontal_count_reg > WIDTH_HALF_LINE && horizontal_count_reg < WIDTH_HALF_LINE + WIDTH_V_SYNC_PULSE ))
+          ntsc_out = SIGNAL_LEVEL_SYNC;
+        else
+          ntsc_out = SIGNAL_LEVEL_BLANK;
+      else if ( line_type_reg == LINE_TYPE_SCANLINE )
+        begin
+          if ( horizontal_count_reg > WIDTH_FRONT_PORCH && horizontal_count_reg < WIDTH_FRONT_PORCH + WIDTH_SYNC_TIP )
+            ntsc_out = SIGNAL_LEVEL_SYNC;
+          else if ( horizontal_count_reg > WIDTH_WHOLE_LINE - WIDTH_VIDEO )
+            ntsc_out = luminance;
+          else
+            ntsc_out = SIGNAL_LEVEL_BLANK;
+        end
+    }
+
+    always {
+        casex ( {v_sync, h_sync, line_count_reg} )                            // a lookup table to determing next line number
+            {1'b1, 1'b1, 10'd526} : line_count_reg_next = 1;                  // v_sync & line number 526, go to line 1
+            {1'b1, 1'b1, 10'd527} : line_count_reg_next = 0;                  // v_sync & line number 527, go to line 0
+            {1'b0, 1'b1, 10'bx  } : line_count_reg_next = line_count_reg + 2; // hsync, but not vsync, jump a line
+            default               : line_count_reg_next = line_count_reg;     // do nothing
+        endcase
+    }
+
+
+    // luminance
+    always {
+        if pixel_is_visible {
+            match pixel_data {
+                0 => luminance = SIGNAL_LEVEL_BLANK,
+                1 => luminance = SIGNAL_LEVEL_DARK_GREY,
+                2 => luminance = SIGNAL_LEVEL_GREY,
+                3 => luminance = SIGNAL_LEVEL_LIGHT_GREY,
+                4 => luminance = SIGNAL_LEVEL_WHITE,
+                5 => luminance = SIGNAL_LEVEL_BRIGHT_WHITE,
+                _ => luminance = SIGNAL_LEVEL_BLANK,
+            }
+        } else {
+            luminance = SIGNAL_LEVEL_BLANK;
+        }
+    }
+}
+
+
+entity Main(
+
+) {
+
+}

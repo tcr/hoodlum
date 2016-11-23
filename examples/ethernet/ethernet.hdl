@@ -246,8 +246,7 @@ entity Ethernet(
     await spi_ready; \
     reg := spi_rx_value
 
-    let receivedL: bit[8] = 0;
-    let receivedH: bit[8] = 0;
+    let received: bit[16] = 0;
     let NextPacketPointerL: bit[8] = 0x40;
     let NextPacketPointerH: bit[8] = 0x53;
     let _FSM: bit[9] = 0;
@@ -353,13 +352,17 @@ entity Ethernet(
                         read_byte(NextPacketPointerH);
 
                         // Read received byte count.
-                        read_byte(receivedL);
-                        read_byte(receivedH);
+                        read_byte(received[0:8]);
+                        read_byte(received[8:16]);
 
-                        read_byte(status_vector);
+                        read_byte_imm(status_vector);
                         read_byte(dummy);
                         if status_vector & (1 << 7) {
                             LED3 <= 1;
+
+                            // Good packet.
+                            read_byte(dummy);
+                            read_byte(dummy);
                         }
                         // else {
                           // ERROR: Bad packet
