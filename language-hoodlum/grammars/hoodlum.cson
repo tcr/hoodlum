@@ -1,0 +1,429 @@
+'name': 'Hoodlum'
+'scopeName': 'source.hoodlum'
+'fileTypes': [
+  'hdl'
+]
+
+'repository': {
+  'block_doc_comment': {
+    'comment': 'Block documentation comment'
+    'name': 'comment.block.documentation.hoodlum'
+    'begin': '/\\*[\\*!](?![\\*/])'
+    'end': '\\*/'
+    'patterns': [
+      { 'include': '#block_doc_comment' }
+      { 'include': '#block_comment' }
+    ]
+  }
+  'block_comment': {
+    'comment': 'Block comment'
+    'name': 'comment.block.hoodlum'
+    'begin': '/\\*'
+    'end': '\\*/'
+    'patterns': [
+      { 'include': '#block_doc_comment' }
+      { 'include': '#block_comment' }
+    ]
+  }
+  'line_doc_comment': {
+    'comment': 'Single-line documentation comment'
+    'name': 'comment.line.documentation.hoodlum'
+    'begin': '//[!/](?=[^/])'
+    'end': '$'
+  }
+  'line_comment': {
+    'comment': 'Single-line comment'
+    'name': 'comment.line.double-slash.hoodlum'
+    'begin': '//'
+    'end': '$'
+  }
+  'escaped_character': {
+    'name': 'constant.character.escape.hoodlum'
+    'match': '\\\\(x\\h{2}|[0-2][0-7]{,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.)'
+  }
+  'string_literal': {
+    'comment': 'Double-quote string literal'
+    'name': 'string.quoted.double.hoodlum'
+    'begin': 'b?"'
+    'end': '"'
+    'patterns': [
+      { 'include': '#escaped_character' }
+    ]
+  }
+  'raw_string_literal': {
+    'comment': 'Raw double-quote string literal'
+    'name': 'string.quoted.double.raw.hoodlum'
+    'begin': 'b?r(#*)"'
+    'end': '"\\1'
+  }
+  'sigils': {
+    'comment': 'Sigil'
+    'name': 'keyword.operator.sigil.hoodlum'
+    'match': '[&*](?=[a-zA-Z0-9_\\(\\[\\|\\"]+)'
+  }
+  'self': {
+    'comment': 'Self variable'
+    'name': 'variable.language.hoodlum'
+    'match': '\\bself\\b'
+  }
+  'mut': {
+    'comment': 'Mutable storage modifier'
+    'name': 'storage.modifier.mut.hoodlum'
+    'match': '\\bmut\\b'
+  }
+  'box': {
+    'comment': 'Box storage modifier'
+    'name': 'storage.modifier.box.hoodlum'
+    'match': '\\bbox\\b'
+  }
+  'const': {
+    'comment': 'Const storage modifier'
+    'name': 'storage.modifier.const.hoodlum'
+    'match': '\\bconst\\b'
+  }
+  'pub': {
+    'comment': 'Visibility modifier'
+    'name': 'storage.modifier.visibility.hoodlum'
+    'match': '\\bpub\\b'
+  }
+  'unsafe': {
+    'comment': 'Unsafe code keyword'
+    'name': 'keyword.other.unsafe.hoodlum'
+    'match': '\\bunsafe\\b'
+  }
+  'where': {
+    'comment': 'Generic where clause'
+    'name': 'keyword.other.where.hoodlum'
+    'match': '\\bwhere\\b'
+  }
+  'lifetime': {
+    'comment': 'Named lifetime'
+    'name': 'storage.modifier.lifetime.hoodlum'
+    'match': '\'([a-zA-Z_][a-zA-Z0-9_]*)\\b'
+    'captures': {
+      '1': { 'name': 'entity.name.lifetime.hoodlum' }
+    }
+  }
+  'ref_lifetime': {
+    'comment': 'Reference with named lifetime'
+    'match': '&(\'([a-zA-Z_][a-zA-Z0-9_]*))\\b'
+    'captures': {
+      '1': { 'name': 'storage.modifier.lifetime.hoodlum' }
+      '2': { 'name': 'entity.name.lifetime.hoodlum' }
+    }
+  }
+  'core_types': {
+    'comment': 'Built-in/core type'
+    'name': 'storage.type.core.hoodlum'
+    'match': '\\b(bool|char|usize|isize|u8|u16|u32|u64|i8|i16|i32|i64|f32|f64|str|Self|Option|Result)\\b'
+  }
+  'core_vars': {
+    'comment': 'Core type variant'
+    'name': 'support.constant.core.hoodlum'
+    'match': '\\b(Some|None|Ok|Err)\\b'
+  }
+  'core_marker': {
+    'comment': 'Core trait (marker)'
+    'name': 'support.type.marker.hoodlum'
+    'match': '\\b(Copy|Send|Sized|Sync)\\b'
+  }
+  'core_traits': {
+    'comment': 'Core trait'
+    'name': 'support.type.core.hoodlum'
+    'match': '\\b(Drop|Fn|FnMut|FnOnce|Clone|PartialEq|PartialOrd|Eq|Ord|AsRef|AsMut|Into|From|Default|Iterator|Extend|IntoIterator|DoubleEndedIterator|ExactSizeIterator)\\b'
+  }
+  'std_types': {
+    'comment': 'Standard library type'
+    'name': 'storage.class.std.hoodlum'
+    'match': '\\b(Box|String|Vec|Path|PathBuf)\\b'
+  }
+  'std_traits': {
+    'comment': 'Standard library trait'
+    'name': 'support.type.std.hoodlum'
+    'match': '\\b(ToOwned|ToString)\\b'
+  }
+  'type_params': {
+    'comment': 'Type parameters'
+    'name': 'meta.type_params.hoodlum'
+    'begin': '<(?![=<])'
+    'end': '>'
+    'patterns': [
+      { 'include': '#block_comment' }
+      { 'include': '#line_comment' }
+      { 'include': '#sigils' }
+      { 'include': '#mut' }
+      { 'include': '#lifetime' }
+      { 'include': '#core_types' }
+      { 'include': '#core_marker' }
+      { 'include': '#core_traits' }
+      { 'include': '#std_types' }
+      { 'include': '#std_traits' }
+      { 'include': '#type_params' }
+    ]
+  }
+}
+
+'patterns': [
+  # Comments
+  { 'include': '#block_doc_comment' }
+  { 'include': '#block_comment' }
+  { 'include': '#line_doc_comment' }
+  { 'include': '#line_comment' }
+  # Attributes
+  {
+    'comment': 'Attribute'
+    'name': 'meta.attribute.hoodlum'
+    'begin': '#\\!?\\['
+    'end': '\\]'
+    'patterns': [
+      { 'include': '#string_literal' }
+    ]
+  }
+  # Strings
+  {
+    'comment': 'Single-quote string literal (character)'
+    'name': 'string.quoted.single.hoodlum'
+    'match': 'b?\'([^\'\\\\]|\\\\(x\\h{2}|[0-2][0-7]{,2}|3[0-6][0-7]?|37[0-7]?|[4-7][0-7]?|.))\''
+  }
+  { 'include': '#string_literal' }
+  { 'include': '#raw_string_literal' }
+  # Numbers
+  {
+    'comment': 'Floating point literal (fraction)'
+    'name': 'constant.numeric.float.hoodlum'
+    'match': '\\b[0-9][0-9_]*\\.[0-9][0-9_]*([eE][+-]?[0-9_]+)?(f32|f64)?\\b'
+  }
+  {
+    'comment': 'Floating point literal (exponent)'
+    'name': 'constant.numeric.float.hoodlum'
+    'match': '\\b[0-9][0-9_]*(\\.[0-9][0-9_]*)?[eE][+-]?[0-9_]+(f32|f64)?\\b'
+  }
+  {
+    'comment': 'Floating point literal (typed)'
+    'name': 'constant.numeric.float.hoodlum'
+    'match': '\\b[0-9][0-9_]*(\\.[0-9][0-9_]*)?([eE][+-]?[0-9_]+)?(f32|f64)\\b'
+  }
+  {
+    'comment': 'Integer literal (decimal)'
+    'name': 'constant.numeric.integer.decimal.hoodlum'
+    'match': '\\b[0-9][0-9_]*([ui](8|16|32|64|s|size))?\\b'
+  }
+  {
+    'comment': 'Integer literal (hexadecimal)'
+    'name': 'constant.numeric.integer.hexadecimal.hoodlum'
+    'match': '\\b0x[a-fA-F0-9_]+([ui](8|16|32|64|s|size))?\\b'
+  }
+  {
+    'comment': 'Integer literal (octal)'
+    'name': 'constant.numeric.integer.octal.hoodlum'
+    'match': '\\b0o[0-7_]+([ui](8|16|32|64|s|size))?\\b'
+  }
+  {
+    'comment': 'Integer literal (binary)'
+    'name': 'constant.numeric.integer.binary.hoodlum'
+    'match': '\\b0b[01_]+([ui](8|16|32|64|s|size))?\\b'
+  }
+  # Language
+  {
+    'comment': 'Static storage modifier'
+    'name': 'storage.modifier.static.hoodlum'
+    'match': '\\bstatic\\b'
+  }
+  {
+    'comment': 'Boolean constant'
+    'name': 'constant.language.boolean.hoodlum'
+    'match': '\\b(true|false)\\b'
+  }
+  {
+    'comment': 'Control keyword'
+    'name': 'keyword.control.hoodlum'
+    'match': '\\b(break|continue|else|if|in|for|loop|match|return|while)\\b'
+  }
+  {
+    'comment': 'Keyword'
+    'name': 'keyword.other.hoodlum'
+    'match': '\\b(crate|extern|mod|let|proc|ref|use|super|as|move|entity|always|on)\\b'
+  }
+  { 'include': '#unsafe' }
+  { 'include': '#sigils' }
+  { 'include': '#self' }
+  { 'include': '#mut' }
+  { 'include': '#box' }
+  { 'include': '#lifetime' }
+  { 'include': '#ref_lifetime' }
+  { 'include': '#const' }
+  { 'include': '#pub' }
+  # Operators
+  {
+    'comment': 'Miscellaneous operator'
+    'name': 'keyword.operator.misc.hoodlum'
+    'match': '(=>|::|\\bas\\b)'
+  }
+  {
+    'comment': 'Comparison operator'
+    'name': 'keyword.operator.comparison.hoodlum'
+    'match': '(&&|\\|\\||==|!=)'
+  }
+  {
+    'comment': 'Assignment operator'
+    'name': 'keyword.operator.assignment.hoodlum'
+    'match': '(\\+=|-=|/=|\\*=|%=|\\^=|&=|\\|=|<<=|>>=|=)'
+  }
+  {
+    'comment': 'Arithmetic operator'
+    'name': 'keyword.operator.arithmetic.hoodlum'
+    'match': '(!|\\+|-|/|\\*|%|\\^|&|\\||<<|>>)'
+  }
+  {
+    'comment': 'Comparison operator (second group because of regex precedence)'
+    'name': 'keyword.operator.comparison.hoodlum'
+    'match': '(<=|>=|<|>)'
+  }
+  # Standard types and traits
+  { 'include': '#core_types' }
+  { 'include': '#core_vars' }
+  { 'include': '#core_marker' }
+  { 'include': '#core_traits' }
+  { 'include': '#std_types' }
+  { 'include': '#std_traits' }
+  # TODO: procs and closures
+  # Macros
+  {
+    'comment': 'Built-in macro'
+    'name': 'support.function.builtin.hoodlum'
+    'match': '\\b(macro_rules|format_args|env|option_env|concat_idents|concat|log_syntax|line|column|file|stringify|include|include_str|include_bytes|module_path|asm|cfg|trace_macros)!'
+  }
+  {
+    'comment': 'Core macro'
+    'name': 'support.function.core.hoodlum'
+    'match': '\\b(panic|assert|assert_eq|debug_assert|debug_assert_eq|try|write|writeln|unreachable|unimplemented)!'
+  }
+  {
+    'comment': 'Standard library macro'
+    'name': 'support.function.std.hoodlum'
+    'match': '\\b(format|print|println|select|vec)!'
+  }
+  {
+    'comment': 'Logging macro'
+    'name': 'support.function.log.hoodlum'
+    'match': '\\b(log|error|warn|info|debug|trace|log_enabled)!'
+  }
+  # Function and macro calls
+  {
+    'comment': 'Invokation of a macro'
+    'match': '\\b([a-zA-Z_][a-zA-Z0-9_]*\\!)\\s*[({\\[]'
+    'captures': {
+      '1': { 'name': 'entity.name.function.macro.hoodlum' }
+    }
+  }
+  {
+    'comment': 'Function call'
+    'match': '\\b([a-zA-Z_][a-zA-Z0-9_]*)\\s*\\('
+    'captures': {
+      '1': { 'name': 'entity.name.function.hoodlum' }
+    }
+  }
+  # Function definition
+  {
+    'comment': 'Function definition'
+    'begin': '\\b(fn)\\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+    'end': '[\\{;]'
+    'beginCaptures': {
+      '1': { 'name': 'keyword.other.fn.hoodlum' }
+      '2': { 'name': 'entity.name.function.hoodlum' }
+    }
+    'patterns': [
+      { 'include': '#block_comment' }
+      { 'include': '#line_comment' }
+      { 'include': '#sigils' }
+      { 'include': '#self' }
+      { 'include': '#mut' }
+      { 'include': '#ref_lifetime' }
+      { 'include': '#core_types' }
+      { 'include': '#core_marker' }
+      { 'include': '#core_traits' }
+      { 'include': '#std_types' }
+      { 'include': '#std_traits' }
+      { 'include': '#type_params' }
+      { 'include': '#const' }
+      { 'include': '#where' }
+      { 'include': '#unsafe' }
+      {
+        'comment': 'Function arguments'
+        'match': 'fn'
+        'name': 'keyword.other.fn.hoodlum'
+      }
+    ]
+  }
+  # Type declaration
+  {
+    'comment': 'Type declaration'
+    'begin': '\\b(enum|struct|trait)\\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+    'end': '[\\{\\(;]'
+    'beginCaptures': {
+      '1': { 'name': 'storage.type.hoodlum' }
+      '2': { 'name': 'entity.name.type.hoodlum' }
+    }
+    'patterns': [
+      { 'include': '#block_comment' }
+      { 'include': '#line_comment' }
+      { 'include': '#core_traits' }
+      { 'include': '#std_traits' }
+      { 'include': '#type_params' }
+      { 'include': '#core_types' }
+      { 'include': '#pub' }
+      { 'include': '#where' }
+    ]
+  }
+  # Type alias
+  {
+    'comment': 'Type alias'
+    'begin': '\\b(type)\\s+([a-zA-Z_][a-zA-Z0-9_]*)'
+    'end': ';'
+    'beginCaptures': {
+      '1': { 'name': 'storage.type.hoodlum' }
+      '2': { 'name': 'entity.name.type.hoodlum' }
+    }
+    'patterns': [
+      { 'include': '#block_comment' }
+      { 'include': '#line_comment' }
+      { 'include': '#sigils' }
+      { 'include': '#mut' }
+      { 'include': '#lifetime' }
+      { 'include': '#ref_lifetime' }
+      { 'include': '#core_types' }
+      { 'include': '#core_marker' }
+      { 'include': '#core_traits' }
+      { 'include': '#std_types' }
+      { 'include': '#std_traits' }
+      { 'include': '#type_params' }
+    ]
+  }
+  # Implementation
+  {
+    'comment': 'Implementation'
+    'begin': '\\b(impl)\\b'
+    'end': '\\{'
+    'beginCaptures': {
+      '1': { 'name': 'storage.type.hoodlum' }
+    }
+    'patterns': [
+      { 'include': '#block_comment' }
+      { 'include': '#line_comment' }
+      { 'include': '#sigils' }
+      { 'include': '#mut' }
+      { 'include': '#ref_lifetime' }
+      { 'include': '#core_types' }
+      { 'include': '#core_marker' }
+      { 'include': '#core_traits' }
+      { 'include': '#std_types' }
+      { 'include': '#std_traits' }
+      { 'include': '#type_params' }
+      { 'include': '#where' }
+      {
+        'name': 'storage.type.hoodlum'
+        'match': '\\bfor\\b'
+      }
+    ]
+  }
+]

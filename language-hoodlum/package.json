@@ -1,0 +1,17 @@
+{
+  "name": "language-hoodlum",
+  "version": "0.1.0",
+  "description": "Hoodlum language support in Atom",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tcr/hoodlum"
+  },
+  "bugs": {
+    "url": "https://github.com/tcr/hoodlum/issues"
+  },
+  "license": "MIT",
+  "engines": {
+    "atom": ">0.50.0"
+  },
+  "dependencies": {}
+}
