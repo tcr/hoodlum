@@ -32,6 +32,7 @@ entity MiniCounter(clk: in, rst: in, ready: out) {
   on clk.posedge {
       if !rst {
           ready <= 0;
+          index <= 0;
       } else {
           if index == 240 - 1 {
               ready <= 1;
@@ -98,7 +99,7 @@ entity SpiMaster(
   on clk.posedge {
       if !rst {
           tx_ready <= 0;
-          transmit_save <= 0;
+          transmit_save <= 1;
       } else {
           // if tx_trigger is high, and we are not transmitting, start
           if transmit_save == transmitting {
@@ -225,6 +226,10 @@ entity Ethernet(
 
 
 
+
+
+
+
     let receivedL: bit[8] = 0;
     let receivedH: bit[8] = 0;
     let NextPacketPointerL: bit[8] = 0x40;
@@ -240,6 +245,8 @@ entity Ethernet(
     on tx_clk.negedge {
         if !rst {
             CS <= 1;
+            _FSM <= 0;
+            tx_valid <= 0;
         } else {
             fsm {
                 LED1 <= 1;
@@ -314,7 +321,7 @@ entity Ethernet(
                     tx_byte <= ESENABLERX; await spi_ready;
                     tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1;
                     tx_byte <= ERCR | EESTATL; await spi_ready;
-                    await spi_ready; dummy <= spi_rx_value;
+                    await spi_ready; dummy := spi_rx_value;
 
                     if dummy > 0 {
                         //Configure ERXDATA for reading.
