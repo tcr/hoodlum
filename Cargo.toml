@@ -1,6 +1,6 @@
 [package]
 name = "hoodlum"
-version = "0.2.0"
+version = "0.3.0"
 authors = ["Tim Ryan <id@timryan.org>"]
 description = "HDL generation library for hardware synthesis."
 license = "MIT"
