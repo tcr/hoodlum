@@ -28,8 +28,8 @@ EntityArgs = Comma<EntityArg>;
 
 EntityArg: (ast::Ident, ast::Dir, Option<i32>) = {
     //(r"[^{}]+" "{" Inner "}")* => (),
-    <i:Ident> ":" <d:EntityArgType> "[" <a:Num> "]" => (i, d, Some(a.to_i32())),
-    <i:Ident> ":" <d:EntityArgType> => (i, d, None),
+    <d:EntityArgType> <i:Ident> ":" "bit" "[" <a:Num> "]" => (i, d, Some(a.to_i32())),
+    <d:EntityArgType> <i:Ident> ":" "bit" => (i, d, None),
 };
 
 EntityArgType: ast::Dir = {
@@ -144,6 +144,9 @@ pub SeqStatement: ast::Seq = {
     <i:Ident> "[" <idx:Expr> "]" <b:BlockType> <v:Expr> ";" => {
         ast::Seq::SetIndex(b, i, idx, v)
     },
+    <i:Ident> "[" <from:Expr> ":" <to:Expr> "]" <b:BlockType> <v:Expr> ";" => {
+        ast::Seq::SetRange(b, i, from, to, v)
+    },
 };
 
 BlockType: ast::BlockType = {
@@ -170,18 +173,19 @@ Expr: ast::Expr = {
 };
 
 Expr2: ast::Expr = {
-  <l:Expr2> "==" <r:Expr3> => ast::Expr::Arith(ast::Op::Eq, Box::new(l), Box::new(r)),
-  Expr3 => <>,
+    <l:Expr2> "==" <r:Expr3> => ast::Expr::Arith(ast::Op::Eq, Box::new(l), Box::new(r)),
+    <l:Expr2> "!=" <r:Expr3> => ast::Expr::Arith(ast::Op::Ne, Box::new(l), Box::new(r)),
+    Expr3 => <>,
 };
 
 Expr3: ast::Expr = {
-  <l:Expr3> "+" <r:Term> => ast::Expr::Arith(ast::Op::Add, Box::new(l), Box::new(r)),
-  <l:Expr3> "-" <r:Term> => ast::Expr::Arith(ast::Op::Sub, Box::new(l), Box::new(r)),
-  <l:Expr3> "<" <r:Term> => ast::Expr::Arith(ast::Op::Lt, Box::new(l), Box::new(r)),
-  <l:Expr3> ">" <r:Term> => ast::Expr::Arith(ast::Op::Gt, Box::new(l), Box::new(r)),
-  <l:Expr3> "|" <r:Term> => ast::Expr::Arith(ast::Op::BinOr, Box::new(l), Box::new(r)),
-  <l:Expr3> "&" <r:Term> => ast::Expr::Arith(ast::Op::BinAnd, Box::new(l), Box::new(r)),
-  Term => <>,
+    <l:Expr3> "+" <r:Term> => ast::Expr::Arith(ast::Op::Add, Box::new(l), Box::new(r)),
+    <l:Expr3> "-" <r:Term> => ast::Expr::Arith(ast::Op::Sub, Box::new(l), Box::new(r)),
+    <l:Expr3> "<" <r:Term> => ast::Expr::Arith(ast::Op::Lt, Box::new(l), Box::new(r)),
+    <l:Expr3> ">" <r:Term> => ast::Expr::Arith(ast::Op::Gt, Box::new(l), Box::new(r)),
+    <l:Expr3> "|" <r:Term> => ast::Expr::Arith(ast::Op::BinOr, Box::new(l), Box::new(r)),
+    <l:Expr3> "&" <r:Term> => ast::Expr::Arith(ast::Op::BinAnd, Box::new(l), Box::new(r)),
+    Term => <>,
 };
 
 Term: ast::Expr = {

@@ -1270,3 +1270,48 @@ fsm {
 endcase
 "#);
 }
+
+// TODO verify this
+#[test]
+fn nested_if() {
+    let code = r#"
+fsm {
+    if dummy > 0 {
+        if status_vector {
+            a <= 0;
+            await spi_ready;
+            a <= 1;
+        }
+    }
+}
+"#;
+
+    let res = parse_results(code, hoodlum::hdl_parser::parse_SeqStatement(code));
+
+    let out = res.to_verilog(&VerilogState::new());
+
+    println!("OK:\n{}", out);
+
+    assert_eq!(out, r#"case (_FSM)
+    0, 1: begin
+        if (((_FSM == 0) && (dummy > 0))) begin
+            if (((_FSM != 1) || spi_ready)) begin
+                if ((_FSM == 1 || _FSM == 2)) begin
+                    a <= 1;
+                end
+                if (((_FSM == 0) && status_vector)) begin
+                    a <= 0;
+                    _FSM = 1;
+                end
+                else begin
+                    _FSM = 0;
+                end
+            end
+        end
+        else begin
+            _FSM = 0;
+        end
+    end
+endcase
+"#);
+}

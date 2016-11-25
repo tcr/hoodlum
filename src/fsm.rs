@@ -82,8 +82,20 @@ fn expand_await(body: Vec<ast::Seq>) -> Vec<ast::Seq> {
                         ast::SeqBlock(vec![ast::Seq::Yield])));
             }
             // TODO this is a temporary hack
-            ast::Seq::Loop(body) => {
-                block.push(ast::Seq::While(ast::Expr::Num(1), body));
+            ast::Seq::Loop(ast::SeqBlock(body)) => {
+                block.push(ast::Seq::While(ast::Expr::Num(1), ast::SeqBlock(expand_await(body))));
+            }
+            ast::Seq::While(cond, ast::SeqBlock(body)) => {
+                block.push(ast::Seq::While(cond, ast::SeqBlock(expand_await(body))));
+            }
+            ast::Seq::If(cond, ast::SeqBlock(then), else_seq) => {
+                block.push(ast::Seq::If(cond,
+                    ast::SeqBlock(expand_await(then)),
+                    if let Some(ast::SeqBlock(else_seq)) = else_seq {
+                        Some(ast::SeqBlock(expand_await(else_seq)))
+                    } else {
+                        None
+                    }));
             }
             _ => block.push(item.clone()),
         };
@@ -272,7 +284,7 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
                 false
             };
             let mut spans = fsm_split_yield(body);
-            if !has_loop {
+            if !has_loop && !is_if {
                 assert!(spans.len() > 1, "loop statements require one yield");
             }
 
@@ -378,7 +390,7 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
             // If we are in a loop, we don't have a "last" case. Add our other
             // cases and exit early.
             if last.is_none() {
-                assert!(has_loop);
+                assert!(has_loop || is_if);
                 let mut other_cases = vec![];
                 other_cases.extend(first_cases);
                 other_cases.extend(inner_cases);

@@ -1,0 +1,622 @@
+entity Second(clk: in, ready: out) {
+  let index: uint{..1200000} = 0;
+
+  on clk.posedge {
+      if index == 12000000 - 1 {
+          ready <= 1;
+      } else {
+          index <= index + 1;
+          ready <= 0;
+      }
+  }
+}
+
+entity Half(clk: in, ready: out) {
+  let index: uint{..1200000} = 0;
+
+  on clk.posedge {
+      if index == 10000000 - 1 {
+          ready <= 1;
+      } else {
+          index <= index + 1;
+          ready <= 0;
+      }
+  }
+}
+
+
+
+entity MiniCounter(clk: in, rst: in, ready: out) {
+  let index: uint{..400} = 0;
+
+  on clk.posedge {
+      if !rst {
+          ready <= 0;
+          index <= 0;
+      } else {
+          if index == 240 - 1 {
+              ready <= 1;
+          } else {
+              index <= index + 1;
+              ready <= 0;
+          }
+      }
+  }
+}
+
+entity SpiMaster(
+  rst: in,
+  clk: in,
+  tx_trigger: in,
+  tx_ready: out,
+  tx_byte: in[8],
+  rx_byte: out[8],
+  spi_clk: out,
+  spi_tx: out,
+  spi_rx: in,
+) {
+  let live_clk: bit[1] = 0;
+
+  // Internal signals.
+  let read_index: uint{0..8} = 0;
+  let internal_clk: bit[1] = 0;
+
+  let _FSM: bit[32] = 0;
+
+  // Generate SPI signal from internal clock + SPI state.
+  always {
+  //    if live_clk {
+  //        spi_clk = internal_clk;
+  //    } else {
+          spi_clk = live_clk && internal_clk;
+  //    }
+  }
+
+  // Generate divided SPI clock.
+  let div_idx: uint{..40} = 0;
+  on clk.negedge {
+      if !rst {
+          div_idx <= 0;
+          internal_clk <= 0;
+      } else {
+          if div_idx == 40 - 1 {
+              internal_clk <= !internal_clk;
+              div_idx <= 0;
+          } else {
+              div_idx <= div_idx + 1;
+          }
+      }
+  }
+
+  // Sample read values from positive clock edge.
+  on internal_clk.posedge {
+      rx_byte[read_index] <= spi_rx;
+  }
+
+  let transmitting = 0;
+  let transmit_save = 1;
+
+  on clk.posedge {
+      if !rst {
+          tx_ready <= 0;
+          transmit_save <= 1;
+      } else {
+          // if tx_trigger is high, and we are not transmitting, start
+          if transmit_save == transmitting {
+              tx_ready <= 1;
+              transmit_save <= !transmitting;
+          } else if tx_trigger {
+              tx_ready <= 0;
+          }
+      }
+  }
+
+  // SPI output state machine.
+  on internal_clk.negedge {
+      fsm {
+          // Wait for transition trigger.
+          spi_tx <= 0;
+          await tx_ready == 0;
+
+          // Enable output clock.
+          live_clk <= 1;
+
+          // Start sequence.
+          read_index <= 7;
+          spi_tx <= tx_byte[7];
+          yield;
+
+          // Write bits.
+          while read_index > 0 {
+              spi_tx <= tx_byte[read_index - 1];
+              read_index <= read_index - 1;
+              yield;
+          }
+
+          // Disable output clock.
+          live_clk <= 0;
+          transmitting <= !transmitting;
+
+          // Loop forever.
+          //loop {
+          //    yield;
+          //}
+      }
+  }
+}
+
+// entity SpiRunner(
+//   rst: in,
+//   clk: in,
+//   tx_trigger: in,
+//   tx_ready: out,
+//   tx_byte: in[8],
+//   rx_byte: out[8],
+//   spi_clk: out,
+//   spi_tx: out,
+//   spi_rx: in,
+// ) {
+// }
+
+entity Ethernet(
+    rst: in,
+    tx_clk: in,
+    LED1: out,
+    LED2: out,
+    LED3: out,
+    LED4: out,
+    CS: out,
+    spi_bit: out, // MOSI
+    spi_rx: in, // MISO
+    spi_clk: out,
+) {
+    let tx_valid = 0;
+    let tx_byte: bit[8] = 0;
+    let spi_ready;
+    let spi_rx_value: bit[8];
+    let spi = SpiMaster {
+        rst: rst,
+        clk: tx_clk,
+        tx_trigger: tx_valid,
+        tx_ready: spi_ready,
+        tx_byte: tx_byte,
+        rx_byte: spi_rx_value,
+        spi_clk: spi_clk,
+        spi_tx: spi_bit,
+        spi_rx: spi_rx
+    };
+
+    let sleep_counter: uint{..1200000} = 0;
+
+    const ERCRU = 0x20;
+    const EWCRU = 0x22;
+    const EEUDASTL = (0x16 | 0x00);
+    const ESSETETHRST = 0b11001010;
+    const EECON2L = (0x0E | 0x60);
+    const EERXSTL = (0x04 | 0x00);
+    const EMAMXFLL = (0x0A | 0x40);
+    const EERXTAILL = (0x06 | 0x00);
+
+    const EMAADR3L = (0x00 | 0x60);
+    const EMAADR3H = (0x01 | 0x60);
+    const EMAADR2L = (0x02 | 0x60);
+    const EMAADR2H = (0x03 | 0x60);
+    const EMAADR1L = (0x04 | 0x60);
+    const EMAADR1H = (0x05 | 0x60);
+
+    const ESENABLERX = 0b11101000;
+
+    const ERCR = 0x00;
+    const EESTATL = (0x1A | 0x00);
+
+    const EERXRDPTL = (0x8A);
+
+    const ERRXDATA = 0b00101100;
+
+
+    let mini_delay_trigger;
+    let mini_delay_result;
+    let mini_delay = MiniCounter {
+      clk: tx_clk,
+      rst: mini_delay_trigger,
+      ready: mini_delay_result,
+    };
+
+#define do_mini_delay mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0
+#define do_cs_toggle tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1
+
+
+#define write_16(reg, A, B) \
+    tx_byte <= EWCRU; \
+    await spi_ready; \
+    tx_byte <= reg; \
+    await spi_ready; \
+    tx_byte <= A; \
+    await spi_ready; \
+    tx_byte <= B; \
+    await spi_ready
+
+#define read_16(reg, A, B) \
+    tx_byte <= ERCRU; \
+    await spi_ready; \
+    tx_byte <= reg; \
+    await spi_ready; \
+    await spi_ready; \
+    A <= spi_rx_value; \
+    await spi_ready; \
+    B := spi_rx_value
+
+#define write_byte(reg) \
+    tx_byte <= reg; \
+    await spi_ready
+
+
+#define read_byte(reg) \
+    await spi_ready; \
+    reg <= spi_rx_value
+
+#define read_byte_imm(reg) \
+    await spi_ready; \
+    reg := spi_rx_value
+
+    let received: bit[16] = 0;
+    let NextPacketPointerL: bit[8] = 0x40;
+    let NextPacketPointerH: bit[8] = 0x53;
+    let _FSM: bit[9] = 0;
+
+    let checksumL: bit[8] = 0;
+    let checksumH: bit[8] = 0;
+
+    let dummy: bit[8] = 0;
+    let status_vector: bit[8] = 0;
+
+    let opcode: bit[16] = 0;
+    let proto: bit[16] = 0;
+    let arp_test: bit[16] = 0;
+
+    on tx_clk.negedge {
+        if !rst {
+            CS <= 1;
+            _FSM <= 0;
+            tx_valid <= 0;
+        } else {
+            fsm {
+                LED1 <= 1;
+
+                CS <= 0;
+                tx_valid <= 1;
+
+                // enc424j600_init()
+
+                write_16(EEUDASTL, 0x34, 0x12);
+
+                do_cs_toggle;
+
+                read_16(EEUDASTL, checksumL, checksumH);
+                if checksumL == 0x34 && checksumH == 0x12 {
+                    LED2 <= 1;
+                }
+
+                do_cs_toggle;
+
+                write_byte(ESSETETHRST);
+
+                tx_valid <= 0;
+                sleep_counter := 0;
+                while sleep_counter < 360 {
+                    sleep_counter := sleep_counter + 1;
+                    yield;
+                }
+                yield;
+
+                tx_valid <= 1;
+
+                write_16(EECON2L, 0x00, 0xCB); // (magic number)
+                do_cs_toggle;
+                write_16(EERXSTL, 0x40, 0x53); // RX_BUFFER_START 0x5340
+                do_cs_toggle;
+                write_16(EMAMXFLL, 0x42, 0x02); // MAX_FRAMELEN 0x0242
+                do_cs_toggle;
+                write_16(EERXTAILL, 0xFE, 0x5F); // (magic number)
+                do_cs_toggle;
+
+                // Read MAC address
+                read_16(EMAADR1L, dummy, dummy); // MAC 0:1
+                do_cs_toggle;
+                read_16(EMAADR2L, dummy, dummy); // MAC 2:3
+                do_cs_toggle;
+                read_16(EMAADR3L, dummy, dummy); // MAC 4:5
+
+                do_cs_toggle;
+                write_byte(ESENABLERX);
+
+                //Memory configuration
+                //The ENC424j600 has 0x6000 (24kB) bytes of memory
+                //We have to make good use of it.
+                // 0x0000
+                //  [Scratchpad]
+                // 0x0400
+                //  [TCP packets (578+42)*TCP_SOCKETS
+                // 0x1b84 (assuming 10 sockets)
+                //  [unused area]
+                // 0x5340 (RX_BUFFER_START (0x6000-RX_BUFFER_SIZE))
+                //  [RX Buffer]
+                // 0x6000 (End of standard SRAM)
+
+                NextPacketPointerL <= 0x40;
+                NextPacketPointerH <= 0x53;
+
+                // enc424j600_recvpack()
+
+                loop {
+                    do_cs_toggle;
+                    write_byte(ESENABLERX);
+                    do_cs_toggle;
+                    write_byte(ERCR | EESTATL);
+                    read_byte_imm(dummy);
+
+                    if dummy > 0 {
+                        //Configure ERXDATA for reading.
+                        do_cs_toggle;
+                        write_16(EERXRDPTL, NextPacketPointerL, NextPacketPointerH);
+                        do_cs_toggle;
+
+                        //Start reading!!!
+                        write_byte(ERRXDATA);
+
+                        // Read next packet pointer.
+                        read_byte(NextPacketPointerL);
+                        read_byte(NextPacketPointerH);
+
+                        // Read received byte count.
+                        read_byte(received[0:8]);
+                        read_byte(received[8:16]);
+
+                        read_byte_imm(status_vector);
+                        read_byte(dummy);
+                        if status_vector & (1 << 7) {
+                            LED3 <= 1;
+
+                            // Good packet.
+                            read_byte(dummy);
+                            read_byte(dummy);
+
+                            if received > 8 {
+                                // macto (ignore) our mac filter handles this.
+                                read_byte(dummy);
+                                read_byte(dummy);
+                                read_byte(dummy);
+                                read_byte(dummy);
+                                read_byte(dummy);
+                                read_byte(dummy);
+
+                                // Download macfrom
+                                //TODO enc424j600_popblob( macfrom, 6 );
+                                read_byte(dummy);
+                                read_byte(dummy);
+                                read_byte(dummy);
+                                read_byte(dummy);
+                                read_byte(dummy);
+                                read_byte(dummy);
+
+                                //Make sure it is ethernet!
+                                read_byte_imm(dummy);
+                                if (dummy != 0x08) {
+                                    LED4 <= 1;
+                                    // TODO break;
+                                }
+
+                                //Is it ARP?
+                                read_byte_imm(arp_test);
+                                if (arp_test == 0x06) {
+                                    //Hardware type
+                                    read_byte(dummy);
+                                    read_byte(dummy);
+
+                                    // Proto
+                                    read_byte(proto[0:8]);
+                                    read_byte(proto[8:16]);
+
+                                    //hwsize, protosize
+                                    read_byte(dummy);
+                                    read_byte(dummy);
+
+                                    //XXX: This includes "code" as well, it seems.
+                                    read_byte_imm(opcode[0:8]);
+                                    read_byte_imm(opcode[8:16]);
+
+                                    // ARP Request
+                                    if opcode == 1 {
+                                        // unsigned char match;
+                                        //
+                                        // enc424j600_popblob( sendermac_ip_and_targetmac, 16 );
+                                        //
+                                        // match = 1;
+                                        //
+                                        // //Target IP (check for copy)
+                                        // for( i = 0; i < 4; i++ )
+                                        //     if( enc424j600_pop8() != MyIP[i] )
+                                        //         match = 0;
+                                        //
+                                        // if( match == 0 )
+                                        //     return;
+                                        //
+                                        // //We must send a response, so we termiante the packet now.
+                                        // enc424j600_finish_callback_now();
+                                        // enc424j600_startsend( NetGetScratch() );
+                                        // send_etherlink_header( 0x0806 );
+                                        //
+                                        // write_reg(0x00); write_reg(0x01); //Ethernet
+                                        // write_reg(proto[0:8]); write_reg(proto[8:16]);  //Protocol
+                                        // write_reg(0x06); write_reg(0x04); //HW size, Proto size
+                                        // write_reg(0x00); write_reg(0x02); //Reply
+                                        //
+                                        // enc424j600_pushblob( MyMAC, 6 );
+                                        // enc424j600_pushblob( MyIP, 4 );
+                                        // enc424j600_pushblob( sendermac_ip_and_targetmac, 10 ); // do not send target mac.
+                                        //
+                                        // enc424j600_endsend();
+                                    }
+
+                                    // ARP Reply
+                                    if opcode == 2 {
+                                        // uint8_t sender_mac_and_ip_and_comp_mac[16];
+                                        // enc424j600_popblob( sender_mac_and_ip_and_comp_mac, 16 );
+                                        // enc424j600_finish_callback_now();
+                                        //
+                                        //
+                                        // //First, make sure that we are the ones who are supposed to receive the ARP.
+                                        // for( i = 0; i < 6; i++ )
+                                        // {
+                                        //     if( sender_mac_and_ip_and_comp_mac[i+10] != MyMAC[i] )
+                                        //         break;
+                                        // }
+                                        //
+                                        // if( i != 6 )
+                                        //     break;
+                                        //
+                                        // //Were the right recipent.  Put it in the table.
+                                        // memcpy( &ClientArpTable[ClientArpTablePointer], sender_mac_and_ip_and_comp_mac, 10 );
+                                        //
+                                        // ClientArpTablePointer = (ClientArpTablePointer+1)%ARP_CLIENT_TABLE_SIZE;
+                                    }
+                                }
+
+                                if (arp_test != 0x06) {
+                                    // Standard IP
+                                    //So, we're expecting a '45
+                                    read_byte_imm(dummy);
+                                    if (dummy != 0x45) {
+                                        // ERROR: Not an IP packet
+                                        LED4 <= 1;
+                                    }
+
+                                    //differentiated services field.
+                                    read_byte(dummy);
+                                    read_byte(dummy);
+
+                                    // ip total len
+                                    // iptotallen =
+                                    read_byte(dummy);
+                                    read_byte(dummy);
+
+                                    //ID, Offset+FLAGS+TTL (5 bytes)
+                                    read_byte(dummy);
+                                    read_byte(dummy);
+                                    read_byte(dummy);
+                                    read_byte(dummy);
+                                    read_byte(dummy);
+
+                                    // TODO
+                                    // ipproto = enc424j600_pop8();
+
+                                    //header checksum
+                                    read_byte(dummy);
+                                    read_byte(dummy);
+
+                                    // popblob
+                                    // enc424j600_popblob( ipsource, 4 );
+                                    //
+                                    // for (i = 0; i < 4; i++) {
+                                    //     unsigned char m = ~MyMask[i];
+                                    //     unsigned char ch = enc424j600_pop8();
+                                    //     if (ch == MyIP[i] || (ch & m) == 0xff) {
+                                    //         continue;
+                                    //     }
+                                    //     is_the_packet_for_me = 0;
+                                    // }
+                                    //
+                                    // //Tricky, for DHCP packets, we have to detect it even if it is not to us.
+                                    // if (ipproto == 17) {
+                                    //     remoteport = enc424j600_pop16();
+                                    //     localport = enc424j600_pop16();
+                                    // }
+                                    //
+                                    // if (!is_the_packet_for_me) {
+                                    //     // ERROR: Packet is not for us
+                                    //     return 1;
+                                    // }
+                                    //
+                                    // //XXX TODO Handle IPL > 5  (IHL?)
+                                    //
+                                    // switch(ipproto) {
+                                    //     // ICMP
+                                    //     case 1: {
+                                    //         HandleICMP();
+                                    //         break;
+                                    //     }
+                                    //
+                                    //     // UDP
+                                    //     case 17: {
+                                    //         HandleUDP(enc424j600_pop16());
+                                    //         break;
+                                    //     }
+                                    //
+                                    //     default: {
+                                    //         break;
+                                    //     }
+                                    // }
+                                    //
+                                    // return 0;
+                                }
+                            }
+                        }
+                        // else {
+                          // ERROR: Bad packet
+                          // I have never observed tis code getting called, even when I saw dropped packets.
+                        // }
+                    }
+
+                    tx_valid <= 0;
+                    yield;
+                }
+
+                CS <= 1;
+                loop {
+                    yield;
+                }
+            }
+        }
+    }
+}
+
+entity Main(
+    clk: in,
+    LED1: out,
+    LED2: out,
+    LED3: out,
+    LED4: out,
+    LED5: out,
+    PMOD1: out,
+    PMOD2: out,
+    PMOD3: in,
+    PMOD4: out,
+    PMOD7: out,
+    //PMOD8: out,
+    //PMOD9: out,
+    //PMOD10: out,
+) {
+    // PMOD1 = CS
+    // PMOD2 = MOSI
+    // PMOD3 = MISO
+    // PMOD4 = SCLK
+    let ready;
+    let sec = Second { clk: clk, ready: ready };
+    let half = Half { clk: clk, ready: PMOD7 };
+    let ether = Ethernet {
+        rst: ready,
+        tx_clk: clk,
+        LED1: LED1,
+        LED2: LED2,
+        LED3: LED3,
+        LED4: LED4,
+        CS: PMOD1,
+        spi_bit: PMOD2,
+        spi_rx: PMOD3,
+        spi_clk: PMOD4,
+    };
+
+    always {
+        LED5 = !ready;
+    }
+}

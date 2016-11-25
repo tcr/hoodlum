@@ -1,0 +1,15 @@
+     entity Ethernet(     rst: in,     tx_clk: in,     LED1: out,     LED2: out,     LED3: out,     LED4: out,     CS: out,     spi_bit: out, // MOSI
+    spi_clk: out, ) {
+                     on tx_clk.negedge {
+                     fsm {
+                         loop {
+                              if dummy > 0 {
+                                 if status_vector {
+                                    await spi_ready;
+                                 }
+                            }
+                             yield;
+                         }
+                     }
+                 }
+                  }

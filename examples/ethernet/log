@@ -1,0 +1,251 @@
+delta settings:
+	granularity: line
+	input: ethernet.hdl
+
+delta start                             0 sec/00:00:00	Tue Nov 22 23:58:13 2016
+ethernet.hdl, lines: 210                0 sec/00:00:00	Tue Nov 22 23:58:13 2016
+ethernet.hdl, lines: 0                  0 sec/00:00:00	Tue Nov 22 23:58:13 2016
+delta done                              0 sec/00:00:00	Tue Nov 22 23:58:13 2016
+delta settings:
+	granularity: line
+	input: ethernet.hdl
+
+delta start                             0 sec/00:00:00	Tue Nov 22 23:58:23 2016
+delta settings:
+	granularity: line
+	input: ethernet.hdl
+
+delta start                             0 sec/00:00:00	Tue Nov 22 23:58:40 2016
+ethernet.hdl, lines: 340                0 sec/00:00:00	Tue Nov 22 23:58:40 2016
+ethernet.hdl, lines: 0                  0 sec/00:00:00	Tue Nov 22 23:58:40 2016
+delta done                              0 sec/00:00:00	Tue Nov 22 23:58:40 2016
+delta settings:
+	granularity: line
+	input: ethernet.hdl
+
+delta start                             0 sec/00:00:00	Tue Nov 22 23:59:18 2016
+ethernet.hdl, lines: 340                0 sec/00:00:00	Tue Nov 22 23:59:18 2016
+ethernet.hdl, lines: 0                  0 sec/00:00:00	Tue Nov 22 23:59:18 2016
+delta done                              0 sec/00:00:00	Tue Nov 22 23:59:18 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:00:33 2016
+out.hdl, lines: 479                     0 sec/00:00:00	Wed Nov 23 00:00:33 2016
+out.hdl, lines: 359                     0 sec/00:00:00	Wed Nov 23 00:00:33 2016
+out.hdl, lines: 329                     0 sec/00:00:00	Wed Nov 23 00:00:33 2016
+out.hdl, lines: 314                     1 sec/00:00:01	Wed Nov 23 00:00:34 2016
+out.hdl, lines: 299                     1 sec/00:00:01	Wed Nov 23 00:00:34 2016
+out.hdl, lines: 284                     1 sec/00:00:01	Wed Nov 23 00:00:34 2016
+out.hdl, lines: 269                     1 sec/00:00:01	Wed Nov 23 00:00:34 2016
+out.hdl, lines: 254                     1 sec/00:00:01	Wed Nov 23 00:00:34 2016
+out.hdl, lines: 246                     1 sec/00:00:01	Wed Nov 23 00:00:34 2016
+out.hdl, lines: 239                     1 sec/00:00:01	Wed Nov 23 00:00:34 2016
+out.hdl, lines: 231                     1 sec/00:00:01	Wed Nov 23 00:00:34 2016
+out.hdl, lines: 224                     1 sec/00:00:01	Wed Nov 23 00:00:34 2016
+out.hdl, lines: 216                     1 sec/00:00:01	Wed Nov 23 00:00:34 2016
+out.hdl, lines: 208                     1 sec/00:00:01	Wed Nov 23 00:00:34 2016
+out.hdl, lines: 205                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 202                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 198                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 195                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 191                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 187                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 183                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 179                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 175                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 171                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 168                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 164                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 160                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 157                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 153                     2 sec/00:00:02	Wed Nov 23 00:00:35 2016
+out.hdl, lines: 151                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 149                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 147                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 145                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 143                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 141                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 140                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 138                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 136                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 134                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 132                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 130                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 128                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 127                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 125                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 124                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 122                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 120                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 119                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 117                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 115                     3 sec/00:00:03	Wed Nov 23 00:00:36 2016
+out.hdl, lines: 113                     4 sec/00:00:04	Wed Nov 23 00:00:37 2016
+out.hdl, lines: 113                     4 sec/00:00:04	Wed Nov 23 00:00:37 2016
+out.hdl, lines: 112                     4 sec/00:00:04	Wed Nov 23 00:00:37 2016
+out.hdl, lines: 111                     4 sec/00:00:04	Wed Nov 23 00:00:37 2016
+out.hdl, lines: 110                     4 sec/00:00:04	Wed Nov 23 00:00:37 2016
+out.hdl, lines: 109                     4 sec/00:00:04	Wed Nov 23 00:00:37 2016
+out.hdl, lines: 108                     4 sec/00:00:04	Wed Nov 23 00:00:37 2016
+out.hdl, lines: 107                     4 sec/00:00:04	Wed Nov 23 00:00:37 2016
+out.hdl, lines: 106                     4 sec/00:00:04	Wed Nov 23 00:00:37 2016
+out.hdl, lines: 105                     5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 104                     5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 103                     5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 102                     5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 101                     5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 100                     5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 99                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 98                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 97                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 96                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 95                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 94                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 93                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 92                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 91                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 90                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 89                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 88                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 87                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 86                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 85                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+out.hdl, lines: 84                      5 sec/00:00:05	Wed Nov 23 00:00:38 2016
+delta done                              6 sec/00:00:06	Wed Nov 23 00:00:39 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:00:42 2016
+out.hdl, lines: 51                      0 sec/00:00:00	Wed Nov 23 00:00:42 2016
+out.hdl, lines: 44                      0 sec/00:00:00	Wed Nov 23 00:00:42 2016
+out.hdl, lines: 41                      0 sec/00:00:00	Wed Nov 23 00:00:42 2016
+out.hdl, lines: 38                      0 sec/00:00:00	Wed Nov 23 00:00:42 2016
+out.hdl, lines: 35                      1 sec/00:00:01	Wed Nov 23 00:00:43 2016
+out.hdl, lines: 33                      1 sec/00:00:01	Wed Nov 23 00:00:43 2016
+out.hdl, lines: 31                      1 sec/00:00:01	Wed Nov 23 00:00:43 2016
+out.hdl, lines: 29                      1 sec/00:00:01	Wed Nov 23 00:00:43 2016
+out.hdl, lines: 29                      1 sec/00:00:01	Wed Nov 23 00:00:43 2016
+out.hdl, lines: 28                      1 sec/00:00:01	Wed Nov 23 00:00:43 2016
+out.hdl, lines: 27                      1 sec/00:00:01	Wed Nov 23 00:00:43 2016
+out.hdl, lines: 26                      1 sec/00:00:01	Wed Nov 23 00:00:43 2016
+out.hdl, lines: 25                      1 sec/00:00:01	Wed Nov 23 00:00:43 2016
+delta done                              1 sec/00:00:01	Wed Nov 23 00:00:43 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:00:44 2016
+out.hdl, lines: 25                      0 sec/00:00:00	Wed Nov 23 00:00:44 2016
+out.hdl, lines: 18                      0 sec/00:00:00	Wed Nov 23 00:00:44 2016
+out.hdl, lines: 15                      0 sec/00:00:00	Wed Nov 23 00:00:44 2016
+out.hdl, lines: 13                      1 sec/00:00:01	Wed Nov 23 00:00:45 2016
+delta done                              1 sec/00:00:01	Wed Nov 23 00:00:45 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:00:46 2016
+out.hdl, lines: 13                      0 sec/00:00:00	Wed Nov 23 00:00:46 2016
+out.hdl, lines: 6                       0 sec/00:00:00	Wed Nov 23 00:00:46 2016
+out.hdl, lines: 6                       0 sec/00:00:00	Wed Nov 23 00:00:46 2016
+delta done                              0 sec/00:00:00	Wed Nov 23 00:00:46 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:00:47 2016
+out.hdl, lines: 6                       0 sec/00:00:00	Wed Nov 23 00:00:47 2016
+out.hdl, lines: 6                       0 sec/00:00:00	Wed Nov 23 00:00:47 2016
+delta done                              0 sec/00:00:00	Wed Nov 23 00:00:47 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:00:48 2016
+out.hdl, lines: 6                       0 sec/00:00:00	Wed Nov 23 00:00:48 2016
+out.hdl, lines: 6                       0 sec/00:00:00	Wed Nov 23 00:00:48 2016
+delta done                              0 sec/00:00:00	Wed Nov 23 00:00:48 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:00:51 2016
+out.hdl, lines: 20                      0 sec/00:00:00	Wed Nov 23 00:00:51 2016
+out.hdl, lines: 17                      0 sec/00:00:00	Wed Nov 23 00:00:51 2016
+out.hdl, lines: 17                      0 sec/00:00:00	Wed Nov 23 00:00:51 2016
+delta done                              0 sec/00:00:00	Wed Nov 23 00:00:51 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:00:52 2016
+out.hdl, lines: 17                      0 sec/00:00:00	Wed Nov 23 00:00:52 2016
+out.hdl, lines: 17                      1 sec/00:00:01	Wed Nov 23 00:00:53 2016
+delta done                              1 sec/00:00:01	Wed Nov 23 00:00:53 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:00:53 2016
+out.hdl, lines: 17                      0 sec/00:00:00	Wed Nov 23 00:00:53 2016
+out.hdl, lines: 17                      1 sec/00:00:01	Wed Nov 23 00:00:54 2016
+delta done                              1 sec/00:00:01	Wed Nov 23 00:00:54 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:00:56 2016
+out.hdl, lines: 4                       0 sec/00:00:00	Wed Nov 23 00:00:56 2016
+out.hdl, lines: 4                       0 sec/00:00:00	Wed Nov 23 00:00:56 2016
+delta done                              0 sec/00:00:00	Wed Nov 23 00:00:56 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:00:57 2016
+out.hdl, lines: 4                       0 sec/00:00:00	Wed Nov 23 00:00:57 2016
+out.hdl, lines: 4                       0 sec/00:00:00	Wed Nov 23 00:00:57 2016
+delta done                              0 sec/00:00:00	Wed Nov 23 00:00:57 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:00:59 2016
+out.hdl, lines: 17                      0 sec/00:00:00	Wed Nov 23 00:00:59 2016
+out.hdl, lines: 17                      0 sec/00:00:00	Wed Nov 23 00:00:59 2016
+delta done                              0 sec/00:00:00	Wed Nov 23 00:00:59 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:01:02 2016
+out.hdl, lines: 17                      0 sec/00:00:00	Wed Nov 23 00:01:02 2016
+out.hdl, lines: 17                      0 sec/00:00:00	Wed Nov 23 00:01:02 2016
+delta done                              0 sec/00:00:00	Wed Nov 23 00:01:02 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:01:32 2016
+out.hdl, lines: 17                      0 sec/00:00:00	Wed Nov 23 00:01:32 2016
+out.hdl, lines: 17                      0 sec/00:00:00	Wed Nov 23 00:01:32 2016
+delta done                              0 sec/00:00:00	Wed Nov 23 00:01:32 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:01:47 2016
+out.hdl, lines: 15                      0 sec/00:00:00	Wed Nov 23 00:01:47 2016
+out.hdl, lines: 15                      0 sec/00:00:00	Wed Nov 23 00:01:47 2016
+delta done                              0 sec/00:00:00	Wed Nov 23 00:01:47 2016
+delta settings:
+	granularity: line
+	input: out.hdl
+
+delta start                             0 sec/00:00:00	Wed Nov 23 00:01:52 2016
+out.hdl, lines: 15                      0 sec/00:00:00	Wed Nov 23 00:01:52 2016
+out.hdl, lines: 15                      0 sec/00:00:00	Wed Nov 23 00:01:52 2016
+delta done                              0 sec/00:00:00	Wed Nov 23 00:01:52 2016

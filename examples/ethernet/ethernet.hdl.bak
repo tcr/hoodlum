@@ -1,4 +1,4 @@
-entity Second(in clk: bit, out ready: bit) {
+entity Second(clk: in, ready: out) {
   let index: uint{..1200000} = 0;
 
   on clk.posedge {
@@ -11,7 +11,7 @@ entity Second(in clk: bit, out ready: bit) {
   }
 }
 
-entity Half(in clk: bit, out ready: bit) {
+entity Half(clk: in, ready: out) {
   let index: uint{..1200000} = 0;
 
   on clk.posedge {
@@ -26,7 +26,7 @@ entity Half(in clk: bit, out ready: bit) {
 
 
 
-entity MiniCounter(in clk: bit, in rst: bit, out ready: bit) {
+entity MiniCounter(clk: in, rst: in, ready: out) {
   let index: uint{..400} = 0;
 
   on clk.posedge {
@@ -45,15 +45,15 @@ entity MiniCounter(in clk: bit, in rst: bit, out ready: bit) {
 }
 
 entity SpiMaster(
-  in rst: bit,
-  in clk: bit,
-  in tx_trigger: bit,
-  out tx_ready: bit,
-  in tx_byte: bit[8],
-  out rx_byte: bit[8],
-  out spi_clk: bit,
-  out spi_tx: bit,
-  in spi_rx: bit,
+  rst: in,
+  clk: in,
+  tx_trigger: in,
+  tx_ready: out,
+  tx_byte: in[8],
+  rx_byte: out[8],
+  spi_clk: out,
+  spi_tx: out,
+  spi_rx: in,
 ) {
   let live_clk: bit[1] = 0;
 
@@ -146,16 +146,16 @@ entity SpiMaster(
 }
 
 entity Ethernet(
-    in rst: bit,
-    in tx_clk: bit,
-    out LED1: bit,
-    out LED2: bit,
-    out LED3: bit,
-    out LED4: bit,
-    out CS: bit,
-    out spi_bit: bit, // MOSI
-    in spi_rx: bit, // MISO
-    out spi_clk: bit,
+    rst: in,
+    tx_clk: in,
+    LED1: out,
+    LED2: out,
+    LED3: out,
+    LED4: out,
+    CS: out,
+    spi_bit: out, // MOSI
+    spi_rx: in, // MISO
+    spi_clk: out,
 ) {
     let tx_valid = 0;
     let tx_byte: bit[8] = 0;
@@ -246,8 +246,7 @@ entity Ethernet(
     await spi_ready; \
     reg := spi_rx_value
 
-    let receivedL: bit[8] = 0;
-    let receivedH: bit[8] = 0;
+    let received: bit[16] = 0;
     let NextPacketPointerL: bit[8] = 0x40;
     let NextPacketPointerH: bit[8] = 0x53;
     let _FSM: bit[9] = 0;
@@ -353,13 +352,17 @@ entity Ethernet(
                         read_byte(NextPacketPointerH);
 
                         // Read received byte count.
-                        read_byte(receivedL);
-                        read_byte(receivedH);
+                        read_byte(received[0:8]);
+                        read_byte(received[8:16]);
 
-                        read_byte(status_vector);
+                        read_byte_imm(status_vector);
                         read_byte(dummy);
                         if status_vector & (1 << 7) {
                             LED3 <= 1;
+
+                            // Good packet.
+                            read_byte(dummy);
+                            read_byte(dummy);
                         }
                         // else {
                           // ERROR: Bad packet
@@ -381,17 +384,17 @@ entity Ethernet(
 }
 
 entity Main(
-    in clk: bit,
-    out LED1: bit,
-    out LED2: bit,
-    out LED3: bit,
-    out LED4: bit,
-    out LED5: bit,
-    out PMOD1: bit,
-    out PMOD2: bit,
-    in PMOD3: bit,
-    out PMOD4: bit,
-    out PMOD7: bit,
+    clk: in,
+    LED1: out,
+    LED2: out,
+    LED3: out,
+    LED4: out,
+    LED5: out,
+    PMOD1: out,
+    PMOD2: out,
+    PMOD3: in,
+    PMOD4: out,
+    PMOD7: out,
     //PMOD8: out,
     //PMOD9: out,
     //PMOD10: out,

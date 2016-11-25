@@ -48,6 +48,7 @@ pub enum Seq {
     If(Expr, SeqBlock, Option<SeqBlock>),
     Set(BlockType, Ident, Expr),
     SetIndex(BlockType, Ident, Expr, Expr),
+    SetRange(BlockType, Ident, Expr, Expr, Expr),
     Match(Expr, Vec<(Vec<Expr>, SeqBlock)>),
 
     While(Expr, SeqBlock),

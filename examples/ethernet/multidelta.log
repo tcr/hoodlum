@@ -1,0 +1,162 @@
+verify the script passes now
+making a backup copy of ethernet.hdl
+cp -f ethernet.hdl ethernet.hdl.bak
+flattening ethernet.hdl
+/usr/local/bin/topformflat 2 <ethernet.hdl.bak >ethernet.hdl
+verify still passes script
+applying delta to ethernet.hdl
+/usr/local/bin/delta -in_place -test=./test.sh ethernet.hdl
+verify the script passes now
+making a backup copy of ethernet.hdl
+cp -f ethernet.hdl ethernet.hdl.bak
+flattening ethernet.hdl
+/usr/local/bin/topformflat 10 <ethernet.hdl.bak >ethernet.hdl
+verify still passes script
+applying delta to ethernet.hdl
+/usr/local/bin/delta -in_place -test=./test.sh ethernet.hdl
+verify the script passes now
+making a backup copy of ethernet.hdl
+cp -f ethernet.hdl ethernet.hdl.bak
+flattening ethernet.hdl
+/usr/local/bin/topformflat 10 <ethernet.hdl.bak >ethernet.hdl
+verify still passes script
+applying delta to ethernet.hdl
+/usr/local/bin/delta -in_place -test=./test.sh ethernet.hdl
+verify the script passes now
+verify the script passes now
+making a backup copy of ethernet.hdl
+cp -f ethernet.hdl ethernet.hdl.bak
+flattening ethernet.hdl
+/usr/local/bin/topformflat 10 <ethernet.hdl.bak >ethernet.hdl
+verify still passes script
+applying delta to ethernet.hdl
+/usr/local/bin/delta -in_place -test=./test.sh ethernet.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 10 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 2 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 2 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 2 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 2 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 2 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 10 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 10 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 10 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 1 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 1 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 10 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 100 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 100 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 100 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+making a backup copy of out.hdl
+cp -f out.hdl out.hdl.bak
+flattening out.hdl
+/usr/local/bin/topformflat 100 <out.hdl.bak >out.hdl
+verify still passes script
+applying delta to out.hdl
+/usr/local/bin/delta -in_place -test=./test.sh out.hdl

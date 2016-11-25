@@ -381,6 +381,15 @@ impl ToVerilog for ast::Seq {
                     block=block_type.to_verilog(v),
                     value=value.to_verilog(v))
             }
+            ast::Seq::SetRange(ref block_type, ref id, ref from, ref to, ref value) => {
+                format!("{ind}{name}[{to}-1:{from}] {block} {value};\n",
+                    ind=v.indent,
+                    name=id.to_verilog(v),
+                    from=from.to_verilog(v),
+                    to=to.to_verilog(v),
+                    block=block_type.to_verilog(v),
+                    value=value.to_verilog(v))
+            }
             ast::Seq::Match(ref cond, ref arms) => {
                 format!("{ind}case ({cond})\n{body}{ind}endcase\n",
                     ind=v.indent,
