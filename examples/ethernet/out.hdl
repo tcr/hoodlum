@@ -145,6 +145,30 @@ entity SpiMaster(
   }
 }
 
+entity SpiController(
+  in rst: bit,
+  in clk: bit,
+  in trigger: bit,
+  out ready: bit,
+  in tx_bytes: bit[128],
+  out rx_bytes: bit[128],
+  out spi_clk: bit,
+  out spi_miso: bit,
+  in spi_mosi: bit,
+) {
+    let spi = SpiMaster {
+        rst: rst,
+        clk: clk,
+        tx_trigger: trigger,
+        tx_ready: ready,
+        tx_byte: tx_bytes[0:8],
+        rx_byte: rx_bytes[0:8],
+        spi_clk: spi_clk,
+        spi_rx: spi_miso,
+        spi_tx: spi_mosi,
+    };
+}
+
 entity Ethernet(
     in rst: bit,
     in tx_clk: bit,

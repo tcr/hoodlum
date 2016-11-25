@@ -83,8 +83,8 @@ Decl: ast::Decl = {
     },
 };
 
-KeyPair: (ast::Ident, ast::Ident) = {
-    <k:Ident> ":" <v:Ident> => {
+KeyPair: (ast::Ident, ast::Expr) = {
+    <k:Ident> ":" <v:Expr> => {
       (k, v)
     },
 };
