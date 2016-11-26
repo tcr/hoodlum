@@ -1,0 +1,155 @@
+entity Second(in clk: bit, out ready: bit) {
+  let index: uint{..1200000} = 0;
+
+  on clk.posedge {
+      if index == 12000000 - 1 {
+          ready <= 1;
+      } else {
+          index <= index + 1;
+          ready <= 0;
+      }
+  }
+}
+
+entity Half(in clk: bit, out ready: bit) {
+  let index: uint{..1200000} = 0;
+
+  on clk.posedge {
+      if index == 10000000 - 1 {
+          ready <= 1;
+      } else {
+          index <= index + 1;
+          ready <= 0;
+      }
+  }
+}
+
+entity Other(
+    in rst: bit,
+    in clk: bit,
+    in trigger: bit,
+    out ready: bit,
+    in LED: bit,
+) {
+    let _FSM: bit[9] = 0;
+    on clk.negedge {
+        if !rst {
+            ready <= 0;
+        } else {
+            fsm {
+                yield;
+                yield;
+                yield;
+                yield;
+                yield;
+                ready <= 1;
+                yield;
+
+                // Wait for trigger.
+                while !trigger {
+                    yield;
+                }
+                LED <= 1;
+            }
+        }
+    }
+}
+
+entity Ethernet(
+    in rst: bit,
+    in tx_clk: bit,
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+    out LED4: bit,
+    out CS: bit,
+    out spi_bit: bit, // MOSI
+    in spi_rx: bit, // MISO
+    out spi_clk: bit,
+) {
+    // Internal values.
+    let other_trigger;
+    let other_ready;
+    let spi = Other {
+        rst: rst,
+        clk: tx_clk,
+        trigger: other_trigger,
+        ready: other_ready,
+        LED: LED1,
+    };
+
+    let _FSM: bit[9] = 0;
+    let dummy: bit[2];
+    on tx_clk.negedge {
+        if !rst {
+            _FSM <= 0;
+            other_trigger <= 1;
+            dummy <= 0;
+        } else {
+            match dummy {
+                0 => {
+                    other_trigger <= 1;
+                    dummy <= 1;
+                }
+                1 => {
+                    if other_ready {
+                        other_trigger := 0;
+                        LED2 <= 1;
+                        dummy <= 2;
+                    } else {
+                        other_trigger := 1;
+                    }
+                },
+                2 => {
+                },
+            }
+            // fsm {
+            //     await other_ready;
+            //     other_trigger := 0;
+            //     LED2 <= 1;
+            //
+            //     loop { yield; }
+            // }
+        }
+    }
+}
+
+entity Main(
+    in clk: bit,
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+    out LED4: bit,
+    out LED5: bit,
+    out PMOD1: bit,
+    out PMOD2: bit,
+    in PMOD3: bit,
+    out PMOD4: bit,
+    out PMOD7: bit,
+    //PMOD8: out,
+    //PMOD9: out,
+    //PMOD10: out,
+) {
+    // PMOD1 = CS
+    // PMOD2 = MOSI
+    // PMOD3 = MISO
+    // PMOD4 = SCLK
+    let ready;
+    let sec = Second { clk: clk, ready: ready };
+    let ether = Ethernet {
+        rst: ready,
+        tx_clk: clk,
+        LED1: LED1,
+        LED2: LED2,
+        LED3: LED3,
+        LED4: LED4,
+        CS: PMOD1,
+        spi_bit: PMOD2,
+        spi_rx: PMOD3,
+        spi_clk: PMOD4,
+    };
+
+    always {
+        LED5 = !ready;
+    }
+}
