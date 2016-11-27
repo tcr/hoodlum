@@ -31,7 +31,7 @@ pub enum Decl {
     Let(Ident, Ident, Vec<(Ident, Expr)>),
     Const(Ident, Expr),
     On(EdgeRef, SeqBlock),
-    Always(CombBlock),
+    Always(SeqBlock),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -60,14 +60,14 @@ pub enum Seq {
     FsmTransition(u32),
 }
 
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct CombBlock(pub Vec<Comb>);
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub enum Comb {
-    If(Expr, CombBlock, Option<CombBlock>),
-    Assign(Ident, Expr),
-}
+//#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+//pub struct CombBlock(pub Vec<Comb>);
+//
+//#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+//pub enum Comb {
+//    If(Expr, CombBlock, Option<CombBlock>),
+//    Assign(Ident, Expr),
+//}
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Op {

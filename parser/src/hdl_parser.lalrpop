@@ -8,7 +8,7 @@ pub Code: ast::Code = {
 };
 
 Comma<T>: Vec<T> = { // (1)
-    <v:(<T> ",")*> <e:T?> => match e { // (2)
+    <v:(<T> ",")*> <e:T?> => match e {
         None => v,
         Some(e) => {
             let mut v = v;
@@ -17,6 +17,18 @@ Comma<T>: Vec<T> = { // (1)
         }
     }
 };
+
+Semicolon<T>: Vec<T> = { // (1)
+    <v:(<T> ";")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
 
 Entity: ast::Entity = { // (1)
     "entity" <i:Ident> "(" <a:EntityArgs> ")" "{" <b:EntityBody> "}" => {
@@ -94,12 +106,30 @@ Edge: ast::Edge = {
     "negedge" => ast::Edge::Neg,
 };
 
-CombStatements: ast::CombBlock = {
-    <CombStatement*> => ast::CombBlock(<>),
+CombStatements: ast::SeqBlock = {
+    <Semicolon<CombStatement>> => ast::SeqBlock(<>),
 };
 
-CombStatement: ast::Comb = {
-    <i:Ident> "=" <e:Expr> ";" => ast::Comb::Assign(i, e),
+CombStatement: ast::Seq = {
+    "if" <c:Expr> "{" <t:CombStatements> "}" => {
+        ast::Seq::If(c, t, None)
+    },
+    <i:Ident> "=" <e:Expr> => ast::Seq::Set(ast::BlockType::Blocking, i, e),
+    "match" <cond:Expr> "{" <arms:MatchArmComb+> "}" => {
+        ast::Seq::Match(cond, arms)
+    },
+};
+
+MatchArmComb: (Vec<ast::Expr>, ast::SeqBlock) = {
+    "_" "=>" <s:CombStatement> "," => {
+        (vec![], ast::SeqBlock(vec![s]))
+    },
+    <e:Expr> "=>" <s:CombStatement> "," => {
+        (vec![e], ast::SeqBlock(vec![s]))
+    },
+    <e:Expr> "=>" "{" <b:CombStatements> "}" ","? => {
+        (vec![e], b)
+    },
 };
 
 SeqStatements: ast::SeqBlock = {
@@ -118,7 +148,7 @@ pub SeqStatement: ast::Seq = {
     "if" <c:Expr> "{" <t:SeqStatements> "}" ";"? => {
         ast::Seq::If(c, t, None)
     },
-    "match" <cond:Expr> "{" <arms:MatchArm+> "}" ";"? => {
+    "match" <cond:Expr> "{" <arms:MatchArmSeq+> "}" ";"? => {
         ast::Seq::Match(cond, arms)
     },
 
@@ -154,7 +184,7 @@ BlockType: ast::BlockType = {
   "<=" => ast::BlockType::NonBlocking,
 };
 
-MatchArm: (Vec<ast::Expr>, ast::SeqBlock) = {
+MatchArmSeq: (Vec<ast::Expr>, ast::SeqBlock) = {
     <e:Expr> "=>" <s:SeqStatement> "," => {
         (vec![e], ast::SeqBlock(vec![s]))
     },
@@ -181,6 +211,7 @@ Expr2: ast::Expr = {
 Expr3: ast::Expr = {
     <l:Expr3> "+" <r:Term> => ast::Expr::Arith(ast::Op::Add, Box::new(l), Box::new(r)),
     <l:Expr3> "-" <r:Term> => ast::Expr::Arith(ast::Op::Sub, Box::new(l), Box::new(r)),
+    <l:Expr3> "*" <r:Term> => ast::Expr::Arith(ast::Op::Mul, Box::new(l), Box::new(r)),
     <l:Expr3> "<" <r:Term> => ast::Expr::Arith(ast::Op::Lt, Box::new(l), Box::new(r)),
     <l:Expr3> ">" <r:Term> => ast::Expr::Arith(ast::Op::Gt, Box::new(l), Box::new(r)),
     <l:Expr3> "|" <r:Term> => ast::Expr::Arith(ast::Op::BinOr, Box::new(l), Box::new(r)),

@@ -341,7 +341,11 @@ impl ToVerilog for ast::Decl {
                     ind=v.indent,
                     body=block.to_verilog(&v.tab()))
             }
-            ast::Decl::Always(ref block) => block.to_verilog(v),
+            ast::Decl::Always(ref block) => {
+                format!("{ind}always @(*) begin\n{body}{ind}end\n",
+                    ind=v.indent,
+                    body=block.to_verilog(&v.tab()))
+            }
         }
     }
 }
@@ -397,9 +401,13 @@ impl ToVerilog for ast::Seq {
                     body=arms.iter().map(|arm| {
                         format!("{ind}{cond}: begin\n{body}{ind}end\n",
                             ind=v.tab().indent,
-                            cond=arm.0.iter().map(|x| {
-                                x.to_verilog(v)
-                            }).collect::<Vec<_>>().join(", "),
+                            cond=if arm.0.is_empty() {
+                                "default".to_string()
+                            } else {
+                                arm.0.iter().map(|x| {
+                                    x.to_verilog(v)
+                                }).collect::<Vec<_>>().join(", ")
+                            },
                             body=arm.1.to_verilog(&v.tab().tab()))
                     }).collect::<Vec<_>>().join(""))
             }
@@ -430,11 +438,11 @@ impl ToVerilog for ast::Seq {
     }
 }
 
-impl ToVerilog for ast::CombBlock {
-    fn to_verilog(&self, v: &VerilogState) -> String {
-        self.0.iter().map(|x| x.to_verilog(v)).collect::<Vec<_>>().join("")
-    }
-}
+//impl ToVerilog for ast::CombBlock {
+//    fn to_verilog(&self, v: &VerilogState) -> String {
+//        self.0.iter().map(|x| x.to_verilog(v)).collect::<Vec<_>>().join("")
+//    }
+//}
 
 
 impl ToVerilog for ast::BlockType {
@@ -446,29 +454,29 @@ impl ToVerilog for ast::BlockType {
     }
 }
 
-impl ToVerilog for ast::Comb {
-    fn to_verilog(&self, v: &VerilogState) -> String {
-        match *self {
-            ast::Comb::If(ref c, ref t, ref f) => {
-                format!("{ind}if ({cond}) begin\n{body}{ind}end\n{f}",
-                    ind=v.indent,
-                    cond=c.to_verilog(v),
-                    body=t.to_verilog(&v.tab()),
-                    f=f.as_ref().map_or("".to_string(), |e| {
-                        format!("{ind}else begin\n{body}{ind}end\n",
-                            ind=v.indent,
-                            body=e.to_verilog(&v.tab()))
-                    }))
-            },
-            ast::Comb::Assign(ref id, ref value) => {
-                format!("{ind}assign {name} = {value};\n",
-                    ind=v.indent,
-                    name=id.to_verilog(v),
-                    value=value.to_verilog(v))
-            }
-        }
-    }
-}
+//impl ToVerilog for ast::Comb {
+//    fn to_verilog(&self, v: &VerilogState) -> String {
+//        match *self {
+//            ast::Comb::If(ref c, ref t, ref f) => {
+//                format!("{ind}if ({cond}) begin\n{body}{ind}end\n{f}",
+//                    ind=v.indent,
+//                    cond=c.to_verilog(v),
+//                    body=t.to_verilog(&v.tab()),
+//                    f=f.as_ref().map_or("".to_string(), |e| {
+//                        format!("{ind}else begin\n{body}{ind}end\n",
+//                            ind=v.indent,
+//                            body=e.to_verilog(&v.tab()))
+//                    }))
+//            },
+//            ast::Comb::Assign(ref id, ref value) => {
+//                format!("{ind}{name} = {value};\n",
+//                    ind=v.indent,
+//                    name=id.to_verilog(v),
+//                    value=value.to_verilog(v))
+//            }
+//        }
+//    }
+//}
 
 impl ToVerilog for ast::Expr {
     fn to_verilog(&self, v: &VerilogState) -> String {
