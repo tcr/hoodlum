@@ -114,9 +114,18 @@ CombStatement: ast::Seq = {
     "if" <c:Expr> "{" <t:CombStatements> "}" => {
         ast::Seq::If(c, t, None)
     },
-    <i:Ident> "=" <e:Expr> => ast::Seq::Set(ast::BlockType::Blocking, i, e),
     "match" <cond:Expr> "{" <arms:MatchArmComb+> "}" => {
         ast::Seq::Match(cond, arms)
+    },
+
+    <i:Ident> "=" <v:Expr> => {
+        ast::Seq::Set(ast::BlockType::Blocking, i, v)
+    },
+    <i:Ident> "[" <idx:Expr> "]" "=" <v:Expr> => {
+        ast::Seq::SetIndex(ast::BlockType::Blocking, i, idx, v)
+    },
+    <i:Ident> "[" <from:Expr> ":" <to:Expr> "]" "=" <v:Expr> => {
+        ast::Seq::SetRange(ast::BlockType::Blocking, i, from, to, v)
     },
 };
 

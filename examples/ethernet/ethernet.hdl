@@ -86,7 +86,9 @@ entity SpiMaster(
 
     // Sample read values from positive clock edge.
     on internal_clk.posedge {
-        rx_byte[read_index] <= spi_rx;
+        if live_clk {
+            rx_byte[read_index] <= spi_rx;
+        }
     }
 
     let transmitting = 0;
@@ -151,10 +153,49 @@ entity BufferMux(
 ) {
     always {
         match count {
-            _ => buffer = bytes[0:8],
-            1 => buffer = bytes[8:16],
-            2 => buffer = bytes[16:24],
-            3 => buffer = bytes[24:32],
+            _ => buffer = bytes[8*0:8*1],
+            1 => buffer = bytes[8*1:8*2],
+            2 => buffer = bytes[8*2:8*3],
+            3 => buffer = bytes[8*3:8*4],
+            4 => buffer = bytes[8*4:8*5],
+            5 => buffer = bytes[8*5:8*6],
+            6 => buffer = bytes[8*6:8*7],
+            7 => buffer = bytes[8*7:8*8],
+            8 => buffer = bytes[8*8:8*9],
+            9 => buffer = bytes[8*9:8*10],
+            10 => buffer = bytes[8*10:8*11],
+            11 => buffer = bytes[8*11:8*12],
+            12 => buffer = bytes[8*12:8*13],
+            13 => buffer = bytes[8*13:8*14],
+            14 => buffer = bytes[8*14:8*15],
+            15 => buffer = bytes[8*15:8*16],
+        }
+    }
+}
+
+entity BufferDemux(
+    in count: bit[8],
+    in buffer: bit[8],
+    out bytes: bit[128],
+) {
+    always {
+        match count {
+            _ => bytes[8*0:8*1] = buffer,
+            1 => bytes[8*1:8*2] = buffer,
+            2 => bytes[8*2:8*3] = buffer,
+            3 => bytes[8*3:8*4] = buffer,
+            4 => bytes[8*4:8*5] = buffer,
+            5 => bytes[8*5:8*6] = buffer,
+            6 => bytes[8*6:8*7] = buffer,
+            7 => bytes[8*7:8*8] = buffer,
+            8 => bytes[8*8:8*9] = buffer,
+            9 => bytes[8*9:8*10] = buffer,
+            10 => bytes[8*10:8*11] = buffer,
+            11 => bytes[8*11:8*12] = buffer,
+            12 => bytes[8*12:8*13] = buffer,
+            13 => bytes[8*13:8*14] = buffer,
+            14 => bytes[8*14:8*15] = buffer,
+            15 => bytes[8*15:8*16] = buffer,
         }
     }
 }
@@ -174,6 +215,7 @@ entity SpiController(
     in count: bit[8],
 ) {
     let tx_buffer: bit[8];
+    let rx_buffer: bit[8];
 
     let master_trigger;
     let master_ready;
@@ -183,7 +225,7 @@ entity SpiController(
         trigger: master_trigger,
         ready: master_ready,
         tx_byte: tx_buffer,
-        rx_byte: rx_bytes[0:8],
+        rx_byte: rx_buffer,
         spi_clk: spi_clk,
         spi_rx: spi_miso,
         spi_tx: spi_mosi,
@@ -199,10 +241,16 @@ entity SpiController(
 
     let so_far: bit[8];
 
-    let mux = BufferMux {
+    let tx_mux = BufferMux {
         count: so_far,
         bytes: tx_bytes,
         buffer: tx_buffer,
+    };
+
+    let rx_mux = BufferDemux {
+        count: so_far,
+        bytes: rx_bytes,
+        buffer: rx_buffer,
     };
 
     let _FSM: bit[9] = 0;
@@ -319,36 +367,36 @@ entity Ethernet(
 
 #define do_cs_toggle tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1
 
+#define TX(p, v) tx_bytes[p*8:(p+1)*8] <= v
+#define RX(p, v) v := rx_bytes[p*8:(p+1)*8]
 
 #define write_16(reg, A, B, last) \
     count <= 4; \
     raise_cs <= last; \
-    tx_bytes[0:8] <= EWCRU; \
-    tx_bytes[8:16] <= reg; \
-    tx_bytes[16:24] <= A; \
-    tx_bytes[24:32] <= B; \
-    await spi_ready; \
-    count := 1
+    TX(0, EWCRU); \
+    TX(1, reg); \
+    TX(2, A); \
+    TX(3, B); \
+    await spi_ready
 
 #define read_16(reg, A, B, last) \
-    raise_cs <= 0; \
-    tx_byte <= ERCRU; \
-    await spi_ready; \
-    tx_byte <= reg; \
-    await spi_ready; \
-    await spi_ready; \
-    A <= spi_rx_value; \
+    count <= 4; \
     raise_cs <= last; \
+    TX(0, ERCRU); \
+    TX(1, reg); \
     await spi_ready; \
-    B := spi_rx_value
+    RX(2, A); \
+    RX(3, B)
 
 #define write_byte(reg, last) \
+    count <= 1; \
     raise_cs <= last; \
     tx_byte <= reg; \
     await spi_ready
 
 
 #define write_byte_term(reg, last) \
+    count <= 1; \
     raise_cs <= last; \
     tx_byte <= reg; \
     yield; \
@@ -356,11 +404,13 @@ entity Ethernet(
     await spi_ready
 
 #define read_byte(reg, last) \
+    count <= 1; \
     raise_cs <= last; \
     await spi_ready; \
     reg <= spi_rx_value
 
 #define read_byte_imm(reg, last) \
+    count <= 1; \
     raise_cs <= last; \
     await spi_ready; \
     reg := spi_rx_value
@@ -396,7 +446,7 @@ entity Ethernet(
                 write_16(EEUDASTL, 0x34, 0x12, 1);
 
                 read_16(EEUDASTL, checksumL, checksumH, 1);
-                if checksumL == 0x34 && checksumH > 0x12 {
+                if checksumL == 0x34 && checksumH == 0x12 {
                     LED2 <= 1;
                 }
 

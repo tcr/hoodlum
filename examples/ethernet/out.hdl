@@ -86,7 +86,9 @@ entity SpiMaster(
 
     // Sample read values from positive clock edge.
     on internal_clk.posedge {
-        rx_byte[read_index] <= spi_rx;
+        if live_clk {
+            rx_byte[read_index] <= spi_rx;
+        }
     }
 
     let transmitting = 0;
@@ -151,10 +153,49 @@ entity BufferMux(
 ) {
     always {
         match count {
-            _ => buffer = bytes[0:8],
-            1 => buffer = bytes[8:16],
-            2 => buffer = bytes[16:24],
-            3 => buffer = bytes[24:32],
+            _ => buffer = bytes[8*0:8*1],
+            1 => buffer = bytes[8*1:8*2],
+            2 => buffer = bytes[8*2:8*3],
+            3 => buffer = bytes[8*3:8*4],
+            4 => buffer = bytes[8*4:8*5],
+            5 => buffer = bytes[8*5:8*6],
+            6 => buffer = bytes[8*6:8*7],
+            7 => buffer = bytes[8*7:8*8],
+            8 => buffer = bytes[8*8:8*9],
+            9 => buffer = bytes[8*9:8*10],
+            10 => buffer = bytes[8*10:8*11],
+            11 => buffer = bytes[8*11:8*12],
+            12 => buffer = bytes[8*12:8*13],
+            13 => buffer = bytes[8*13:8*14],
+            14 => buffer = bytes[8*14:8*15],
+            15 => buffer = bytes[8*15:8*16],
+        }
+    }
+}
+
+entity BufferDemux(
+    in count: bit[8],
+    in buffer: bit[8],
+    out bytes: bit[128],
+) {
+    always {
+        match count {
+            _ => bytes[8*0:8*1] = buffer,
+            1 => bytes[8*1:8*2] = buffer,
+            2 => bytes[8*2:8*3] = buffer,
+            3 => bytes[8*3:8*4] = buffer,
+            4 => bytes[8*4:8*5] = buffer,
+            5 => bytes[8*5:8*6] = buffer,
+            6 => bytes[8*6:8*7] = buffer,
+            7 => bytes[8*7:8*8] = buffer,
+            8 => bytes[8*8:8*9] = buffer,
+            9 => bytes[8*9:8*10] = buffer,
+            10 => bytes[8*10:8*11] = buffer,
+            11 => bytes[8*11:8*12] = buffer,
+            12 => bytes[8*12:8*13] = buffer,
+            13 => bytes[8*13:8*14] = buffer,
+            14 => bytes[8*14:8*15] = buffer,
+            15 => bytes[8*15:8*16] = buffer,
         }
     }
 }
@@ -174,6 +215,7 @@ entity SpiController(
     in count: bit[8],
 ) {
     let tx_buffer: bit[8];
+    let rx_buffer: bit[8];
 
     let master_trigger;
     let master_ready;
@@ -183,7 +225,7 @@ entity SpiController(
         trigger: master_trigger,
         ready: master_ready,
         tx_byte: tx_buffer,
-        rx_byte: rx_bytes[0:8],
+        rx_byte: rx_buffer,
         spi_clk: spi_clk,
         spi_rx: spi_miso,
         spi_tx: spi_mosi,
@@ -199,10 +241,16 @@ entity SpiController(
 
     let so_far: bit[8];
 
-    let mux = BufferMux {
+    let tx_mux = BufferMux {
         count: so_far,
         bytes: tx_bytes,
         buffer: tx_buffer,
+    };
+
+    let rx_mux = BufferDemux {
+        count: so_far,
+        bytes: rx_bytes,
+        buffer: rx_buffer,
     };
 
     let _FSM: bit[9] = 0;
@@ -347,6 +395,26 @@ entity Ethernet(
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     // Loop variables.
     let receivedL: bit[8] = 0;
     let receivedH: bit[8] = 0;
@@ -375,14 +443,14 @@ entity Ethernet(
 
                 // enc424j600_init()
 
-                count <= 4; raise_cs <=  1; tx_bytes[0:8] <= EWCRU; tx_bytes[8:16] <= EEUDASTL; tx_bytes[16:24] <=  0x34; tx_bytes[24:32] <=  0x12; await spi_ready; count := 1;
+                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EEUDASTL; tx_bytes[2*8:(2 +1)*8] <=  0x34; tx_bytes[3*8:(3 +1)*8] <=  0x12; await spi_ready;
 
-                raise_cs <= 0; tx_bytes[0:8] <= ERCRU; await spi_ready; tx_bytes[0:8] <= EEUDASTL; await spi_ready; await spi_ready;  checksumL <= rx_bytes[0:8]; raise_cs <=  1; await spi_ready;  checksumH := rx_bytes[0:8];
-                if checksumL == 0x34 && checksumH > 0x12 {
+                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EEUDASTL; await spi_ready;  checksumL := rx_bytes[2*8:(2 +1)*8];  checksumH := rx_bytes[3*8:(3 +1)*8];
+                if checksumL == 0x34 && checksumH == 0x12 {
                     LED2 <= 1;
                 }
 
-                raise_cs <=  0; tx_bytes[0:8] <= ESSETETHRST; await spi_ready;
+                count <= 1; raise_cs <=  0; tx_bytes[0:8] <= ESSETETHRST; await spi_ready;
 
                 tx_valid := 0;
                 sleep_counter := 0;
@@ -395,17 +463,17 @@ entity Ethernet(
                 tx_valid <= 1;
                 yield;
 
-                count <= 4; raise_cs <=  1; tx_bytes[0:8] <= EWCRU; tx_bytes[8:16] <= EECON2L; tx_bytes[16:24] <=  0x00; tx_bytes[24:32] <=  0xCB; await spi_ready; count := 1; // (magic number)
-                count <= 4; raise_cs <=  1; tx_bytes[0:8] <= EWCRU; tx_bytes[8:16] <= EERXSTL; tx_bytes[16:24] <=  0x40; tx_bytes[24:32] <=  0x53; await spi_ready; count := 1; // RX_BUFFER_START 0x5340
-                count <= 4; raise_cs <=  1; tx_bytes[0:8] <= EWCRU; tx_bytes[8:16] <= EMAMXFLL; tx_bytes[16:24] <=  0x42; tx_bytes[24:32] <=  0x02; await spi_ready; count := 1; // MAX_FRAMELEN 0x0242
-                count <= 4; raise_cs <=  1; tx_bytes[0:8] <= EWCRU; tx_bytes[8:16] <= EERXTAILL; tx_bytes[16:24] <=  0xFE; tx_bytes[24:32] <=  0x5F; await spi_ready; count := 1; // (magic number)
+                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EECON2L; tx_bytes[2*8:(2 +1)*8] <=  0x00; tx_bytes[3*8:(3 +1)*8] <=  0xCB; await spi_ready; // (magic number)
+                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EERXSTL; tx_bytes[2*8:(2 +1)*8] <=  0x40; tx_bytes[3*8:(3 +1)*8] <=  0x53; await spi_ready; // RX_BUFFER_START 0x5340
+                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EMAMXFLL; tx_bytes[2*8:(2 +1)*8] <=  0x42; tx_bytes[3*8:(3 +1)*8] <=  0x02; await spi_ready; // MAX_FRAMELEN 0x0242
+                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EERXTAILL; tx_bytes[2*8:(2 +1)*8] <=  0xFE; tx_bytes[3*8:(3 +1)*8] <=  0x5F; await spi_ready; // (magic number)
 
                 // Read MAC address
-                raise_cs <= 0; tx_bytes[0:8] <= ERCRU; await spi_ready; tx_bytes[0:8] <= EMAADR1L; await spi_ready; await spi_ready;  dummy <= rx_bytes[0:8]; raise_cs <=  1; await spi_ready;  dummy := rx_bytes[0:8]; // MAC 0:1
-                raise_cs <= 0; tx_bytes[0:8] <= ERCRU; await spi_ready; tx_bytes[0:8] <= EMAADR2L; await spi_ready; await spi_ready;  dummy <= rx_bytes[0:8]; raise_cs <=  1; await spi_ready;  dummy := rx_bytes[0:8]; // MAC 2:3
-                raise_cs <= 0; tx_bytes[0:8] <= ERCRU; await spi_ready; tx_bytes[0:8] <= EMAADR3L; await spi_ready; await spi_ready;  dummy <= rx_bytes[0:8]; raise_cs <=  1; await spi_ready;  dummy := rx_bytes[0:8]; // MAC 4:5
+                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EMAADR1L; await spi_ready;  dummy := rx_bytes[2*8:(2 +1)*8];  dummy := rx_bytes[3*8:(3 +1)*8]; // MAC 0:1
+                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EMAADR2L; await spi_ready;  dummy := rx_bytes[2*8:(2 +1)*8];  dummy := rx_bytes[3*8:(3 +1)*8]; // MAC 2:3
+                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EMAADR3L; await spi_ready;  dummy := rx_bytes[2*8:(2 +1)*8];  dummy := rx_bytes[3*8:(3 +1)*8]; // MAC 4:5
 
-                raise_cs <=  1; tx_bytes[0:8] <= ESENABLERX; await spi_ready;
+                count <= 1; raise_cs <=  1; tx_bytes[0:8] <= ESENABLERX; await spi_ready;
 
                 //Memory configuration
                 //The ENC424j600 has 0x6000 (24kB) bytes of memory
@@ -427,27 +495,27 @@ entity Ethernet(
 
                 loop {
                     tx_valid <= 1;
-                    raise_cs <=  1; tx_bytes[0:8] <= ESENABLERX; await spi_ready;
-                    raise_cs <=  0; tx_bytes[0:8] <= ERCR | EESTATL; await spi_ready;
-                    raise_cs <=  1; await spi_ready; dummy := rx_bytes[0:8];
+                    count <= 1; raise_cs <=  1; tx_bytes[0:8] <= ESENABLERX; await spi_ready;
+                    count <= 1; raise_cs <=  0; tx_bytes[0:8] <= ERCR | EESTATL; await spi_ready;
+                    count <= 1; raise_cs <=  1; await spi_ready; dummy := rx_bytes[0:8];
 
                     if dummy > 0 {
                         //Configure ERXDATA for reading.
-                        count <= 4; raise_cs <=  1; tx_bytes[0:8] <= EWCRU; tx_bytes[8:16] <= EERXRDPTL; tx_bytes[16:24] <=  NextPacketPointerL; tx_bytes[24:32] <=  NextPacketPointerH; await spi_ready; count := 1;
+                        count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EERXRDPTL; tx_bytes[2*8:(2 +1)*8] <=  NextPacketPointerL; tx_bytes[3*8:(3 +1)*8] <=  NextPacketPointerH; await spi_ready;
 
                         //Start reading!!!
-                        raise_cs <=  0; tx_bytes[0:8] <= ERRXDATA; await spi_ready;
+                        count <= 1; raise_cs <=  0; tx_bytes[0:8] <= ERRXDATA; await spi_ready;
 
                         // Read next packet pointer.
-                        raise_cs <=  0; await spi_ready; NextPacketPointerL <= rx_bytes[0:8];
-                        raise_cs <=  0; await spi_ready; NextPacketPointerH <= rx_bytes[0:8];
+                        count <= 1; raise_cs <=  0; await spi_ready; NextPacketPointerL <= rx_bytes[0:8];
+                        count <= 1; raise_cs <=  0; await spi_ready; NextPacketPointerH <= rx_bytes[0:8];
 
                         // Read received byte count.
-                        raise_cs <=  0; await spi_ready; receivedL <= rx_bytes[0:8];
-                        raise_cs <=  0; await spi_ready; receivedH <= rx_bytes[0:8];
+                        count <= 1; raise_cs <=  0; await spi_ready; receivedL <= rx_bytes[0:8];
+                        count <= 1; raise_cs <=  0; await spi_ready; receivedH <= rx_bytes[0:8];
 
-                        raise_cs <=  0; await spi_ready; status_vector <= rx_bytes[0:8];
-                        raise_cs <=  1; await spi_ready; dummy <= rx_bytes[0:8];
+                        count <= 1; raise_cs <=  0; await spi_ready; status_vector <= rx_bytes[0:8];
+                        count <= 1; raise_cs <=  1; await spi_ready; dummy <= rx_bytes[0:8];
                         if status_vector & (1 << 7) {
                             LED3 <= 1;
                         }
