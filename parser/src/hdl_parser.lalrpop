@@ -111,6 +111,10 @@ CombStatements: ast::SeqBlock = {
 };
 
 CombStatement: ast::Seq = {
+    "if" <c:Expr> "{" <t:CombStatements> "}"
+    "else" "{" <e:CombStatements> "}" => {
+        ast::Seq::If(c, t, Some(e))
+    },
     "if" <c:Expr> "{" <t:CombStatements> "}" => {
         ast::Seq::If(c, t, None)
     },

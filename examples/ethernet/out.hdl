@@ -174,6 +174,7 @@ entity BufferMux(
 }
 
 entity BufferDemux(
+    in rst: bit,
     in count: bit[8],
     in buffer: bit[8],
     out bytes: bit[128],
@@ -207,7 +208,7 @@ entity SpiController(
     out ready: bit,
     in tx_bytes: bit[128],
     out rx_bytes: bit[128],
-    in raise_cs: bit,
+    in raise_cs: bit[16],
     out spi_cs: bit,
     out spi_clk: bit,
     out spi_miso: bit,
@@ -274,6 +275,7 @@ entity SpiController(
 
                 while so_far < count {
                     // Incr.
+                    spi_cs <= 0;
 
                     master_trigger <= 1;
                     yield;
@@ -282,19 +284,21 @@ entity SpiController(
                     // TODO this shouldn't be await, should be await_imm
                     await master_ready;
 
+                    // Raising CS.
+                    if raise_cs[so_far] {
+                        spi_cs <= 1;
+                        mini_delay_trigger <= 1;
+                        await mini_delay_result;
+                        mini_delay_trigger <= 0;
+                    }
+                    // TODO this is spurious, but there was a bug in fsm generation we want to
+                    // skip over.
+                    yield;
+
                     // Incr
                     so_far := so_far + 1;
                 }
-                // TODO We wait additional cycle for last bit from master_ready, shouldn't have to
-                yield;
 
-                // Raising CS.
-                if raise_cs {
-                    spi_cs <= 1;
-                    mini_delay_trigger <= 1;
-                    await mini_delay_result;
-                    mini_delay_trigger <= 0;
-                }
                 ready := 1;
             }
         }
@@ -340,10 +344,10 @@ entity Ethernet(
 
     // Internal values.
     let tx_valid = 0;
-    let tx_bytes: bit[128];
+    let tx_bytes: bit[128] = 0;
     let spi_ready;
     let rx_bytes: bit[128];
-    let raise_cs;
+    let raise_cs: bit[16];
     let count: bit[8];
     let spi = SpiController {
         rst: rst,
@@ -361,6 +365,8 @@ entity Ethernet(
     };
 
     let sleep_counter: uint{..1200000} = 0;
+
+
 
 
 
@@ -441,16 +447,31 @@ entity Ethernet(
 
                 tx_valid <= 1;
 
-                // enc424j600_init()
+                count <= 8;
+                raise_cs <= (1 << (4 - 1)) | (1 << (8 - 1));
+                tx_bytes[0*8:(0 +1)*8] <=  EWCRU;
+                tx_bytes[1*8:(1 +1)*8] <=  EEUDASTL;
+                tx_bytes[2*8:(2 +1)*8] <=  0x34;
+                tx_bytes[3*8:(3 +1)*8] <=  0x12;
+                // ^ toggle cs
+                tx_bytes[4*8:(4 +1)*8] <=  ERCRU;
+                tx_bytes[5*8:(5 +1)*8] <=  EEUDASTL;
+                // 6, receive checksumL
+                // 7, receive checksumH
+                // ^ toggle cs
+                await spi_ready;
 
-                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EEUDASTL; tx_bytes[2*8:(2 +1)*8] <=  0x34; tx_bytes[3*8:(3 +1)*8] <=  0x12; await spi_ready;
-
-                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EEUDASTL; await spi_ready;  checksumL := rx_bytes[2*8:(2 +1)*8];  checksumH := rx_bytes[3*8:(3 +1)*8];
+                 checksumL := rx_bytes[6*8:(6 +1)*8];
+                 checksumH := rx_bytes[7*8:(7 +1)*8];
                 if checksumL == 0x34 && checksumH == 0x12 {
                     LED2 <= 1;
                 }
 
-                count <= 1; raise_cs <=  0; tx_bytes[0:8] <= ESSETETHRST; await spi_ready;
+                // Reset.
+                count <= 1;
+                raise_cs <= 0;
+                tx_bytes[0*8:(0 +1)*8] <=  ESSETETHRST;
+                await spi_ready;
 
                 tx_valid := 0;
                 sleep_counter := 0;
@@ -463,15 +484,15 @@ entity Ethernet(
                 tx_valid <= 1;
                 yield;
 
-                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EECON2L; tx_bytes[2*8:(2 +1)*8] <=  0x00; tx_bytes[3*8:(3 +1)*8] <=  0xCB; await spi_ready; // (magic number)
-                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EERXSTL; tx_bytes[2*8:(2 +1)*8] <=  0x40; tx_bytes[3*8:(3 +1)*8] <=  0x53; await spi_ready; // RX_BUFFER_START 0x5340
-                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EMAMXFLL; tx_bytes[2*8:(2 +1)*8] <=  0x42; tx_bytes[3*8:(3 +1)*8] <=  0x02; await spi_ready; // MAX_FRAMELEN 0x0242
-                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EERXTAILL; tx_bytes[2*8:(2 +1)*8] <=  0xFE; tx_bytes[3*8:(3 +1)*8] <=  0x5F; await spi_ready; // (magic number)
+                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EECON2L; tx_bytes[2*8:(2 +1)*8] <=  0x00; tx_bytes[3*8:(3 +1)*8] <=  0xCB; await spi_ready; // (magic number)
+                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EERXSTL; tx_bytes[2*8:(2 +1)*8] <=  0x40; tx_bytes[3*8:(3 +1)*8] <=  0x53; await spi_ready; // RX_BUFFER_START 0x5340
+                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EMAMXFLL; tx_bytes[2*8:(2 +1)*8] <=  0x42; tx_bytes[3*8:(3 +1)*8] <=  0x02; await spi_ready; // MAX_FRAMELEN 0x0242
+                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EERXTAILL; tx_bytes[2*8:(2 +1)*8] <=  0xFE; tx_bytes[3*8:(3 +1)*8] <=  0x5F; await spi_ready; // (magic number)
 
                 // Read MAC address
-                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EMAADR1L; await spi_ready;  dummy := rx_bytes[2*8:(2 +1)*8];  dummy := rx_bytes[3*8:(3 +1)*8]; // MAC 0:1
-                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EMAADR2L; await spi_ready;  dummy := rx_bytes[2*8:(2 +1)*8];  dummy := rx_bytes[3*8:(3 +1)*8]; // MAC 2:3
-                count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EMAADR3L; await spi_ready;  dummy := rx_bytes[2*8:(2 +1)*8];  dummy := rx_bytes[3*8:(3 +1)*8]; // MAC 4:5
+                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EMAADR1L; await spi_ready;  dummy := rx_bytes[2*8:(2 +1)*8];  dummy := rx_bytes[3*8:(3 +1)*8]; // MAC 0:1
+                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EMAADR2L; await spi_ready;  dummy := rx_bytes[2*8:(2 +1)*8];  dummy := rx_bytes[3*8:(3 +1)*8]; // MAC 2:3
+                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EMAADR3L; await spi_ready;  dummy := rx_bytes[2*8:(2 +1)*8];  dummy := rx_bytes[3*8:(3 +1)*8]; // MAC 4:5
 
                 count <= 1; raise_cs <=  1; tx_bytes[0:8] <= ESENABLERX; await spi_ready;
 
@@ -497,25 +518,25 @@ entity Ethernet(
                     tx_valid <= 1;
                     count <= 1; raise_cs <=  1; tx_bytes[0:8] <= ESENABLERX; await spi_ready;
                     count <= 1; raise_cs <=  0; tx_bytes[0:8] <= ERCR | EESTATL; await spi_ready;
-                    count <= 1; raise_cs <=  1; await spi_ready; dummy := rx_bytes[0:8];
+                    count <= 1; raise_cs <=  1; await spi_ready; dummy := rx_bytes[0*8:(0 +1)*8];
 
                     if dummy > 0 {
                         //Configure ERXDATA for reading.
-                        count <= 4; raise_cs <=  1; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EERXRDPTL; tx_bytes[2*8:(2 +1)*8] <=  NextPacketPointerL; tx_bytes[3*8:(3 +1)*8] <=  NextPacketPointerH; await spi_ready;
+                        count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EERXRDPTL; tx_bytes[2*8:(2 +1)*8] <=  NextPacketPointerL; tx_bytes[3*8:(3 +1)*8] <=  NextPacketPointerH; await spi_ready;
 
                         //Start reading!!!
                         count <= 1; raise_cs <=  0; tx_bytes[0:8] <= ERRXDATA; await spi_ready;
 
                         // Read next packet pointer.
-                        count <= 1; raise_cs <=  0; await spi_ready; NextPacketPointerL <= rx_bytes[0:8];
-                        count <= 1; raise_cs <=  0; await spi_ready; NextPacketPointerH <= rx_bytes[0:8];
+                        count <= 1; raise_cs <=  0; await spi_ready; NextPacketPointerL := rx_bytes[0*8:(0 +1)*8];
+                        count <= 1; raise_cs <=  0; await spi_ready; NextPacketPointerH := rx_bytes[0*8:(0 +1)*8];
 
                         // Read received byte count.
-                        count <= 1; raise_cs <=  0; await spi_ready; receivedL <= rx_bytes[0:8];
-                        count <= 1; raise_cs <=  0; await spi_ready; receivedH <= rx_bytes[0:8];
+                        count <= 1; raise_cs <=  0; await spi_ready; receivedL := rx_bytes[0*8:(0 +1)*8];
+                        count <= 1; raise_cs <=  0; await spi_ready; receivedH := rx_bytes[0*8:(0 +1)*8];
 
-                        count <= 1; raise_cs <=  0; await spi_ready; status_vector <= rx_bytes[0:8];
-                        count <= 1; raise_cs <=  1; await spi_ready; dummy <= rx_bytes[0:8];
+                        count <= 1; raise_cs <=  0; await spi_ready; status_vector := rx_bytes[0*8:(0 +1)*8];
+                        count <= 1; raise_cs <=  1; await spi_ready; dummy := rx_bytes[0*8:(0 +1)*8];
                         if status_vector & (1 << 7) {
                             LED3 <= 1;
                         }
