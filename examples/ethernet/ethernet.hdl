@@ -115,7 +115,7 @@ entity SpiMaster(
         if !rst {
             transmitting <= 0;
         } else {
-            fsm {
+            async {
                 // Wait for transition trigger.
                 spi_tx <= 0;
                 while ready != 0 {
@@ -262,7 +262,7 @@ entity SpiController(
             master_trigger <= 0;
             mini_delay_trigger <= 0;
         } else {
-            fsm {
+            async {
                 // Wait for trigger as response to ready falling low.
                 ready := 0;
                 yield;
@@ -291,7 +291,7 @@ entity SpiController(
                         await mini_delay_result;
                         mini_delay_trigger <= 0;
                     }
-                    // TODO this is spurious, but there was a bug in fsm generation we want to
+                    // TODO this is spurious, but there was a bug in async generation we want to
                     // skip over.
                     yield;
 
@@ -442,7 +442,7 @@ entity Ethernet(
             sleep_counter <= 0;
             count <= 1;
         } else {
-            fsm {
+            async {
                 LED1 <= 1;
 
                 tx_valid <= 1;

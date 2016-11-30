@@ -1,3 +1,5 @@
+//! Experimental rewriting of yield, await, async blocks.
+
 use VerilogState;
 use ast;
 
@@ -426,7 +428,7 @@ fn fsm_structure(global: &mut FsmGlobal, base_state: FsmId, after: FsmCase, seq:
 /// Returns an ast::Seq::Match containing our FSM.
 pub fn fsm_rewrite(input: &ast::Seq, v: &VerilogState) -> (ast::Seq, VerilogState) {
     // Extract body from FSM sequence.
-    let mut body = if let &ast::Seq::Fsm(ast::SeqBlock(ref body)) = input {
+    let mut body = if let &ast::Seq::Async(ast::SeqBlock(ref body)) = input {
         body.clone()
     } else {
         panic!("Cannot transform non-FSM sequence.");
@@ -460,12 +462,11 @@ pub fn fsm_rewrite(input: &ast::Seq, v: &VerilogState) -> (ast::Seq, VerilogStat
     }
 
     // Generate match cases from our case output.
-    let mut output: Vec<(Vec<ast::Expr>, ast::SeqBlock)> = vec![];
+    let mut output: Vec<(Vec<i32>, ast::SeqBlock)> = vec![];
     for case in cases {
         output.push((
-            case.all_states().into_iter().map(|x| ast::Expr::Num(x)).collect(),
+            case.all_states().into_iter().collect(),
             ast::SeqBlock(case.body)));
     }
-    (ast::Seq::Match(ast::Expr::Ref(ast::Ident("_FSM".to_string())),
-        output), v.clone())
+    (ast::Seq::FsmCase(output), v.clone())
 }

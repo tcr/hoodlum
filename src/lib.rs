@@ -4,12 +4,12 @@
 extern crate hoodlum_parser;
 extern crate lalrpop_util;
 
-pub mod fsm;
+pub mod async;
 
 pub use hoodlum_parser::{ParseError, ast, hdl_parser};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
-use fsm::fsm_rewrite;
+use async::fsm_rewrite;
 
 pub fn codelist(code: &str) {
     for (i, line) in code.lines().enumerate() {
@@ -411,7 +411,21 @@ impl ToVerilog for ast::Seq {
                             body=arm.1.to_verilog(&v.tab().tab()))
                     }).collect::<Vec<_>>().join(""))
             }
-            ast::Seq::Fsm(..) => {
+            ast::Seq::FsmCase(ref arms) => {
+                format!("{ind}case (_FSM)\n{body}{ind}endcase\n",
+                    ind=v.indent,
+                    body=arms.iter().map(|arm| {
+                        format!("{ind}{cond}: begin\n{body}{ind}end\n",
+                            ind=v.tab().indent,
+                            cond=if arm.0.is_empty() {
+                                panic!("need match in fsm");
+                            } else {
+                                arm.0.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(", ")
+                            },
+                            body=arm.1.to_verilog(&v.tab().tab()))
+                    }).collect::<Vec<_>>().join(""))
+            }
+            ast::Seq::Async(..) => {
                 let (res, v_new) = fsm_rewrite(self, v);
                 res.to_verilog(&v_new)
             }
@@ -421,6 +435,9 @@ impl ToVerilog for ast::Seq {
                     id=n)
                     //id=v.fsm.get(&n).map(|x| x.to_string()).unwrap_or(format!("$$${}$$$", n))) //.expect(format!("Missing FSM state in generation step: {:?}!"))
                     //id=v.fsm.get(&n).expect(&format!("Missing FSM state in generation step: {:?}", n)))
+            }
+            ast::Seq::Fsm(..) => {
+                unreachable!("Cannot not compile Fsm yet.")
             }
             ast::Seq::Await(..) => {
                 unreachable!("Cannot not compile Await statement to Verilog.")
@@ -504,11 +521,6 @@ impl ToVerilog for ast::Expr {
                 format!("{op}({right})",
                     op=op.to_verilog(v),
                     right=r.to_verilog(v))
-            }
-            ast::Expr::FsmValue(ref state) => {
-                format!("{state}",
-                    //state=v.fsm.get(state).expect("Missing FsmValue value!"))
-                    state=state)
             }
             ast::Expr::FsmEq(ref set) => {
                 format!("({})", set.iter()

@@ -115,7 +115,7 @@ entity SpiMaster(
         if !rst {
             transmitting <= 0;
         } else {
-            async {
+            fsm {
                 // Wait for transition trigger.
                 spi_tx <= 0;
                 while ready != 0 {
@@ -262,7 +262,7 @@ entity SpiController(
             master_trigger <= 0;
             mini_delay_trigger <= 0;
         } else {
-            async {
+            fsm {
                 // Wait for trigger as response to ready falling low.
                 ready := 0;
                 yield;
@@ -291,7 +291,7 @@ entity SpiController(
                         await mini_delay_result;
                         mini_delay_trigger <= 0;
                     }
-                    // TODO this is spurious, but there was a bug in async generation we want to
+                    // TODO this is spurious, but there was a bug in fsm generation we want to
                     // skip over.
                     yield;
 
@@ -366,60 +366,60 @@ entity Ethernet(
 
     let sleep_counter: uint{..1200000} = 0;
 
+#define tx_byte tx_bytes[0:8]
+#define spi_rx_value rx_bytes[0:8]
+
+#define do_cs_toggle tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1
+
+#define TX(p, v) tx_bytes[p*8:(p+1)*8] <= v
+#define RX(p, v) v := rx_bytes[p*8:(p+1)*8]
+
+#define BV(i) (1 << (i))
+
+#define write_16(reg, A, B, last) \
+    count <= 4; \
+    raise_cs <= last << 3; \
+    TX(0, EWCRU); \
+    TX(1, reg); \
+    TX(2, A); \
+    TX(3, B); \
+    await spi_ready
+
+#define read_16(reg, A, B, last) \
+    count <= 4; \
+    raise_cs <= last << 3; \
+    TX(0, ERCRU); \
+    TX(1, reg); \
+    await spi_ready; \
+    RX(2, A); \
+    RX(3, B)
+
+#define write_byte(reg, last) \
+    count <= 1; \
+    raise_cs <= last; \
+    tx_byte <= reg; \
+    await spi_ready
 
 
+#define write_byte_term(reg, last) \
+    count <= 1; \
+    raise_cs <= last; \
+    tx_byte <= reg; \
+    yield; \
+    tx_valid <= 0; \
+    await spi_ready
 
+#define read_byte(reg, last) \
+    count <= 1; \
+    raise_cs <= last; \
+    await spi_ready; \
+    RX(0, reg)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#define read_byte_imm(reg, last) \
+    count <= 1; \
+    raise_cs <= last; \
+    await spi_ready; \
+    RX(0, reg)
 
     // Loop variables.
     let receivedL: bit[8] = 0;
@@ -442,27 +442,27 @@ entity Ethernet(
             sleep_counter <= 0;
             count <= 1;
         } else {
-            async {
+            fsm {
                 LED1 <= 1;
 
                 tx_valid <= 1;
 
                 count <= 8;
-                raise_cs <= (1 << (4 - 1)) | (1 << (8 - 1));
-                tx_bytes[0*8:(0 +1)*8] <=  EWCRU;
-                tx_bytes[1*8:(1 +1)*8] <=  EEUDASTL;
-                tx_bytes[2*8:(2 +1)*8] <=  0x34;
-                tx_bytes[3*8:(3 +1)*8] <=  0x12;
+                raise_cs <= BV(4 - 1) | BV(8 - 1);
+                TX(0, EWCRU);
+                TX(1, EEUDASTL);
+                TX(2, 0x34);
+                TX(3, 0x12);
                 // ^ toggle cs
-                tx_bytes[4*8:(4 +1)*8] <=  ERCRU;
-                tx_bytes[5*8:(5 +1)*8] <=  EEUDASTL;
+                TX(4, ERCRU);
+                TX(5, EEUDASTL);
                 // 6, receive checksumL
                 // 7, receive checksumH
                 // ^ toggle cs
                 await spi_ready;
 
-                 checksumL := rx_bytes[6*8:(6 +1)*8];
-                 checksumH := rx_bytes[7*8:(7 +1)*8];
+                RX(6, checksumL);
+                RX(7, checksumH);
                 if checksumL == 0x34 && checksumH == 0x12 {
                     LED2 <= 1;
                 }
@@ -470,7 +470,7 @@ entity Ethernet(
                 // Reset.
                 count <= 1;
                 raise_cs <= 0;
-                tx_bytes[0*8:(0 +1)*8] <=  ESSETETHRST;
+                TX(0, ESSETETHRST);
                 await spi_ready;
 
                 tx_valid := 0;
@@ -484,71 +484,90 @@ entity Ethernet(
                 tx_valid <= 1;
                 yield;
 
-                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EECON2L; tx_bytes[2*8:(2 +1)*8] <=  0x00; tx_bytes[3*8:(3 +1)*8] <=  0xCB; await spi_ready; // (magic number)
-                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EERXSTL; tx_bytes[2*8:(2 +1)*8] <=  0x40; tx_bytes[3*8:(3 +1)*8] <=  0x53; await spi_ready; // RX_BUFFER_START 0x5340
-                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EMAMXFLL; tx_bytes[2*8:(2 +1)*8] <=  0x42; tx_bytes[3*8:(3 +1)*8] <=  0x02; await spi_ready; // MAX_FRAMELEN 0x0242
-                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EERXTAILL; tx_bytes[2*8:(2 +1)*8] <=  0xFE; tx_bytes[3*8:(3 +1)*8] <=  0x5F; await spi_ready; // (magic number)
+                count <= 16;
+                raise_cs <= BV(4 - 1) | BV(8 - 1) | BV(12 - 1) | BV(16 - 1);
+                TX(0, EWCRU); // (magic number)
+                TX(1, EECON2L);
+                TX(2, 0x00);
+                TX(3, 0xCB);
+                // ^ toggle cs
+                TX(4, EWCRU); // RX_BUFFER_START 0x5340
+                TX(5, EERXSTL);
+                TX(6, 0x40);
+                TX(7, 0x53);
+                // ^ toggle cs
+                TX(8, EWCRU); // MAX_FRAMELEN 0x0242
+                TX(9, EMAMXFLL);
+                TX(10, 0x42);
+                TX(11, 0x02);
+                // ^ toggle cs
+                TX(12, EWCRU); // MAX_FRAMELEN 0x0242
+                TX(13, EERXTAILL);
+                TX(14, 0xFE);
+                TX(15, 0x5F);
+                // ^ toggle cs
+                await spi_ready;
 
-                // Read MAC address
-                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EMAADR1L; await spi_ready;  dummy := rx_bytes[2*8:(2 +1)*8];  dummy := rx_bytes[3*8:(3 +1)*8]; // MAC 0:1
-                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EMAADR2L; await spi_ready;  dummy := rx_bytes[2*8:(2 +1)*8];  dummy := rx_bytes[3*8:(3 +1)*8]; // MAC 2:3
-                count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= ERCRU; tx_bytes[1*8:(1 +1)*8] <= EMAADR3L; await spi_ready;  dummy := rx_bytes[2*8:(2 +1)*8];  dummy := rx_bytes[3*8:(3 +1)*8]; // MAC 4:5
-
-                count <= 1; raise_cs <=  1; tx_bytes[0:8] <= ESENABLERX; await spi_ready;
-
-                //Memory configuration
-                //The ENC424j600 has 0x6000 (24kB) bytes of memory
-                //We have to make good use of it.
-                // 0x0000
-                //  [Scratchpad]
-                // 0x0400
-                //  [TCP packets (578+42)*TCP_SOCKETS
-                // 0x1b84 (assuming 10 sockets)
-                //  [unused area]
-                // 0x5340 (RX_BUFFER_START (0x6000-RX_BUFFER_SIZE))
-                //  [RX Buffer]
-                // 0x6000 (End of standard SRAM)
-
-                NextPacketPointerL <= 0x40;
-                NextPacketPointerH <= 0x53;
-
-                // enc424j600_recvpack()
-
-                loop {
-                    tx_valid <= 1;
-                    count <= 1; raise_cs <=  1; tx_bytes[0:8] <= ESENABLERX; await spi_ready;
-                    count <= 1; raise_cs <=  0; tx_bytes[0:8] <= ERCR | EESTATL; await spi_ready;
-                    count <= 1; raise_cs <=  1; await spi_ready; dummy := rx_bytes[0*8:(0 +1)*8];
-
-                    if dummy > 0 {
-                        //Configure ERXDATA for reading.
-                        count <= 4; raise_cs <=  1 << 3; tx_bytes[0*8:(0 +1)*8] <= EWCRU; tx_bytes[1*8:(1 +1)*8] <= EERXRDPTL; tx_bytes[2*8:(2 +1)*8] <=  NextPacketPointerL; tx_bytes[3*8:(3 +1)*8] <=  NextPacketPointerH; await spi_ready;
-
-                        //Start reading!!!
-                        count <= 1; raise_cs <=  0; tx_bytes[0:8] <= ERRXDATA; await spi_ready;
-
-                        // Read next packet pointer.
-                        count <= 1; raise_cs <=  0; await spi_ready; NextPacketPointerL := rx_bytes[0*8:(0 +1)*8];
-                        count <= 1; raise_cs <=  0; await spi_ready; NextPacketPointerH := rx_bytes[0*8:(0 +1)*8];
-
-                        // Read received byte count.
-                        count <= 1; raise_cs <=  0; await spi_ready; receivedL := rx_bytes[0*8:(0 +1)*8];
-                        count <= 1; raise_cs <=  0; await spi_ready; receivedH := rx_bytes[0*8:(0 +1)*8];
-
-                        count <= 1; raise_cs <=  0; await spi_ready; status_vector := rx_bytes[0*8:(0 +1)*8];
-                        count <= 1; raise_cs <=  1; await spi_ready; dummy := rx_bytes[0*8:(0 +1)*8];
-                        if status_vector & (1 << 7) {
-                            LED3 <= 1;
-                        }
-                        // else {
-                          // ERROR: Bad packet
-                          // I have never observed tis code getting called, even when I saw dropped packets.
-                        // }
-                    }
-
-                    tx_valid <= 0;
-                    yield;
-                }
+                // // Read MAC address
+                // read_16(EMAADR1L, dummy, dummy, 1); // MAC 0:1
+                // read_16(EMAADR2L, dummy, dummy, 1); // MAC 2:3
+                // read_16(EMAADR3L, dummy, dummy, 1); // MAC 4:5
+                //
+                // write_byte(ESENABLERX, 1);
+                //
+                // //Memory configuration
+                // //The ENC424j600 has 0x6000 (24kB) bytes of memory
+                // //We have to make good use of it.
+                // // 0x0000
+                // //  [Scratchpad]
+                // // 0x0400
+                // //  [TCP packets (578+42)*TCP_SOCKETS
+                // // 0x1b84 (assuming 10 sockets)
+                // //  [unused area]
+                // // 0x5340 (RX_BUFFER_START (0x6000-RX_BUFFER_SIZE))
+                // //  [RX Buffer]
+                // // 0x6000 (End of standard SRAM)
+                //
+                // NextPacketPointerL <= 0x40;
+                // NextPacketPointerH <= 0x53;
+                //
+                // // enc424j600_recvpack()
+                //
+                // loop {
+                //     tx_valid <= 1;
+                //     write_byte(ESENABLERX, 1);
+                //     write_byte(ERCR | EESTATL, 0);
+                //     read_byte_imm(dummy, 1);
+                //
+                //     if dummy > 0 {
+                //         //Configure ERXDATA for reading.
+                //         write_16(EERXRDPTL, NextPacketPointerL, NextPacketPointerH, 1);
+                //
+                //         //Start reading!!!
+                //         write_byte(ERRXDATA, 0);
+                //
+                //         // Read next packet pointer.
+                //         read_byte(NextPacketPointerL, 0);
+                //         read_byte(NextPacketPointerH, 0);
+                //
+                //         // Read received byte count.
+                //         read_byte(receivedL, 0);
+                //         read_byte(receivedH, 0);
+                //
+                //         read_byte(status_vector, 0);
+                //         read_byte(dummy, 1);
+                //         if status_vector & (1 << 7) {
+                //             LED3 <= 1;
+                //         }
+                //         // else {
+                //           // ERROR: Bad packet
+                //           // I have never observed tis code getting called, even when I saw dropped packets.
+                //         // }
+                //     }
+                //
+                //     tx_valid <= 0;
+                //     yield;
+                // }
 
                 loop {
                     yield;
@@ -598,4 +617,3 @@ entity Main(
         LED5 = !ready;
     }
 }
-

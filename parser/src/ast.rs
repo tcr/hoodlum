@@ -53,10 +53,12 @@ pub enum Seq {
 
     While(Expr, SeqBlock),
     Loop(SeqBlock),
-    Fsm(SeqBlock),
+    Async(SeqBlock),
+    Fsm(Vec<(Ident, SeqBlock)>),
     Yield,
     Await(Expr),
 
+    FsmCase(Vec<(Vec<i32>, SeqBlock)>),
     FsmTransition(u32),
 }
 
@@ -103,7 +105,6 @@ pub enum Expr {
 
     FsmEq(BTreeSet<i32>),
     FsmNe(BTreeSet<i32>),
-    FsmValue(u32),
 }
 
 impl Expr {

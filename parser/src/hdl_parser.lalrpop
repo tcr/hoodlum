@@ -171,14 +171,18 @@ pub SeqStatement: ast::Seq = {
     "loop" "{" <b:SeqStatements> "}" ";"? => {
         ast::Seq::Loop(b)
     },
-    "fsm" "{" <b:SeqStatements> "}" ";"? => {
-        ast::Seq::Fsm(b)
+    "async" "{" <b:SeqStatements> "}" ";"? => {
+        ast::Seq::Async(b)
     },
     "yield" ";" => {
         ast::Seq::Yield
     },
     "await" <e:Expr> ";" => {
         ast::Seq::Await(e)
+    },
+
+    "fsm" "{" <b:FsmArm+> "}" ";"? => {
+        ast::Seq::Fsm(b)
     },
 
     <i:Ident> <b:BlockType> <v:Expr> ";" => {
@@ -189,6 +193,15 @@ pub SeqStatement: ast::Seq = {
     },
     <i:Ident> "[" <from:Expr> ":" <to:Expr> "]" <b:BlockType> <v:Expr> ";" => {
         ast::Seq::SetRange(b, i, from, to, v)
+    },
+};
+
+FsmArm: (ast::Ident, ast::SeqBlock) = {
+    <i:Ident> "=>" <s:SeqStatement> "," => {
+        (i, ast::SeqBlock(vec![s]))
+    },
+    <i:Ident> "=>" "{" <b:SeqStatements> "}" ","? => {
+        (i, b)
     },
 };
 
