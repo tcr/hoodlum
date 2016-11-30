@@ -92,7 +92,7 @@ entity SpiMaster(
     }
 
     let transmitting = 0;
-    let transmit_save = 1;
+    let transmit_save = 0;
 
     // On positive edge, check the tx_ready state.
     on clk.posedge {
@@ -425,8 +425,8 @@ entity Ethernet(
     // Loop variables.
     let receivedL: bit[8] = 0;
     let receivedH: bit[8] = 0;
-    let NextPacketPointerL: bit[8] = 0x40;
-    let NextPacketPointerH: bit[8] = 0x53;
+    let NextPacketPointerL: bit[8] = 0;
+    let NextPacketPointerH: bit[8] = 0;
     let _FSM: bit[9] = 0;
 
     let checksumL: bit[8] = 0;
