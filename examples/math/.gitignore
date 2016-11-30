@@ -1,0 +1,7 @@
+*.v
+*.blif
+*.ex
+*.txt
+*.bin
+*.vcd*
+*.pyc

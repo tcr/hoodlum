@@ -1,0 +1,39 @@
+entity Main(
+    in clk: bit,
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+    out LED4: bit,
+    out LED5: bit,
+) {
+    let init_active = 0;
+    let reset;
+
+    always {
+        reset = !init_active;
+    }
+
+    let rot: bit[4] = 0b0001;
+    let divider: uint{..128} = 0;
+    let _FSM: uint{..3} = 0;
+    on clk.negedge {
+        if reset {
+            init_active <= 1;
+            divider <= 0;
+            rot <= 0;
+        } else {
+            if divider == 127 {
+                LED1 <= 1;
+                LED2 <= 1;
+                LED3 <= 1;
+                LED4 <= 1;
+            } else {
+                divider <= divider + 1;
+            }
+        }
+    }
+
+    always {
+        LED5 = reset;
+    }
+}
