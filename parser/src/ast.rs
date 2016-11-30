@@ -54,6 +54,7 @@ pub enum Seq {
     While(Expr, SeqBlock),
     Loop(SeqBlock),
     Async(SeqBlock),
+    FsmCaseTransition(Ident),
     Fsm(Vec<(Ident, SeqBlock)>),
     Yield,
     Await(Expr),

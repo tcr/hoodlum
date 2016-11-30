@@ -1,6 +1,7 @@
 #[macro_use] extern crate itertools;
 #[macro_use] extern crate maplit;
 #[macro_use] extern crate matches;
+#[macro_use] extern crate lazy_static;
 extern crate hoodlum_parser;
 extern crate lalrpop_util;
 
@@ -10,6 +11,7 @@ pub use hoodlum_parser::{ParseError, ast, hdl_parser};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use async::fsm_rewrite;
+use std::sync::RwLock;
 
 pub fn codelist(code: &str) {
     for (i, line) in code.lines().enumerate() {
@@ -356,6 +358,11 @@ impl ToVerilog for ast::SeqBlock {
     }
 }
 
+// TODO get rid of this with rewriting AST
+lazy_static! {
+    static ref FSM_MAP: RwLock<HashMap<String, i32>> = RwLock::new(HashMap::new());
+}
+
 impl ToVerilog for ast::Seq {
     fn to_verilog(&self, v: &VerilogState) -> String {
         match *self {
@@ -436,8 +443,30 @@ impl ToVerilog for ast::Seq {
                     //id=v.fsm.get(&n).map(|x| x.to_string()).unwrap_or(format!("$$${}$$$", n))) //.expect(format!("Missing FSM state in generation step: {:?}!"))
                     //id=v.fsm.get(&n).expect(&format!("Missing FSM state in generation step: {:?}", n)))
             }
-            ast::Seq::Fsm(..) => {
-                unreachable!("Cannot not compile Fsm yet.")
+            ast::Seq::Fsm(ref arms) => {
+                let mut states: HashMap<String, i32> = hashmap!{};
+                let mut len = 0;
+                for arm in arms {
+                    states.insert((arm.0).0.clone(), len);
+                    len += 1;
+                }
+
+                let mut out: Vec<(Vec<i32>, ast::SeqBlock)> = vec![];
+                for arm in arms {
+                    out.push((
+                        vec![*states.get(&(arm.0).0).unwrap()],
+                        arm.1.clone()
+                    ));
+                }
+
+                *FSM_MAP.write().unwrap() = states;
+
+                ast::Seq::FsmCase(out).to_verilog(&v)
+            }
+            ast::Seq::FsmCaseTransition(ref ident) => {
+                format!("{ind}_FSM = {id};\n",
+                    ind=v.indent,
+                    id=FSM_MAP.read().unwrap().get(&ident.0).expect("Unknown fsm transition"))
             }
             ast::Seq::Await(..) => {
                 unreachable!("Cannot not compile Await statement to Verilog.")

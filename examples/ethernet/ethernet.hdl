@@ -115,32 +115,33 @@ entity SpiMaster(
         if !rst {
             transmitting <= 0;
         } else {
-            async {
-                // Wait for transition trigger.
-                spi_tx <= 0;
-                while ready != 0 {
-                    yield;
+            fsm {
+                INIT => {
+                    // Wait for transition trigger.
+                    spi_tx <= 0;
+                    if ready == 0 {
+                        read_index <= 8;
+                        fsm <= WRITING;
+                    }
                 }
+                WRITING => {
+                    // Enable output clock.
+                    live_clk <= 1;
 
-                // Enable output clock.
-                live_clk <= 1;
-
-                // Start sequence.
-                read_index <= 7;
-                spi_tx <= tx_byte[7];
-                yield;
-
-                // Write bits.
-                while read_index > 0 {
-                    spi_tx <= tx_byte[read_index - 1];
-                    read_index <= read_index - 1;
-                    yield;
+                    // Write bits.
+                    if read_index > 0 {
+                        spi_tx <= tx_byte[read_index - 1];
+                        read_index <= read_index - 1;
+                    } else {
+                        // Disable output clock.
+                        live_clk <= 0;
+                        fsm <= FINISH;
+                    }
                 }
-
-                // Disable output clock.
-                live_clk <= 0;
-                yield;
-                transmitting <= !transmitting;
+                FINISH => {
+                    transmitting <= !transmitting;
+                    fsm <= INIT;
+                }
             }
         }
     }

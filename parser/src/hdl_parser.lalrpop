@@ -181,6 +181,9 @@ pub SeqStatement: ast::Seq = {
         ast::Seq::Await(e)
     },
 
+    "fsm" "<=" <i:Ident> ";" => {
+        ast::Seq::FsmCaseTransition(i)
+    },
     "fsm" "{" <b:FsmArm+> "}" ";"? => {
         ast::Seq::Fsm(b)
     },
