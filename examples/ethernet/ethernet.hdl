@@ -1,5 +1,5 @@
 entity Second(in clk: bit, out ready: bit) {
-  let index: uint{..1200000} = 0;
+  let index: uint{..12000000} = 0;
 
   on clk.posedge {
       if index == 12000000 - 1 {
@@ -12,7 +12,7 @@ entity Second(in clk: bit, out ready: bit) {
 }
 
 entity Half(in clk: bit, out ready: bit) {
-  let index: uint{..1200000} = 0;
+  let index: uint{..10000000} = 0;
 
   on clk.posedge {
       if index == 10000000 - 1 {
@@ -27,7 +27,7 @@ entity Half(in clk: bit, out ready: bit) {
 
 
 entity MiniCounter(in clk: bit, in rst: bit, out ready: bit) {
-  let index: uint{..400} = 0;
+  let index: uint{..240} = 0;
 
   on clk.posedge {
       if !rst {
@@ -58,7 +58,7 @@ entity SpiMaster(
     let live_clk: bit[1] = 0;
 
     // Internal signals.
-    let read_index: uint{0..8} = 0;
+    let read_index: uint{..9} = 0;
     let internal_clk: bit[1] = 0;
 
     let _FSM: bit[32] = 0;
@@ -365,7 +365,7 @@ entity Ethernet(
         count: count,
     };
 
-    let sleep_counter: uint{..1200000} = 0;
+    let sleep_counter: uint{..360} = 0;
 
 #define tx_byte tx_bytes[0:8]
 #define spi_rx_value rx_bytes[0:8]
