@@ -335,7 +335,7 @@ impl ToVerilog for ast::Decl {
                     None
                 };
 
-                format!("{ind}reg{dim0} {name}{dims} = 0;",
+                format!("{ind}reg{dim0} {name}{dims} = 0;\n",
                     ind=v.indent,
                     dim0=if dim0.is_some() { format!(" {}", dim0.unwrap()) } else { " [(1)-1:0]".to_string() },
                     name=i.to_verilog(v),
