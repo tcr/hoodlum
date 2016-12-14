@@ -6,16 +6,16 @@ entity Main(
     out LED4: bit,
     out LED5: bit,
 ) {
-    let init_active = 0;
-    let reset;
+    def init_active = 0;
+    def reset;
 
     always {
         reset = !init_active;
     }
 
-    let rot: bit[4] = 0b0001;
-    let divider: uint{..128} = 0;
-    let _FSM: uint{..3} = 0;
+    def rot: bit[4] = 0b0001;
+    def divider: uint{..128} = 0;
+    def _FSM: uint{..3} = 0;
     on clk.negedge {
         if reset {
             init_active <= 1;

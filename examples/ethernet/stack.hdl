@@ -4,16 +4,16 @@ entity Second {
 }
 
 impl Second {
-  let index_Z: uint{..6000000};
+    def mut index: uint{..6000000};
 
-  on clk.posedge {
-      if index_Z == 6000000 - 1 {
-          ready <= 1;
-      } else {
-          index_Z <= index_Z + 1;
-          ready <= 0;
-      }
-  }
+    on clk.posedge {
+        if index == 6000000 - 1 {
+            ready <= 1;
+        } else {
+            index <= index + 1;
+            ready <= 0;
+        }
+    }
 }
 
 // const WIDTH = 16;
@@ -42,19 +42,19 @@ impl Stack2 {
     const BITS = WIDTH * DEPTH;
 
     // Whether to push or pop
-    let do_move: bit = delta[0];
+    def do_move: bit = delta[0];
     // 0 = push, 1 = pop
-    let move_dir: bit = delta[1];
+    def move_dir: bit = delta[1];
 
-    let head: bit[16];
-    let tail: bit[288];
+    def mut head: bit[16];
+    def mut tail: bit[288];
 
-    let headN: bit[16] =if we {
+    def headN: bit[16] =if we {
         wd
     } else {
         tail[16:0]
     };
-    let tailN: bit[288] = if move_dir {
+    def tailN: bit[288] = if move_dir {
         {0x55aa, tail[BITS:16]}
     } else {
         {tail[BITS-16:0], head}
@@ -91,21 +91,18 @@ entity J1a {
 
 impl J1a {
     const WIDTH = 16; // TODO global const
-    // data stack pointer
-    let dsp: bit[4];
-    let dspN: bit[4];
     // top of data stack
-    let st0: bit[16];
-    let st0N: bit[16];
+    def mut st0: bit[16];
+    def st0N: bit[16];
     // data stack write
-    let dstkW: bit;
+    def dstkW: bit;
 
     // program counter
-    let pc: bit[13];
-    let pcN: bit[13];
-    let pc_plus_1: bit[13] = pc + 1b1;
+    def mut pc: bit[13];
+    def pcN: bit[13];
+    def pc_plus_1: bit[13] = pc + 1b1;
     // TODO does above differ with wire [12:0] pc_plus_1 = pc + 13'd1 ?
-    let reboot;
+    def mut reboot;
 
     always {
         // mem_addr = st0[16:0];
@@ -113,10 +110,10 @@ impl J1a {
     }
 
     // The D and R stacks
-    let st1: bit[16];
-    let dspI: bit[2];
+    def st1: bit[16];
+    def dspI: bit[2];
     // stack2 #(.DEPTH(15)) dstack(.clk(clk), .rd(st1),  .we(dstkW), .wd(st0),   .delta(dspI));
-    let dstack = Stack2 {
+    def dstack = Stack2 {
         clk: clk,
         rd: st1,
         we: dstkW,
@@ -124,8 +121,8 @@ impl J1a {
         delta: dspI,
     };
 
-    let minus: bit[17] = {1b1, !st0} + st1 + 1;
-    // let signedless: bit = if st0[15] ^ st1[15] { st1[15] } else { minus[16] };
+    def minus: bit[17] = {1b1, !st0} + st1 + 1;
+    // def signedless: bit = if st0[15] ^ st1[15] { st1[15] } else { minus[16] };
 
     always {
         // Compute the new value of st0
@@ -275,28 +272,25 @@ entity Main {
 
 impl Main {
     // Reset is active high. We declare it inverse of a temporary value which is initialized to 0.
-    let reset;
-    let init_active;
-    always {
-        reset = !init_active;
-    }
+    def init_active;
+    def reset = !init_active;
 
     // This is our one-second initial delay.
-    let sec = Second {
+    def sec = Second {
         clk: clk,
         ready: init_active,
     };
 
-    let code: bit[16][4] = {
-        16b0000_0000_0000_0011,
+    def code: bit[16][4] = {
+        16b0000_0000_0000_0010,
         16b1000_0000_0000_0101,
         16b0000_0000_0000_0000,
         16b1000_0000_0000_0001,
     };
 
-    let insn: bit[16];
-    let code_addr: bit[13];
-    let j1 = J1a {
+    def mut insn: bit[16];
+    def code_addr: bit[13];
+    def j1 = J1a {
         clk: clk,
         reset: reset,
         code_addr: code_addr,
@@ -306,7 +300,7 @@ impl Main {
         LED3: LED3,
     };
 
-    let error_Z: bit;
+    def mut error: bit;
 
     always {
         // LED2 = 0;
@@ -318,11 +312,11 @@ impl Main {
         if code_addr >= 0 && code_addr < 4 {
             insn <= code[code_addr];
         } else if code_addr >= 4 {
-            error_Z <= 1;
+            error <= 1;
         }
     }
 
     always {
-        LED5 = reset | error_Z;
+        LED5 = reset | error;
     }
 }

@@ -324,6 +324,23 @@ impl ToVerilog for ast::UnaryOp {
 impl ToVerilog for ast::Decl {
     fn to_verilog(&self, v: &VerilogState) -> String {
         match *self {
+            ast::Decl::Latch(ref i, ref e) => {
+                let mut dims = vec![];
+                for item in e {
+                    dims.push(format!("[({})-1:0]", item.to_verilog(v)));
+                }
+                let dim0 = if dims.len() > 0 {
+                    Some(dims.remove(0))
+                } else {
+                    None
+                };
+
+                format!("{ind}reg{dim0} {name}{dims} = 0;",
+                    ind=v.indent,
+                    dim0=if dim0.is_some() { format!(" {}", dim0.unwrap()) } else { " [(1)-1:0]".to_string() },
+                    name=i.to_verilog(v),
+                    dims=if dims.len() > 0 { format!(" {}", dims.join(" ")) } else { "".to_string() })
+            }
             ast::Decl::Reg(ref i, ref e, ref value) => {
                 let mut dims = vec![];
                 for item in e {
@@ -336,18 +353,9 @@ impl ToVerilog for ast::Decl {
                 };
 
                 let name = i.to_verilog(v);
-
-                match (dims.len() > 0, value, name.ends_with("_Z")) {
-                    // Zero init
-                    (false, _, true) => {
-                        format!("{ind}reg{dim0} {name} = 0;\n",
-                            ind=v.indent,
-                            dim0=if dim0.is_some() { format!(" {}", dim0.unwrap()) } else { " [(1)-1:0]".to_string() },
-                            name=name)
-                    }
-
+                match (dims.len() > 0, value) {
                     // Hack for multidimensional array assignment
-                    (true, &Some(ast::Expr::Concat(ref values)), _) => {
+                    (true, &Some(ast::Expr::Concat(ref values))) => {
                         format!("{ind}reg{dim0} {name}{dims};\n{ind}always @(*) begin\n{value}{ind}end\n",
                             ind=v.indent,
                             dim0=if dim0.is_some() { format!(" {}", dim0.unwrap()) } else { " [(1)-1:0]".to_string() },

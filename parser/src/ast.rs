@@ -26,6 +26,7 @@ pub struct EdgeRef(pub Ident, pub Edge);
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Decl {
+    Latch(Ident, Vec<Expr>),
     Reg(Ident, Vec<Expr>, Option<Expr>),
     Let(Ident, Ident, Vec<(Ident, Expr)>),
     Const(Ident, Expr),

@@ -80,35 +80,61 @@ Dimensions: Vec<ast::Expr> = {
   <a:("[" <Num> "]")+> => a,
 };
 
+DefType: bool = {
+  "def" "mut" => true,
+  "def" => false,
+};
+
 Decl: ast::Decl = {
-    "let" <i:Ident> ";" => {
-        ast::Decl::Reg(i, vec![], None)
+    <m:DefType> <i:Ident> ";" => {
+        if m {
+            ast::Decl::Latch(i, vec![])
+        } else {
+            ast::Decl::Reg(i, vec![], None)
+        }
     },
-    "let" <i:Ident> "=" <v:Expr> ";" => {
+    <m:DefType> <i:Ident> "=" <v:Expr> ";" => {
+        assert_eq!(m, false, "Cannot declare initial value with mutable def.");
         ast::Decl::Reg(i, vec![], Some(v))
     },
-    "let" <i:Ident> ":" "bit" ";" => {
-        ast::Decl::Reg(i, vec![], None)
+    <m:DefType> <i:Ident> ":" "bit" ";" => {
+        if m {
+            ast::Decl::Latch(i, vec![])
+        } else {
+            ast::Decl::Reg(i, vec![], None)
+        }
     },
-    "let" <i:Ident> ":" "bit" "=" <v:Expr> ";" => {
+    <m:DefType> <i:Ident> ":" "bit" "=" <v:Expr> ";" => {
+        assert_eq!(m, false, "Cannot declare initial value with mutable def.");
         ast::Decl::Reg(i, vec![], Some(v))
     },
-    "let" <i:Ident> ":" "bit" <a:Dimensions> ";" => {
-        ast::Decl::Reg(i, a, None)
+    <m:DefType> <i:Ident> ":" "bit" <a:Dimensions> ";" => {
+        if m {
+            ast::Decl::Latch(i, a)
+        } else {
+            ast::Decl::Reg(i, a, None)
+        }
     },
-    "let" <i:Ident> ":" "bit" <a:Dimensions> "=" <v:Expr> ";" => {
+    <m:DefType> <i:Ident> ":" "bit" <a:Dimensions> "=" <v:Expr> ";" => {
+        assert_eq!(m, false, "Cannot declare initial value with mutable def.");
         ast::Decl::Reg(i, a, Some(v))
     },
-    "let" <i:Ident> ":" "uint" "{" <d:Num?> ".." <a:Num> "}" ";" => {
+    <m:DefType> <i:Ident> ":" "uint" "{" <d:Num?> ".." <a:Num> "}" ";" => {
         let width = u32::next_power_of_two(a.to_i32() as u32).trailing_zeros();
-        ast::Decl::Reg(i, vec![ast::Expr::Num(width as i32)], None)
+        let dims = vec![ast::Expr::Num(width as i32)];
+        if m {
+            ast::Decl::Latch(i, dims)
+        } else {
+            ast::Decl::Reg(i, dims, None)
+        }
     },
-    "let" <i:Ident> ":" "uint" "{" <d:Num?> ".." <a:Num> "}" "=" <v:Expr> ";" => {
-        assert_eq!(v, ast::Expr::Num(0));
+    <m:DefType> <i:Ident> ":" "uint" "{" <d:Num?> ".." <a:Num> "}" "=" <v:Expr> ";" => {
+        assert_eq!(m, false, "Cannot declare initial value with mutable def.");
         let width = u32::next_power_of_two(a.to_i32() as u32).trailing_zeros();
         ast::Decl::Reg(i, vec![ast::Expr::Num(width as i32)], Some(v))
     },
-    "let" <i:Ident> "=" <e:Ident> "{" <args:Comma<KeyPair>> "}" ";" => {
+    <m:DefType> <i:Ident> "=" <e:Ident> "{" <args:Comma<KeyPair>> "}" ";" => {
+        assert_eq!(m, false, "Cannot declare Entity as mut.");
         ast::Decl::Let(i, e, args)
     },
     "const" <i:Ident> "=" <v:Expr> ";" => {
