@@ -1,7 +1,7 @@
 all: rise_ice.bin
 
 rise_ice.bin:
-	hoodlum stack.hdl test.v
+	hoodlum video.hdl test.v
 	yosys -q -p "synth_ice40 -top Main -blif rise_ice.blif" test.v
 	arachne-pnr -p icestick.pcf rise_ice.blif -o rise_ice.txt
 	icebox_explain rise_ice.txt > rise_ice.ex

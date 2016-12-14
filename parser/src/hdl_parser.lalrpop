@@ -31,7 +31,7 @@ Semicolon<T>: Vec<T> = { // (1)
 
 
 Entity: ast::Entity = { // (1)
-    "entity" <i:Ident> "(" <a:EntityArgs> ")" "{" <b:EntityBody> "}" => {
+    "entity" <i:Ident> "{" <a:EntityArgs> "}" "impl" <j:Ident> "{" <b:EntityBody> "}" => {
         ast::Entity(i, a, b)
     },
 };
@@ -58,41 +58,55 @@ Ident: ast::Ident = {
 };
 
 Num: ast::Expr = {
-    r"\d+" => ast::Expr::Num(i32::from_str(<>).unwrap()),
-    r"0b[01]+" => ast::Expr::Num(i32::from_str_radix(&<>[2..], 2).unwrap()),
-    r"0x[0-9a-fA-F]+" => ast::Expr::Num(i32::from_str_radix(&<>[2..], 16).unwrap()),
+    r"\d+" => {
+        let num = <>.to_string().replace("_", "");
+        ast::Expr::Num(i32::from_str(<>).unwrap())
+    },
+    r"[0-9]+d[0-9_]+" => {
+        let num = <>.to_string().replace("_", "").splitn(2, 'd').nth(1).unwrap().to_string();
+        ast::Expr::Num(i32::from_str_radix(&num, 10).unwrap())
+    },
+    r"[0-9]+b[01_]+" => {
+        let num = <>.to_string().replace("_", "").splitn(2, 'b').nth(1).unwrap().to_string();
+        ast::Expr::Num(i32::from_str_radix(&num, 2).unwrap())
+    },
+    r"[0-9]+x[0-9a-fA-F_]+" => {
+        let num = <>.to_string().replace("_", "").splitn(2, 'x').nth(1).unwrap().to_string();
+        ast::Expr::Num(i32::from_str_radix(&num, 16).unwrap())
+    },
+};
+
+Dimensions: Vec<ast::Expr> = {
+  <a:("[" <Num> "]")+> => a,
 };
 
 Decl: ast::Decl = {
     "let" <i:Ident> ";" => {
-        ast::Decl::Reg(i, None)
+        ast::Decl::Reg(i, vec![], None)
     },
     "let" <i:Ident> "=" <v:Expr> ";" => {
-        assert_eq!(v, ast::Expr::Num(0));
-        ast::Decl::Reg(i, Some(v))
+        ast::Decl::Reg(i, vec![], Some(v))
     },
     "let" <i:Ident> ":" "bit" ";" => {
-        ast::Decl::Reg(i, None)
+        ast::Decl::Reg(i, vec![], None)
     },
     "let" <i:Ident> ":" "bit" "=" <v:Expr> ";" => {
-        assert_eq!(v, ast::Expr::Num(0));
-        ast::Decl::Reg(i, Some(v))
+        ast::Decl::Reg(i, vec![], Some(v))
     },
-    "let" <i:Ident> ":" "bit" "[" <a:Num> "]" ";" => {
-        ast::Decl::RegArray(i, a, None)
+    "let" <i:Ident> ":" "bit" <a:Dimensions> ";" => {
+        ast::Decl::Reg(i, a, None)
     },
-    "let" <i:Ident> ":" "bit" "[" <a:Num> "]" "=" <v:Expr> ";" => {
-        assert_eq!(v, ast::Expr::Num(0));
-        ast::Decl::RegArray(i, a, Some(v))
+    "let" <i:Ident> ":" "bit" <a:Dimensions> "=" <v:Expr> ";" => {
+        ast::Decl::Reg(i, a, Some(v))
     },
     "let" <i:Ident> ":" "uint" "{" <d:Num?> ".." <a:Num> "}" ";" => {
         let width = u32::next_power_of_two(a.to_i32() as u32).trailing_zeros();
-        ast::Decl::RegArray(i, ast::Expr::Num(width as i32), None)
+        ast::Decl::Reg(i, vec![ast::Expr::Num(width as i32)], None)
     },
     "let" <i:Ident> ":" "uint" "{" <d:Num?> ".." <a:Num> "}" "=" <v:Expr> ";" => {
         assert_eq!(v, ast::Expr::Num(0));
         let width = u32::next_power_of_two(a.to_i32() as u32).trailing_zeros();
-        ast::Decl::RegArray(i, ast::Expr::Num(width as i32), Some(v))
+        ast::Decl::Reg(i, vec![ast::Expr::Num(width as i32)], Some(v))
     },
     "let" <i:Ident> "=" <e:Ident> "{" <args:Comma<KeyPair>> "}" ";" => {
         ast::Decl::Let(i, e, args)
@@ -125,11 +139,13 @@ CombStatements: ast::SeqBlock = {
 
 CombStatement: ast::Seq = {
     "if" <c:Expr> "{" <t:CombStatements> "}"
-    "else" "{" <e:CombStatements> "}" => {
-        ast::Seq::If(c, t, Some(e))
-    },
-    "if" <c:Expr> "{" <t:CombStatements> "}" => {
-        ast::Seq::If(c, t, None)
+    <clauses:("else" "if" <Expr> "{" <CombStatements> "}")*>
+    <e:("else" "{" <CombStatements> "}")?> => {
+        let mut els = e;
+        for (cexpr, cblock) in clauses.into_iter().rev() {
+          els = Some(ast::SeqBlock(vec![ast::Seq::If(cexpr, cblock, els)]));
+        }
+        ast::Seq::If(c, t, els)
     },
     "match" <cond:Expr> "{" <arms:MatchArmComb+> "}" => {
         ast::Seq::Match(cond, arms)
@@ -147,9 +163,6 @@ CombStatement: ast::Seq = {
 };
 
 MatchArmComb: (Vec<ast::Expr>, ast::SeqBlock) = {
-    "_" "=>" <s:CombStatement> "," => {
-        (vec![], ast::SeqBlock(vec![s]))
-    },
     <e:Expr> "=>" <s:CombStatement> "," => {
         (vec![e], ast::SeqBlock(vec![s]))
     },
@@ -164,15 +177,13 @@ SeqStatements: ast::SeqBlock = {
 
 pub SeqStatement: ast::Seq = {
     "if" <c:Expr> "{" <t:SeqStatements> "}"
-    "else" "{" <e:SeqStatements> "}" ";"? => {
-        ast::Seq::If(c, t, Some(e))
-    },
-    "if" <c:Expr> "{" <t:SeqStatements> "}"
-    "else" "if" <c2:Expr> "{" <e:SeqStatements> "}" ";"? => {
-        ast::Seq::If(c, t, Some(ast::SeqBlock(vec![ast::Seq::If(c2, e, None)])))
-    },
-    "if" <c:Expr> "{" <t:SeqStatements> "}" ";"? => {
-        ast::Seq::If(c, t, None)
+    <clauses:("else" "if" <Expr> "{" <SeqStatements> "}")*>
+    <e:("else" "{" <SeqStatements> "}")?> => {
+        let mut els = e;
+        for (cexpr, cblock) in clauses.into_iter().rev() {
+          els = Some(ast::SeqBlock(vec![ast::Seq::If(cexpr, cblock, els)]));
+        }
+        ast::Seq::If(c, t, els)
     },
     "match" <cond:Expr> "{" <arms:MatchArmSeq+> "}" ";"? => {
         ast::Seq::Match(cond, arms)
@@ -236,9 +247,14 @@ MatchArmSeq: (Vec<ast::Expr>, ast::SeqBlock) = {
 };
 
 Expr: ast::Expr = {
-    "{" <v:Comma<Expr>> "}" => ast::Expr::Concat(v),
+    // TODO support "always" blocks
+    "if" <c:Expr> "{" <t:Expr> "}"
+    "else" "{" <e:Expr> "}" => {
+        ast::Expr::Ternary(Box::new(c), Box::new(t), Box::new(e))
+    },
     "!" <r:Term> => ast::Expr::Unary(ast::UnaryOp::Not, Box::new(r)),
     <l:Expr> "&&" <r:Expr2> => ast::Expr::Arith(ast::Op::And, Box::new(l), Box::new(r)),
+    <l:Expr> "||" <r:Expr2> => ast::Expr::Arith(ast::Op::Or, Box::new(l), Box::new(r)),
     <l:Expr> "<<" <r:Expr2> => ast::Expr::Arith(ast::Op::LShift, Box::new(l), Box::new(r)),
     <l:Expr> ">>" <r:Expr2> => ast::Expr::Arith(ast::Op::RShift, Box::new(l), Box::new(r)),
     Expr2 => <>,
@@ -256,6 +272,8 @@ Expr3: ast::Expr = {
     <l:Expr3> "*" <r:Term> => ast::Expr::Arith(ast::Op::Mul, Box::new(l), Box::new(r)),
     <l:Expr3> "<" <r:Term> => ast::Expr::Arith(ast::Op::Lt, Box::new(l), Box::new(r)),
     <l:Expr3> ">" <r:Term> => ast::Expr::Arith(ast::Op::Gt, Box::new(l), Box::new(r)),
+    <l:Expr3> ">=" <r:Term> => ast::Expr::Arith(ast::Op::Gte, Box::new(l), Box::new(r)),
+    <l:Expr3> "<=" <r:Term> => ast::Expr::Arith(ast::Op::Lte, Box::new(l), Box::new(r)),
     <l:Expr3> "|" <r:Term> => ast::Expr::Arith(ast::Op::BinOr, Box::new(l), Box::new(r)),
     <l:Expr3> "&" <r:Term> => ast::Expr::Arith(ast::Op::BinAnd, Box::new(l), Box::new(r)),
     Term => <>,
@@ -263,8 +281,11 @@ Expr3: ast::Expr = {
 
 Term: ast::Expr = {
     "(" <e:Expr> ")" => e,
+    "{" <v:Expr> ";" <r:Expr> "}" => ast::Expr::Repeat(Box::new(v), Box::new(r)),
+    "{" <v:Comma<Expr>> "}" => ast::Expr::Concat(v),
     <i:Ident> "[" <l:Expr> ":" <r:Expr> "]" => ast::Expr::Slice(i, Box::new(l), Some(Box::new(r))),
     <i:Ident> "[" <l:Expr> "]" => ast::Expr::Slice(i, Box::new(l), None),
+    "_" => ast::Expr::Placeholder,
     Ident => ast::Expr::Ref(<>),
     Num => <>,
 };

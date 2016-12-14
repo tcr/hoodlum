@@ -1,55 +1,76 @@
+// http://chasingtrons.com/main/2012/6/14/television-fpga-verilog.html
+// https://en.wikipedia.org/wiki/Resistor_ladder#R.E2.80.932R_resistor_ladder_network_.28digital_to_analog_conversion.29
 
-entity Ntsc (
-    input  wire       clk,
-    input  wire [2:0] pixel_data, // 0 ( black )..5 (bright white)
-    output wire       h_sync_out, // single clock tick indicating pixel_y will incrememt on next clock ( for debugging )
-    output wire       v_sync_out, // single clock tick indicating pixel_y will reset to 0 or 1 on next clock, depending on the field ( for debugging )
-    output wire [9:0] pixel_y,    // which line
-    output wire [9:0] pixel_x,
-    output wire       pixel_is_visible,
-    output reg  [2:0] ntsc_out
-) {
+entity Ntsc {
+    in clk: bit,
+    // 0 ( black )..5 (bright white)
+    in pixel_data: bit[3],
+    // single clock tick indicating pixel_y will incrememt on next clock ( for debugging )
+    out h_sync_out: bit,
+    // single clock tick indicating pixel_y will reset to 0 or 1 on next clock, depending on the field ( for debugging )
+    out v_sync_out: bit,
+    // which line
+    out pixel_y: bit[10],
+    out pixel_x: bit[10],
+    out pixel_is_visible: bit,
+    out ntsc_out: bit[3],
+}
+
+impl Ntsc {
     const BASE_PIXEL_X = 184;
     const RESOLUTION_HORIZONTAL = 560;
     const BASE_PIXEL_Y = 89;
     const RESOLUTION_VERTICAL = 400;
 
+    // TODO: Make a better interface for inputting luminance
+    let luminance: bit[3];
 
-    reg         [2:0] luminance;  // TODO: Make a better interface for inputting luminance
+    // 0..524
+    let line_count_reg: bit[10];
+    let line_count_reg_next: bit[10];
 
-    reg         [9:0] line_count_reg,
-                      line_count_reg_next; // 0..524
+    // One of EQ, VERTICAL_BLANK, or SCANLINE.
+    let line_type_reg: bit[2];
+    let line_type_reg_next: bit[2];
 
-    reg         [1:0] line_type_reg,
-                      line_type_reg_next;
+    let horizontal_count_reg: bit[12];
+    let horizontal_count_reg_next: bit[12];
 
-    reg        [11:0] horizontal_count_reg,
-                      horizontal_count_reg_next;
+    const LINE_TYPE_EQ = 0b00;
+    const LINE_TYPE_VERTICAL_BLANK = 0b01;
+    const LINE_TYPE_SCANLINE = 0b10;
 
-    const LINE_TYPE_EQ              = 0b00,
-                      LINE_TYPE_VERTICAL_BLANK  = 0b01,
-                      LINE_TYPE_SCANLINE        = 0b10;
+    // 1.5 uS @ 50 MHz
+    const WIDTH_FRONT_PORCH = 75;
+    // 4.7 uS @ 50 MHz
+    const WIDTH_SYNC_TIP = 235;
+    // 4.7  uS @ 50 MHz
+    const WIDTH_BACK_PORCH = 235;
+    // 52.6 uS @ 50 MHz
+    const WIDTH_VIDEO = 2630;
+    // 63.5 uS @ 50 MHz
+    const WIDTH_WHOLE_LINE = 3175;
+    // 31.75 uS @ 50 MHz
+    const WIDTH_HALF_LINE = 1588;
+    // 2.35 uS @ 50 MHz
+    const WIDTH_EQ_PULSE = 117;
+    // 27.05 uS @ 50 MHz
+    const WIDTH_V_SYNC_PULSE = 1353;
 
-    localparam        WIDTH_FRONT_PORCH         = 75,     // 1.5 uS @ 50 MHz
-                      WIDTH_SYNC_TIP            = 235,    // 4.7 uS @ 50 MHz
-                      WIDTH_BACK_PORCH          = 235,    // 4.7  uS @ 50 MHz
-                      WIDTH_VIDEO               = 2630,   // 52.6 uS @ 50 MHz
-                      WIDTH_WHOLE_LINE          = 3175,   // 63.5 uS @ 50 MHz
-                      WIDTH_HALF_LINE           = 1588,   // 31.75 uS @ 50 MHz
-                      WIDTH_EQ_PULSE            = 117,    // 2.35 uS @ 50 MHz
-                      WIDTH_V_SYNC_PULSE        = 1353;   // 27.05 uS @ 50 MHz
+    // 0 V
+    const SIGNAL_LEVEL_SYNC = 0b000;
+    // 0.3 V ...
+    const SIGNAL_LEVEL_BLANK = 0b001;
+    const SIGNAL_LEVEL_BLACK = 0b010;
+    const SIGNAL_LEVEL_DARK_GREY = 0b011;
+    const SIGNAL_LEVEL_GREY = 0b100;
+    const SIGNAL_LEVEL_LIGHT_GREY = 0b101;
+    const SIGNAL_LEVEL_WHITE = 0b110;
+    // 1 V
+    const SIGNAL_LEVEL_BRIGHT_WHITE = 0b111;
 
-    const  SIGNAL_LEVEL_SYNC         = 0b000; // 0 V
-                      SIGNAL_LEVEL_BLANK        = 0b001, // 0.3 V
-                      SIGNAL_LEVEL_BLACK        = 0b010,
-                      SIGNAL_LEVEL_DARK_GREY    = 0b011,
-                      SIGNAL_LEVEL_GREY         = 0b100,
-                      SIGNAL_LEVEL_LIGHT_GREY   = 0b101,
-                      SIGNAL_LEVEL_WHITE        = 0b110,
-                      SIGNAL_LEVEL_BRIGHT_WHITE = 0b111; // 1 V
-
-    const        HALF_LINE_EVEN_FIELD      = 18,
-                      HALF_LINE_ODD_FIELD       = 527;
+    const HALF_LINE_EVEN_FIELD = 18;
+    const HALF_LINE_ODD_FIELD = 527;
 
 
 
@@ -58,23 +79,29 @@ entity Ntsc (
 //  [__   \_/  |\ | |       [__  | | __ |\ | |__| |    [__
 //  ___]   |   | \| |___    ___] | |__] | \| |  | |___ ___]
 //
-    let at_half_line_width: bit = ( horizontal_count_reg >= WIDTH_HALF_LINE );                                        // signals that the current line has
+    let at_half_line_width: bit = horizontal_count_reg >= WIDTH_HALF_LINE;                                        // signals that the current line has
                                                                                                                   // reached a half scanline's 31.75
     let at_full_line_width: bit = ( horizontal_count_reg >= WIDTH_WHOLE_LINE );                                       // signals that the current line has
                                                                                                                   // reached a normal scanline's 63.5us
     let is_a_half_line: bit = ( line_count_reg == HALF_LINE_EVEN_FIELD ) | ( line_count_reg == HALF_LINE_ODD_FIELD ); // signals current line should be treaded as a half
-    let is_a_whole_line: bit = ~ is_a_half_line;                                                                      // signals current line should be treaded as a whole
+    let is_a_whole_line: bit = !is_a_half_line;                                                                      // signals current line should be treaded as a whole
 
-    let h_sync: bit = ( is_a_half_line & at_half_line_width ) | ( is_a_whole_line & at_full_line_width );
-    let v_sync: bit = h_sync & line_count_reg >= 526;
+    let h_sync: bit = (is_a_half_line & at_half_line_width) | (is_a_whole_line & at_full_line_width);
+    let v_sync: bit = h_sync & (line_count_reg >= 526);
 
     let h_sync_out: bit = h_sync;
     let v_sync_out: bit = v_sync;
 
 
-    let pixel_is_visible: bit = horizontal_count_reg[11:2] >= BASE_PIXEL_X & horizontal_count_reg[11:2] < BASE_PIXEL_X + RESOLUTION_HORIZONTAL & line_count_reg >= BASE_PIXEL_Y & line_count_reg < BASE_PIXEL_Y + RESOLUTION_VERTICAL;
-    let pixel_x: bit          = pixel_is_visible ? horizontal_count_reg[11:2] - BASE_PIXEL_X : 0;
-    let pixel_y: bit          = pixel_is_visible ? line_count_reg - BASE_PIXEL_Y : 0;
+    let pixel_is_visible: bit = (horizontal_count_reg[2:12] >= BASE_PIXEL_X) &
+        (horizontal_count_reg[2:12] < BASE_PIXEL_X + RESOLUTION_HORIZONTAL) &
+        (line_count_reg >= BASE_PIXEL_Y) &
+        (line_count_reg < BASE_PIXEL_Y + RESOLUTION_VERTICAL);
+
+    always {
+        pixel_x = if pixel_is_visible { horizontal_count_reg[2:12] - BASE_PIXEL_X } else { 0 };
+        pixel_y = if pixel_is_visible { line_count_reg - BASE_PIXEL_Y } else { 0 };
+    }
 
 
 //  _  _ ____ _ _  _    ____ ____ ____ _ ____ ___ ____ ____
@@ -85,11 +112,13 @@ entity Ntsc (
 //   |  |  \ |  | | \| ___] |    |___ |  \
 //
     on clk.posedge {
-      horizontal_count_reg  <= horizontal_count_reg_next; // all registers that are needed for decision
-      line_count_reg        <= line_count_reg_next;       // keeping are buffered so they hold their
-      line_type_reg         <= line_type_reg_next;        // current value until the next clock cycle
+        // all registers that are needed for decision
+        // keeping are buffered so they hold their
+        // current value until the next clock cycle
+        horizontal_count_reg <= horizontal_count_reg_next;
+        line_count_reg <= line_count_reg_next;
+        line_type_reg <= line_type_reg_next;
     }
-
 
 
 //  _    _ _  _ ____    ____ ___ ____ ___ ____
@@ -97,13 +126,17 @@ entity Ntsc (
 //  |___ | | \| |___    ___]  |  |  |  |  |___
 //
     // always @*
-    always {                                                                // TODO: might be able to move this to a wire signal
-        if ( line_count_reg <= 5 || ( line_count_reg >= 12 && line_count_reg <= 18 ) ) // is this an equalizing pulse line?
+    always {
+        if line_count_reg <= 5 || (line_count_reg >= 12 && line_count_reg <= 18) {
+            // is this an equalizing pulse line?
             line_type_reg_next = LINE_TYPE_EQ;
-        else if ( line_count_reg >= 6 && line_count_reg <= 11 )                        // is this a vertical blanking line?
+        } else if line_count_reg >= 6 && line_count_reg <= 11 {
+            // is this a vertical blanking line?
             line_type_reg_next = LINE_TYPE_VERTICAL_BLANK;
-        else
-            line_type_reg_next = LINE_TYPE_SCANLINE;                                   // must be a normal scanline
+        } else {
+            // must be a normal scanline
+            line_type_reg_next = LINE_TYPE_SCANLINE;
+        }
     }
 
 //  ____ _ ____ _  _ ____ _     ___ _ _  _ _ _  _ ____
@@ -112,43 +145,53 @@ entity Ntsc (
 //
     // always @*
     always {
-        if ( h_sync )                                             // reached the end of the current line?
-            horizontal_count_reg_next = 0;                        // yes, reset counter to 0
-        else
-            horizontal_count_reg_next = horizontal_count_reg + 1; // nope, advance
+        // reached the end of the current line?
+        if h_sync {
+            // yes, reset counter to 0
+            horizontal_count_reg_next = 0;
+        } else {
+            // nope, advance
+            horizontal_count_reg_next = horizontal_count_reg + 1;
+        }
     }
 
-// this section below used to be signals, but it was hard to read
-// generates the proper signals depending on line type
+    // generate the proper signals depending on line type
     always {
-      if ( line_type_reg == LINE_TYPE_EQ )
-        if ( horizontal_count_reg < WIDTH_EQ_PULSE || (horizontal_count_reg > WIDTH_HALF_LINE && horizontal_count_reg < WIDTH_HALF_LINE + WIDTH_EQ_PULSE ))
-          ntsc_out = SIGNAL_LEVEL_SYNC;
-        else
-          ntsc_out = SIGNAL_LEVEL_BLANK;
-      else if ( line_type_reg == LINE_TYPE_VERTICAL_BLANK )
-        if ( horizontal_count_reg < WIDTH_V_SYNC_PULSE || (horizontal_count_reg > WIDTH_HALF_LINE && horizontal_count_reg < WIDTH_HALF_LINE + WIDTH_V_SYNC_PULSE ))
-          ntsc_out = SIGNAL_LEVEL_SYNC;
-        else
-          ntsc_out = SIGNAL_LEVEL_BLANK;
-      else if ( line_type_reg == LINE_TYPE_SCANLINE )
-        begin
-          if ( horizontal_count_reg > WIDTH_FRONT_PORCH && horizontal_count_reg < WIDTH_FRONT_PORCH + WIDTH_SYNC_TIP )
-            ntsc_out = SIGNAL_LEVEL_SYNC;
-          else if ( horizontal_count_reg > WIDTH_WHOLE_LINE - WIDTH_VIDEO )
-            ntsc_out = luminance;
-          else
-            ntsc_out = SIGNAL_LEVEL_BLANK;
-        end
+        if line_type_reg == LINE_TYPE_EQ {
+            if horizontal_count_reg < WIDTH_EQ_PULSE || (horizontal_count_reg > WIDTH_HALF_LINE && horizontal_count_reg < WIDTH_HALF_LINE + WIDTH_EQ_PULSE) {
+                ntsc_out = SIGNAL_LEVEL_SYNC;
+            } else {
+                ntsc_out = SIGNAL_LEVEL_BLANK;
+            }
+        } else if line_type_reg == LINE_TYPE_VERTICAL_BLANK {
+            if horizontal_count_reg < WIDTH_V_SYNC_PULSE || (horizontal_count_reg > WIDTH_HALF_LINE && horizontal_count_reg < WIDTH_HALF_LINE + WIDTH_V_SYNC_PULSE) {
+                ntsc_out = SIGNAL_LEVEL_SYNC;
+            } else {
+                ntsc_out = SIGNAL_LEVEL_BLANK;
+            }
+        } else if line_type_reg == LINE_TYPE_SCANLINE {
+            if horizontal_count_reg > WIDTH_FRONT_PORCH && horizontal_count_reg < WIDTH_FRONT_PORCH + WIDTH_SYNC_TIP {
+                ntsc_out = SIGNAL_LEVEL_SYNC;
+            } else if horizontal_count_reg > WIDTH_WHOLE_LINE - WIDTH_VIDEO {
+                ntsc_out = luminance;
+            } else {
+                ntsc_out = SIGNAL_LEVEL_BLANK;
+            }
+        }
     }
 
     always {
-        casex ( {v_sync, h_sync, line_count_reg} )                            // a lookup table to determing next line number
-            {1'b1, 1'b1, 10'd526} : line_count_reg_next = 1;                  // v_sync & line number 526, go to line 1
-            {1'b1, 1'b1, 10'd527} : line_count_reg_next = 0;                  // v_sync & line number 527, go to line 0
-            {1'b0, 1'b1, 10'bx  } : line_count_reg_next = line_count_reg + 2; // hsync, but not vsync, jump a line
-            default               : line_count_reg_next = line_count_reg;     // do nothing
-        endcase
+        // a lookup table to determing next line number
+        match {v_sync, h_sync, line_count_reg} {
+            // v_sync & line number 526, go to line 1
+            {0b1, 0b1, 526} => line_count_reg_next = 1,
+            // v_sync & line number 527, go to line 0
+            {0b1, 0b1, 527} => line_count_reg_next = 0,
+            // hsync, but not vsync, jump a line
+            {0b0, 0b1, _} => line_count_reg_next = line_count_reg + 2,
+            // do nothing
+            _ => line_count_reg_next = line_count_reg,
+        }
     }
 
 
@@ -171,8 +214,24 @@ entity Ntsc (
 }
 
 
-entity Main(
+entity Main {
+    in clk: bit,
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+    out LED4: bit,
+}
 
-) {
-
+impl Main {
+    let pixel_x;
+    let ntsc = Ntsc {
+        clk: clk,
+        pixel_data: pixel_x,
+        h_sync_out: _,
+        v_sync_out: _,
+        pixel_y: _,
+        pixel_x: pixel_x,
+        pixel_is_visible: _,
+        ntsc_out: {LED1, LED2, LED3},
+    };
 }

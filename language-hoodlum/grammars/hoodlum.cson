@@ -211,17 +211,17 @@
   {
     'comment': 'Integer literal (hexadecimal)'
     'name': 'constant.numeric.integer.hexadecimal.hoodlum'
-    'match': '\\b0x[a-fA-F0-9_]+([ui](8|16|32|64|s|size))?\\b'
+    'match': '\\b[0-9]+x[a-fA-F0-9_]+([ui](8|16|32|64|s|size))?\\b'
   }
   {
     'comment': 'Integer literal (octal)'
     'name': 'constant.numeric.integer.octal.hoodlum'
-    'match': '\\b0o[0-7_]+([ui](8|16|32|64|s|size))?\\b'
+    'match': '\\b[0-9]+o[0-7_]+([ui](8|16|32|64|s|size))?\\b'
   }
   {
     'comment': 'Integer literal (binary)'
     'name': 'constant.numeric.integer.binary.hoodlum'
-    'match': '\\b0b[01_]+([ui](8|16|32|64|s|size))?\\b'
+    'match': '\\b[0-9]+b[01_]+([ui](8|16|32|64|s|size))?\\b'
   }
   # Language
   {
@@ -242,7 +242,7 @@
   {
     'comment': 'Keyword'
     'name': 'keyword.other.hoodlum'
-    'match': '\\b(crate|extern|mod|let|proc|ref|use|super|as|move|entity|always|on|in|out|bit|uint|int|yield|await|fsm)\\b'
+    'match': '\\b(crate|extern|mod|let|proc|ref|use|super|as|move|always|on|in|out|bit|uint|int|yield|await|fsm|async)\\b'
   }
   { 'include': '#unsafe' }
   { 'include': '#sigils' }
@@ -402,7 +402,7 @@
   # Implementation
   {
     'comment': 'Implementation'
-    'begin': '\\b(impl)\\b'
+    'begin': '\\b(impl|entity)\\b'
     'end': '\\{'
     'beginCaptures': {
       '1': { 'name': 'storage.type.hoodlum' }

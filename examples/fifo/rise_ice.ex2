@@ -1,0 +1,239 @@
+// Reading file 'rise_ice.txt'..
+
+module chip (input clk, input PMOD1, output LED1, input PMOD10, input PMOD8, input LED2, input PMOD3, input LED4, input PMOD4, input LED3, input PMOD9, input PMOD7, input LED5, input PMOD2);
+
+wire clk;
+// (0, 0, 'glb_netwk_6')
+// (0, 4, 'span4_vert_t_14')
+// (0, 5, 'span4_vert_b_14')
+// (0, 6, 'span4_vert_b_10')
+// (0, 7, 'span4_vert_b_6')
+// (0, 8, 'fabout')
+// (0, 8, 'io_1/D_IN_0')
+// (0, 8, 'io_1/PAD')
+// (0, 8, 'local_g1_2')
+// (0, 8, 'span4_vert_b_2')
+// (1, 7, 'neigh_op_tnl_2')
+// (1, 7, 'neigh_op_tnl_6')
+// (1, 8, 'neigh_op_lft_2')
+// (1, 8, 'neigh_op_lft_6')
+// (1, 9, 'neigh_op_bnl_2')
+// (1, 9, 'neigh_op_bnl_6')
+// (9, 3, 'lutff_global/clk')
+// (9, 5, 'lutff_global/clk')
+// (9, 8, 'lutff_global/clk')
+// (11, 8, 'lutff_global/clk')
+// (12, 11, 'lutff_global/clk')
+// (12, 12, 'lutff_global/clk')
+
+reg n2 = 0;
+// (7, 8, 'sp12_h_r_0')
+// (8, 7, 'neigh_op_tnr_6')
+// (8, 8, 'neigh_op_rgt_6')
+// (8, 8, 'sp12_h_r_3')
+// (8, 9, 'neigh_op_bnr_6')
+// (9, 7, 'neigh_op_top_6')
+// (9, 8, 'lutff_6/out')
+// (9, 8, 'sp12_h_r_4')
+// (9, 9, 'neigh_op_bot_6')
+// (10, 7, 'neigh_op_tnl_6')
+// (10, 8, 'neigh_op_lft_6')
+// (10, 8, 'sp12_h_r_7')
+// (10, 9, 'neigh_op_bnl_6')
+// (11, 8, 'local_g1_0')
+// (11, 8, 'lutff_3/in_0')
+// (11, 8, 'sp12_h_r_8')
+// (12, 8, 'sp12_h_r_11')
+// (13, 8, 'span12_horz_11')
+
+reg n3 = 0;
+// (8, 2, 'neigh_op_tnr_5')
+// (8, 2, 'sp4_r_v_b_39')
+// (8, 3, 'neigh_op_rgt_5')
+// (8, 3, 'sp4_r_v_b_26')
+// (8, 4, 'neigh_op_bnr_5')
+// (8, 4, 'sp4_r_v_b_15')
+// (8, 5, 'sp4_r_v_b_2')
+// (9, 1, 'sp4_v_t_39')
+// (9, 2, 'neigh_op_top_5')
+// (9, 2, 'sp4_v_b_39')
+// (9, 3, 'lutff_5/out')
+// (9, 3, 'sp4_v_b_26')
+// (9, 4, 'neigh_op_bot_5')
+// (9, 4, 'sp4_v_b_15')
+// (9, 5, 'local_g1_2')
+// (9, 5, 'lutff_3/in_0')
+// (9, 5, 'sp4_v_b_2')
+// (10, 2, 'neigh_op_tnl_5')
+// (10, 3, 'neigh_op_lft_5')
+// (10, 4, 'neigh_op_bnl_5')
+
+reg n4 = 0;
+// (8, 2, 'neigh_op_tnr_6')
+// (8, 3, 'neigh_op_rgt_6')
+// (8, 4, 'neigh_op_bnr_6')
+// (9, 2, 'neigh_op_top_6')
+// (9, 3, 'local_g1_6')
+// (9, 3, 'lutff_5/in_0')
+// (9, 3, 'lutff_6/out')
+// (9, 4, 'neigh_op_bot_6')
+// (10, 2, 'neigh_op_tnl_6')
+// (10, 3, 'neigh_op_lft_6')
+// (10, 4, 'neigh_op_bnl_6')
+
+reg n5 = 0;
+// (8, 4, 'neigh_op_tnr_3')
+// (8, 5, 'neigh_op_rgt_3')
+// (8, 6, 'neigh_op_bnr_3')
+// (9, 4, 'neigh_op_top_3')
+// (9, 5, 'local_g1_3')
+// (9, 5, 'lutff_3/out')
+// (9, 5, 'lutff_4/in_0')
+// (9, 6, 'neigh_op_bot_3')
+// (10, 4, 'neigh_op_tnl_3')
+// (10, 5, 'neigh_op_lft_3')
+// (10, 6, 'neigh_op_bnl_3')
+
+reg n6 = 0;
+// (8, 4, 'neigh_op_tnr_4')
+// (8, 5, 'neigh_op_rgt_4')
+// (8, 5, 'sp4_r_v_b_40')
+// (8, 6, 'neigh_op_bnr_4')
+// (8, 6, 'sp4_r_v_b_29')
+// (8, 7, 'sp4_r_v_b_16')
+// (8, 8, 'sp4_r_v_b_5')
+// (9, 4, 'neigh_op_top_4')
+// (9, 4, 'sp4_v_t_40')
+// (9, 5, 'lutff_4/out')
+// (9, 5, 'sp4_v_b_40')
+// (9, 6, 'neigh_op_bot_4')
+// (9, 6, 'sp4_v_b_29')
+// (9, 7, 'sp4_v_b_16')
+// (9, 8, 'local_g1_5')
+// (9, 8, 'lutff_6/in_0')
+// (9, 8, 'sp4_v_b_5')
+// (10, 4, 'neigh_op_tnl_4')
+// (10, 5, 'neigh_op_lft_4')
+// (10, 6, 'neigh_op_bnl_4')
+
+wire PMOD1;
+// (9, 3, 'local_g1_1')
+// (9, 3, 'lutff_6/in_0')
+// (9, 3, 'sp4_h_r_1')
+// (10, 3, 'sp4_h_r_12')
+// (11, 3, 'sp4_h_r_25')
+// (12, 2, 'neigh_op_tnr_2')
+// (12, 2, 'neigh_op_tnr_6')
+// (12, 3, 'neigh_op_rgt_2')
+// (12, 3, 'neigh_op_rgt_6')
+// (12, 3, 'sp4_h_r_36')
+// (12, 4, 'neigh_op_bnr_2')
+// (12, 4, 'neigh_op_bnr_6')
+// (13, 3, 'io_1/D_IN_0')
+// (13, 3, 'io_1/PAD')
+// (13, 3, 'span4_horz_36')
+
+reg n8 = 0;
+// (10, 7, 'neigh_op_tnr_3')
+// (10, 8, 'neigh_op_rgt_3')
+// (10, 9, 'neigh_op_bnr_3')
+// (11, 7, 'neigh_op_top_3')
+// (11, 8, 'lutff_3/out')
+// (11, 8, 'sp4_r_v_b_39')
+// (11, 9, 'neigh_op_bot_3')
+// (11, 9, 'sp4_r_v_b_26')
+// (11, 10, 'sp4_r_v_b_15')
+// (11, 11, 'sp4_r_v_b_2')
+// (12, 7, 'neigh_op_tnl_3')
+// (12, 7, 'sp4_v_t_39')
+// (12, 8, 'neigh_op_lft_3')
+// (12, 8, 'sp4_v_b_39')
+// (12, 9, 'neigh_op_bnl_3')
+// (12, 9, 'sp4_v_b_26')
+// (12, 10, 'sp4_v_b_15')
+// (12, 11, 'local_g1_2')
+// (12, 11, 'lutff_7/in_0')
+// (12, 11, 'sp4_v_b_2')
+
+reg n9 = 0;
+// (11, 10, 'neigh_op_tnr_7')
+// (11, 11, 'neigh_op_rgt_7')
+// (11, 12, 'neigh_op_bnr_7')
+// (12, 10, 'neigh_op_top_7')
+// (12, 11, 'lutff_7/out')
+// (12, 12, 'local_g0_7')
+// (12, 12, 'lutff_7/in_0')
+// (12, 12, 'neigh_op_bot_7')
+// (13, 10, 'logic_op_tnl_7')
+// (13, 11, 'logic_op_lft_7')
+// (13, 12, 'logic_op_bnl_7')
+
+reg LED1 = 0;
+// (11, 11, 'neigh_op_tnr_7')
+// (11, 12, 'neigh_op_rgt_7')
+// (11, 13, 'neigh_op_bnr_7')
+// (12, 11, 'neigh_op_top_7')
+// (12, 12, 'lutff_7/out')
+// (12, 13, 'neigh_op_bot_7')
+// (13, 11, 'logic_op_tnl_7')
+// (13, 12, 'io_1/D_OUT_0')
+// (13, 12, 'io_1/PAD')
+// (13, 12, 'local_g0_7')
+// (13, 12, 'logic_op_lft_7')
+// (13, 13, 'logic_op_bnl_7')
+
+wire n11;
+// (9, 3, 'lutff_6/lout')
+
+wire n12;
+// (12, 11, 'lutff_7/lout')
+
+wire n13;
+// (9, 8, 'lutff_6/lout')
+
+wire n14;
+// (11, 8, 'lutff_3/lout')
+
+wire n15;
+// (9, 3, 'lutff_5/lout')
+
+wire n16;
+// (9, 5, 'lutff_4/lout')
+
+wire n17;
+// (12, 12, 'lutff_7/lout')
+
+wire n18;
+// (9, 5, 'lutff_3/lout')
+
+assign n11 = /* LUT    9  3  6 */ 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : PMOD1 ? 1'b1 : 1'b0;
+assign n12 = /* LUT   12 11  7 */ 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : n8 ? 1'b1 : 1'b0;
+assign n13 = /* LUT    9  8  6 */ 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : n6 ? 1'b1 : 1'b0;
+assign n14 = /* LUT   11  8  3 */ 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : n2 ? 1'b1 : 1'b0;
+assign n15 = /* LUT    9  3  5 */ 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : n4 ? 1'b1 : 1'b0;
+assign n16 = /* LUT    9  5  4 */ 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : n5 ? 1'b1 : 1'b0;
+assign n17 = /* LUT   12 12  7 */ 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : n9 ? 1'b1 : 1'b0;
+assign n18 = /* LUT    9  5  3 */ 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : 1'b0 ? 1'b0 : n3 ? 1'b1 : 1'b0;
+/* FF  9  3  6 */ always @(posedge clk) if (1'b1) n4 <= 1'b0 ? 1'b0 : n11;
+/* FF 12 11  7 */ always @(posedge clk) if (1'b1) n9 <= 1'b0 ? 1'b0 : n12;
+/* FF  9  8  6 */ always @(posedge clk) if (1'b1) n2 <= 1'b0 ? 1'b0 : n13;
+/* FF 11  8  3 */ always @(posedge clk) if (1'b1) n8 <= 1'b0 ? 1'b0 : n14;
+/* FF  9  3  5 */ always @(posedge clk) if (1'b1) n3 <= 1'b0 ? 1'b0 : n15;
+/* FF  9  5  4 */ always @(posedge clk) if (1'b1) n6 <= 1'b0 ? 1'b0 : n16;
+/* FF 12 12  7 */ always @(posedge clk) if (1'b1) LED1 <= 1'b0 ? 1'b0 : n17;
+/* FF  9  5  3 */ always @(posedge clk) if (1'b1) n5 <= 1'b0 ? 1'b0 : n18;
+
+// Warning: unmatched port 'PMOD10'
+// Warning: unmatched port 'PMOD8'
+// Warning: unmatched port 'LED2'
+// Warning: unmatched port 'PMOD3'
+// Warning: unmatched port 'LED4'
+// Warning: unmatched port 'PMOD4'
+// Warning: unmatched port 'LED3'
+// Warning: unmatched port 'PMOD9'
+// Warning: unmatched port 'PMOD7'
+// Warning: unmatched port 'LED5'
+// Warning: unmatched port 'PMOD2'
+
+endmodule
+

@@ -1,0 +1,55 @@
+module Stack2 (     input clk,     output [16:0] rd,     input we,     input [2:0] delta,     input [16:0] wd );
+always @(*) begin
+    tailN = (move_dir ? {
+                 21930, tail[(16)-1:BITS]}
+             : {
+                 tail[(0)-1:(BITS - 16)], head}
+            );
+end
+always @(posedge clk) begin
+    if ((we | do_move)) begin
+        head <= headN;
+    end
+end
+always @(*) begin
+    rd = head;
+end
+endmodule  module J1a (     input clk,     input resetq,     output [13:0] code_addr,     input [16:0] insn );
+always @(*) begin
+    if ((insn[15] == 0)) begin
+        st0N = insn;
+    end
+    else begin
+        case (insn[(0)-1:15])
+            0: begin
+                st0N = minus[(0)-1:16];
+            end
+        endcase
+    end
+end
+always @(posedge clk) begin
+    case (insn)
+        32773: begin
+            LED1 <= st0[0];
+        end
+    endcase
+end
+always @(*) begin
+    case ({
+                  reboot, insn}
+             )
+        {
+            1, 'b?}: begin
+        end
+    endcase
+    if (!(resetq)) begin
+    end
+end
+endmodule
+    module Main (
+    );
+J1a j1(.clk (clk),
+       .insn (insn));
+always @(*) begin
+end
+endmodule

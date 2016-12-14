@@ -1,0 +1,36 @@
+entity Main {
+    in clk: bit,
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+    out LED4: bit,
+}
+
+impl Main {
+    let count: bit[3] = 0;
+    let mem: bit[4] = 0;
+
+    on clk.negedge {
+        count <= count + 1;
+    }
+
+    on clk.negedge {
+        match count {
+            0 => mem <= 0xa;,
+            1 => mem <= 0x1;,
+            2 => mem <= 0x3;,
+            3 => mem <= 0xb;,
+            4 => mem <= 0xf;,
+            5 => mem <= 0x3;,
+            6 => mem <= 0x0;,
+            7 => mem <= 0x2;,
+        }
+    }
+
+    always {
+        LED1 = mem[0];
+        LED2 = mem[1];
+        LED3 = mem[2];
+        LED4 = mem[3];
+    }
+}

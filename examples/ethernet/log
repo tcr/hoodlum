@@ -249,3 +249,103 @@ delta start                             0 sec/00:00:00	Wed Nov 23 00:01:52 2016
 out.hdl, lines: 15                      0 sec/00:00:00	Wed Nov 23 00:01:52 2016
 out.hdl, lines: 15                      0 sec/00:00:00	Wed Nov 23 00:01:52 2016
 delta done                              0 sec/00:00:00	Wed Nov 23 00:01:52 2016
+delta settings:
+	granularity: line
+	input: test.v
+
+delta start                             0 sec/00:00:00	Tue Dec 13 14:20:22 2016
+test.v, lines: 114                      0 sec/00:00:00	Tue Dec 13 14:20:22 2016
+test.v, lines: 0                        0 sec/00:00:00	Tue Dec 13 14:20:22 2016
+delta done                              0 sec/00:00:00	Tue Dec 13 14:20:22 2016
+delta settings:
+	granularity: line
+	input: test.v
+
+delta start                             0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 114                      0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 100                      0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 93                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 85                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 81                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 78                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 75                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 71                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 68                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 64                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 62                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 60                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 59                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 57                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 55                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 53                       0 sec/00:00:00	Tue Dec 13 14:20:48 2016
+test.v, lines: 51                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 50                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 48                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 46                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 44                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 42                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 41                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 40                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 39                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 38                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 37                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 36                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 35                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 34                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 33                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 32                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+test.v, lines: 31                       1 sec/00:00:01	Tue Dec 13 14:20:49 2016
+delta done                              2 sec/00:00:02	Tue Dec 13 14:20:50 2016
+delta settings:
+	granularity: line
+	input: test.v
+
+delta start                             0 sec/00:00:00	Tue Dec 13 14:21:05 2016
+test.v, lines: 31                       0 sec/00:00:00	Tue Dec 13 14:21:05 2016
+test.v, lines: 29                       1 sec/00:00:01	Tue Dec 13 14:21:06 2016
+delta done                              1 sec/00:00:01	Tue Dec 13 14:21:06 2016
+delta settings:
+	granularity: line
+	input: test.v
+
+delta start                             0 sec/00:00:00	Tue Dec 13 14:21:07 2016
+test.v, lines: 29                       0 sec/00:00:00	Tue Dec 13 14:21:07 2016
+delta done                              1 sec/00:00:01	Tue Dec 13 14:21:08 2016
+delta settings:
+	granularity: line
+	input: test.v
+
+delta start                             0 sec/00:00:00	Tue Dec 13 14:21:10 2016
+test.v, lines: 29                       0 sec/00:00:00	Tue Dec 13 14:21:10 2016
+delta done                              0 sec/00:00:00	Tue Dec 13 14:21:10 2016
+delta settings:
+	granularity: line
+	input: test.v
+
+delta start                             0 sec/00:00:00	Tue Dec 13 14:21:11 2016
+test.v, lines: 29                       0 sec/00:00:00	Tue Dec 13 14:21:11 2016
+delta done                              1 sec/00:00:01	Tue Dec 13 14:21:12 2016
+delta settings:
+	granularity: line
+	input: test.v
+
+delta start                             0 sec/00:00:00	Tue Dec 13 14:21:13 2016
+test.v, lines: 29                       0 sec/00:00:00	Tue Dec 13 14:21:13 2016
+delta done                              0 sec/00:00:00	Tue Dec 13 14:21:13 2016
+delta settings:
+	granularity: line
+	input: test.v
+
+delta start                             0 sec/00:00:00	Tue Dec 13 18:47:59 2016
+test.v, lines: 92                       3 sec/00:00:03	Tue Dec 13 18:48:02 2016
+test.v, lines: 69                       6 sec/00:00:06	Tue Dec 13 18:48:05 2016
+test.v, lines: 63                       9 sec/00:00:09	Tue Dec 13 18:48:08 2016
+test.v, lines: 58                       11 sec/00:00:11	Tue Dec 13 18:48:10 2016
+test.v, lines: 52                       14 sec/00:00:14	Tue Dec 13 18:48:13 2016
+test.v, lines: 49                       17 sec/00:00:17	Tue Dec 13 18:48:16 2016
+test.v, lines: 46                       20 sec/00:00:20	Tue Dec 13 18:48:19 2016
+test.v, lines: 43                       23 sec/00:00:23	Tue Dec 13 18:48:22 2016
+test.v, lines: 42                       26 sec/00:00:26	Tue Dec 13 18:48:25 2016
+test.v, lines: 41                       29 sec/00:00:29	Tue Dec 13 18:48:28 2016
+test.v, lines: 39                       31 sec/00:00:31	Tue Dec 13 18:48:30 2016
+test.v, lines: 37                       34 sec/00:00:34	Tue Dec 13 18:48:33 2016

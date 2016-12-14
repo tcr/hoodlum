@@ -1,4 +1,9 @@
-entity Second(in clk: bit, out ready: bit) {
+entity Second {
+    in clk: bit,
+    out ready: bit
+}
+
+impl Second {
   let index: uint{..12000000} = 0;
 
   on clk.posedge {
@@ -11,22 +16,14 @@ entity Second(in clk: bit, out ready: bit) {
   }
 }
 
-entity Half(in clk: bit, out ready: bit) {
-  let index: uint{..10000000} = 0;
 
-  on clk.posedge {
-      if index == 10000000 - 1 {
-          ready <= 1;
-      } else {
-          index <= index + 1;
-          ready <= 0;
-      }
-  }
+entity MiniCounter {
+    in clk: bit,
+    in rst: bit,
+    out ready: bit
 }
 
-
-
-entity MiniCounter(in clk: bit, in rst: bit, out ready: bit) {
+impl MiniCounter {
   let index: uint{..240} = 0;
 
   on clk.posedge {
@@ -44,8 +41,8 @@ entity MiniCounter(in clk: bit, in rst: bit, out ready: bit) {
   }
 }
 
-entity SpiMaster(
-    in rst: bit,
+entity SpiMaster {
+    in reset: bit,
     in clk: bit,
     in trigger: bit,
     out ready: bit,
@@ -54,7 +51,9 @@ entity SpiMaster(
     out spi_clk: bit,
     out spi_tx: bit,
     in spi_rx: bit,
-) {
+}
+
+impl SpiMaster {
     let live_clk: bit[1] = 0;
 
     // Internal signals.
@@ -71,7 +70,7 @@ entity SpiMaster(
     // Generate divided SPI clock.
     let div_idx: uint{..40} = 0;
     on clk.negedge {
-        if !rst {
+        if reset {
             div_idx <= 0;
             internal_clk <= 0;
         } else {
@@ -96,7 +95,7 @@ entity SpiMaster(
 
     // On positive edge, check the tx_ready state.
     on clk.posedge {
-        if !rst {
+        if reset {
             ready <= 0;
             transmit_save <= 0;
         } else {
@@ -112,7 +111,7 @@ entity SpiMaster(
 
     // SPI output state machine.
     on internal_clk.negedge {
-        if !rst {
+        if reset {
             transmitting <= 0;
         } else {
             fsm {
@@ -147,11 +146,13 @@ entity SpiMaster(
     }
 }
 
-entity BufferMux(
+entity BufferMux {
     in count: bit[8],
     in bytes: bit[128],
     out buffer: bit[8],
-) {
+}
+
+impl BufferMux {
     always {
         match count {
             _ => buffer = bytes[8*0:8*1],
@@ -174,12 +175,14 @@ entity BufferMux(
     }
 }
 
-entity BufferDemux(
-    in rst: bit,
+entity BufferDemux {
+    in reset: bit,
     in count: bit[8],
     in buffer: bit[8],
     out bytes: bit[128],
-) {
+}
+
+impl BufferDemux {
     always {
         match count {
             _ => bytes[8*0:8*1] = buffer,
@@ -202,8 +205,8 @@ entity BufferDemux(
     }
 }
 
-entity SpiController(
-    in rst: bit,
+entity SpiController {
+    in reset: bit,
     in clk: bit,
     in trigger: bit,
     out ready: bit,
@@ -215,14 +218,16 @@ entity SpiController(
     out spi_miso: bit,
     in spi_mosi: bit,
     in count: bit[8],
-) {
+}
+
+impl SpiController {
     let tx_buffer: bit[8];
     let rx_buffer: bit[8];
 
     let master_trigger;
     let master_ready;
     let spi = SpiMaster {
-        rst: rst,
+        reset: reset,
         clk: clk,
         trigger: master_trigger,
         ready: master_ready,
@@ -257,7 +262,7 @@ entity SpiController(
 
     let _FSM: bit[9] = 0;
     on clk.negedge {
-        if !rst {
+        if reset {
             spi_cs <= 1;
             ready <= 0;
             master_trigger <= 0;
@@ -306,8 +311,8 @@ entity SpiController(
     }
 }
 
-entity Ethernet(
-    in rst: bit,
+entity Ethernet {
+    in reset: bit,
     in tx_clk: bit,
     out LED1: bit,
     out LED2: bit,
@@ -317,7 +322,9 @@ entity Ethernet(
     out spi_bit: bit, // MOSI
     in spi_rx: bit, // MISO
     out spi_clk: bit,
-) {
+}
+
+impl Ethernet {
     const ERCRU = 0x20;
     const EWCRU = 0x22;
     const EEUDASTL = (0x16 | 0x00);
@@ -351,7 +358,7 @@ entity Ethernet(
     let raise_cs: bit[16];
     let count: bit[8];
     let spi = SpiController {
-        rst: rst,
+        reset: reset,
         clk: tx_clk,
         trigger: tx_valid,
         ready: spi_ready,
@@ -436,7 +443,7 @@ entity Ethernet(
     let status_vector: bit[8] = 0;
 
     on tx_clk.negedge {
-        if !rst {
+        if reset {
             _FSM <= 0;
             tx_valid <= 0;
             raise_cs <= 0;
@@ -559,7 +566,7 @@ entity Ethernet(
     }
 }
 
-entity Main(
+entity Main {
     in clk: bit,
     out LED1: bit,
     out LED2: bit,
@@ -571,19 +578,29 @@ entity Main(
     in PMOD3: bit,
     out PMOD4: bit,
     out PMOD7: bit,
-    //PMOD8: out,
-    //PMOD9: out,
-    //PMOD10: out,
-) {
+}
+
+impl Main {
     // PMOD1 = CS
     // PMOD2 = MOSI
     // PMOD3 = MISO
     // PMOD4 = SCLK
-    let ready;
-    let sec = Second { clk: clk, ready: ready };
-    let half = Half { clk: clk, ready: PMOD7 };
+
+    // Reset is active high. We declare it inverse of a temporary value which is initialized to 0.
+    let reset;
+    let init_active;
+    always {
+        reset = !init_active;
+    }
+
+    // This is our one-second initial delay.
+    let sec = Second {
+        clk: clk,
+        ready: init_active,
+    };
+
     let ether = Ethernet {
-        rst: ready,
+        reset: reset,
         tx_clk: clk,
         LED1: LED1,
         LED2: LED2,
@@ -596,6 +613,6 @@ entity Main(
     };
 
     always {
-        LED5 = !ready;
+        LED5 = reset;
     }
 }

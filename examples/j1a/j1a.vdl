@@ -1,0 +1,158 @@
+`default_nettype none
+`define WIDTH 16
+
+impl J1a {
+    in clk: bit,
+    in resetq: bit,
+
+    out io_rd: bit,
+    out io_wr: bit,
+    out mem_addr: bit[16],
+    out mem_wr: bit,
+    out dout: bit[WIDTH],
+
+    in io_din: bit[WIDTH],
+
+    out code_addr: bit[13],
+    in insn: bit[16],
+}
+
+impl J1a {
+    // data stack pointer
+    let dsp: bit[4];
+    let dspN: bit[4];
+    // top of data stack
+    let st0: bit[WIDTH];
+    let st0N: bit[WIDTH];
+    // data stack write
+    let dstkW: bit;
+
+    // program counter
+    let pc: bit[13];
+    let pcN: bit[13];
+    let pc_plus_1: bit[13] = pc + 0b1;
+    // TODO does above differ with wire [12:0] pc_plus_1 = pc + 13'd1 ?
+    // return stack write
+    let rstkW: bit;
+    // return stack write value
+    let rstkD: bit[WIDTH];
+    let reboot: bit = 1;
+
+    always {
+        mem_addr = st0[16:0];
+        code_addr = pcN;
+    }
+
+    // The D and R stacks
+    let st1: bit[WIDTH];
+    let rst0: bit[WIDTH];
+    let dspI: bit[2];
+    let rspI: bit[2];
+    // stack2 #(.DEPTH(15)) dstack(.clk(clk), .rd(st1),  .we(dstkW), .wd(st0),   .delta(dspI));
+    let dstack = Stack2 {
+        clk: clk,
+        rd: st1,
+        we: dstkW,
+        wd: st0,
+        delta: dspI,
+    };
+    // stack2 #(.DEPTH(17)) rstack(.clk(clk), .rd(rst0), .we(rstkW), .wd(rstkD), .delta(rspI));
+    let rstack = Stack2 {
+        clk: clk,
+        rd: rst0,
+        we: rstkW,
+        wd: rstkD,
+        delta: rspI,
+    };
+
+    let minus: bit[17] = {0b1, !st0} + st1 + 1;
+    let signedless: bit = if st0[15] ^ st1[15] { st1[15] } else { minus[16] };
+
+    always {
+        // Compute the new value of st0
+        match {pc[12], insn[15:8]} {
+            0b1_???_????? => st0N = insn;                    // literal
+            0b0_1??_????? => st0N = { {(`WIDTH - 15){1'b0}}, insn[14:0] };    // literal
+            0b0_000_????? => st0N = st0;                     // jump
+            0b0_010_????? => st0N = st0;                     // call
+            0b0_001_????? => st0N = st1;                     // conditional jump
+            0b0_011_?0000 => st0N = st0;                     // ALU operations...
+            0b0_011_?0001 => st0N = st1;
+            0b0_011_?0010 => st0N = st0 + st1;
+            0b0_011_?0011 => st0N = st0 & st1;
+            9'b0_011_?0100 => st0N = st0 | st1;
+            9'b0_011_?0101 => st0N = st0 ^ st1;
+            9'b0_011_?0110 => st0N = ~st0;
+
+            9'b0_011_?0111 => st0N = {`WIDTH{(minus == 0)}};                //  =
+            9'b0_011_?1000 => st0N = {`WIDTH{(signedless)}};                //  <
+
+            9'b0_011_?1001 => st0N = {st0[`WIDTH - 1], st0[`WIDTH - 1:1]};
+            9'b0_011_?1010 => st0N = {st0[`WIDTH - 2:0], 1'b0};
+            9'b0_011_?1011 => st0N = rst0;
+            9'b0_011_?1100 => st0N = minus[15:0];
+            9'b0_011_?1101 => st0N = io_din;
+            9'b0_011_?1110 => st0N = {{(`WIDTH - 4){1'b0}}, dsp};
+            9'b0_011_?1111 => st0N = {`WIDTH{(minus[16])}};                 // u<
+            _ => st0N = {`WIDTH{1'bx}};
+        }
+    }
+
+    always {
+        func_T_N =   (insn[6:4] == 1);
+        func_T_R =   (insn[6:4] == 2);
+        func_write = (insn[6:4] == 3);
+        func_iow =   (insn[6:4] == 4);
+        func_ior =   (insn[6:4] == 5);
+
+        is_alu = !pc[12] & (insn[16:13] == 0b011);
+        mem_wr = !reboot & is_alu & func_write;
+        dout = st1;
+        io_wr = !reboot & is_alu & func_iow;
+        io_rd = !reboot & is_alu & func_ior;
+
+        rstkD = if insn[13] == 0 {
+            {{(`WIDTH - 14){1'b0}}, pc_plus_1, 1'b0}
+        } else {
+            st0
+        };
+    }
+
+    always {
+        match {pc[12], insn[15:13]} {
+            0b1_??? =>
+            0b0_1?? => {dstkW, dspI} = {1'b1,      2'b01},
+            0b0_001 => {dstkW, dspI} = {1'b0,      2'b11},
+            0b0_011 => {dstkW, dspI} = {func_T_N,  {insn[1:0]}},
+            _:      => {dstkW, dspI} = {1'b0,      2'b00},
+        }
+        dspN = dsp + {dspI[1], dspI[1], dspI};
+
+        match ({pc[12], insn[15:13]}) {
+            0b1_??? => {rstkW, rspI} = {1'b0,      2'b11},
+            0b0_010 => {rstkW, rspI} = {1'b1,      2'b01},
+            0b0_011 => {rstkW, rspI} = {func_T_R,  insn[3:2]},
+            _ =>       {rstkW, rspI} = {1'b0,      2'b00},
+        }
+
+        match {reboot, pc[12], insn[15:13], insn[7], |st0} {
+            7'b1_0_???_?_? => pcN = 0,
+            7'b0_0_000_?_? |
+            7'b0_0_010_?_? |
+            7'b0_0_001_?_0 => pcN = insn[12:0],
+            7'b0_1_???_?_? |
+            7'b0_0_011_1_? => pcN = rst0[13:1],
+            _ =>              pcN = pc_plus_1,
+        }
+    }
+
+    on resetq.negedge, clk.posedge {
+        if !resetq {
+            reboot <= 0b1;
+            { pc, dsp, st0 } <= 0;
+        } else {
+            reboot <= 0b0;
+            { pc, dsp, st0 } <= { pcN, dspN, st0N };
+        }
+    }
+}

@@ -53,6 +53,17 @@ Non-goals:
    model. The abstraction mismatch makes bad output.
 1. Don't support all features of Verilog-2001 or VHDL, just a functional subset.
 
+## Language
+
+Entity definitions are in `entity` blocks. Logic definitions are in `impl` blocks.
+
+Variables can be one of the following types:
+
+* Registers of a certain bit width. These can have arithemtic operators: `|`
+* Uints or Ints.
+
+Casting???
+
 ## License
 
 MIT or Apache-2.0.

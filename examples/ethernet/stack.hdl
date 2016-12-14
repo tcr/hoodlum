@@ -1,0 +1,328 @@
+entity Second {
+    in clk: bit,
+    out ready: bit
+}
+
+impl Second {
+  let index_Z: uint{..6000000};
+
+  on clk.posedge {
+      if index_Z == 6000000 - 1 {
+          ready <= 1;
+      } else {
+          index_Z <= index_Z + 1;
+          ready <= 0;
+      }
+  }
+}
+
+// const WIDTH = 16;
+
+/// Stack.
+///
+/// we | delta | action
+/// -------------------
+///  0 |   0 ? | n/a
+///  0 |   1 0 | push head, head <= overflowed item
+///  0 |   1 1 | pop, head <= lowest item
+///  1 |   0 ? | head <= wd
+///  1 |   1 0 | push wd
+///  1 |   1 1 | pop, head <= wd
+entity Stack2 {
+    in clk: bit,
+    out rd: bit[16],
+    in we: bit,
+    in delta: bit[2],
+    in wd: bit[16],
+}
+
+impl Stack2 {
+    const WIDTH = 16; // TODO global const
+    const DEPTH = 18;
+    const BITS = WIDTH * DEPTH;
+
+    // Whether to push or pop
+    let do_move: bit = delta[0];
+    // 0 = push, 1 = pop
+    let move_dir: bit = delta[1];
+
+    let head: bit[16];
+    let tail: bit[288];
+
+    let headN: bit[16] =if we {
+        wd
+    } else {
+        tail[16:0]
+    };
+    let tailN: bit[288] = if move_dir {
+        {0x55aa, tail[BITS:16]}
+    } else {
+        {tail[BITS-16:0], head}
+    };
+
+    on clk.posedge {
+        if we | do_move {
+            head <= headN;
+        }
+        if do_move {
+            tail <= tailN;
+        }
+    }
+
+    always {
+        rd = head;
+    }
+}
+
+entity J1a {
+    in clk: bit,
+    in reset: bit,
+
+    // out mem_addr: bit[16],
+    // out mem_wr: bit,
+    // out dout: bit[WIDTH],
+
+    out code_addr: bit[13],
+    in insn: bit[16],
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+}
+
+impl J1a {
+    const WIDTH = 16; // TODO global const
+    // data stack pointer
+    let dsp: bit[4];
+    let dspN: bit[4];
+    // top of data stack
+    let st0: bit[16];
+    let st0N: bit[16];
+    // data stack write
+    let dstkW: bit;
+
+    // program counter
+    let pc: bit[13];
+    let pcN: bit[13];
+    let pc_plus_1: bit[13] = pc + 1b1;
+    // TODO does above differ with wire [12:0] pc_plus_1 = pc + 13'd1 ?
+    let reboot;
+
+    always {
+        // mem_addr = st0[16:0];
+        code_addr = pcN;
+    }
+
+    // The D and R stacks
+    let st1: bit[16];
+    let dspI: bit[2];
+    // stack2 #(.DEPTH(15)) dstack(.clk(clk), .rd(st1),  .we(dstkW), .wd(st0),   .delta(dspI));
+    let dstack = Stack2 {
+        clk: clk,
+        rd: st1,
+        we: dstkW,
+        wd: st0,
+        delta: dspI,
+    };
+
+    let minus: bit[17] = {1b1, !st0} + st1 + 1;
+    // let signedless: bit = if st0[15] ^ st1[15] { st1[15] } else { minus[16] };
+
+    always {
+        // Compute the new value of st0
+        if insn[15] == 0 {
+            // Literal
+            st0N = insn;
+            // {dstkW, dspI} = {1b1, 2b10};
+            dstkW = 1b1;
+            dspI = 2b10;
+        } else {
+            match insn[15:0] {
+                // Inverse
+                15b000_0000_0000_0000 => {
+                    st0N = minus[16:0];
+                    // {dstkW, dspI} = {1b0, 2b00};
+                    dstkW = 1b0;
+                    dspI = 2b00;
+                },
+                // Goto
+                15b000_0000_0000_0001 => {
+                    st0N = st0;
+                    // {dstkW, dspI} = {1b0, 2b11};
+                    dstkW = 1b0;
+                    dspI = 2b11;
+                },
+                // And
+                15b000_0000_0000_0010 => {
+                    st0N = st0 & st1;
+                    // {dstkW, dspI} = {1b1, 2b11};
+                    dstkW = 1b1;
+                    dspI = 2b11;
+                },
+                // Or
+                15b000_0000_0000_0011 => {
+                    st0N = st0 | st1;
+                    // {dstkW, dspI} = {1b1, 2b11};
+                    dstkW = 1b1;
+                    dspI = 2b11;
+                },
+                // Add
+                15b000_0000_0000_0100 => {
+                    st0N = st0 + st1;
+                    // {dstkW, dspI} = {1b1, 2b11};
+                    dstkW = 1b1;
+                    dspI = 2b11;
+                },
+
+                _ => {
+                    st0N = {1; 16};
+                    // {dstkW, dspI} = {1b0, 2b11};
+                    dstkW = 1b0;
+                    dspI = 2b11;
+                },
+            }
+        }
+
+        //     0b0_000_????? => st0N = st0;                     // jump
+        //     0b0_010_????? => st0N = st0;                     // call
+        //     0b0_001_????? => st0N = st1;                     // conditional jump
+        //     0b0_011_?0000 => st0N = st0;                     // ALU operations...
+        //     0b0_011_?0001 => st0N = st1;
+        //     0b0_011_?0010 => st0N = st0 + st1;
+        //     0b0_011_?0011 => st0N = st0 & st1;
+        //     9'b0_011_?0100 => st0N = st0 | st1;
+        //     9'b0_011_?0101 => st0N = st0 ^ st1;
+        //     9'b0_011_?0110 => st0N = ~st0;
+        //
+        //     9'b0_011_?0111 => st0N = {`WIDTH{(minus == 0)}};                //  =
+        //     9'b0_011_?1000 => st0N = {`WIDTH{(signedless)}};                //  <
+        //
+        //     9'b0_011_?1001 => st0N = {st0[`WIDTH - 1], st0[`WIDTH - 1:1]};
+        //     9'b0_011_?1010 => st0N = {st0[`WIDTH - 2:0], 1'b0};
+        //     9'b0_011_?1011 => st0N = rst0;
+        //     9'b0_011_?1100 => st0N = minus[15:0];
+        //     9'b0_011_?1101 => st0N = io_din;
+        //     9'b0_011_?1110 => st0N = {{(`WIDTH - 4){1'b0}}, dsp};
+        //     9'b0_011_?1111 => st0N = {`WIDTH{(minus[16])}};                 // u<
+        //     _ => st0N = {`WIDTH{1'bx}};
+        // }
+    }
+
+    // LED status
+    on clk.posedge {
+        if !reset {
+            if insn == 16b1000_0000_0000_0101 {
+                match st0 {
+                    1 => LED1 <= 1;,
+                    2 => LED2 <= 1;,
+                    3 => LED3 <= 1;,
+                }
+            }
+        }
+    }
+
+    // always {
+        // is_alu = !pc[12] & (insn[16:13] == 0b011);
+        // mem_wr = !reboot & is_alu & func_write;
+        // dout = st1;
+    // }
+
+    always {
+        // // Updates data state.
+        // match {pc[12], insn[15:13]} {
+        //     0b1_??? =>
+        //     0b0_1?? => {dstkW, dspI} = {1'b1,      2'b01},
+        //     0b0_001 => {dstkW, dspI} = {1'b0,      2'b11},
+        //     0b0_011 => {dstkW, dspI} = {func_T_N,  {insn[1:0]}},
+        //     _:      => {dstkW, dspI} = {1'b0,      2'b00},
+        // }
+
+        // Updates PC.
+        if reboot {
+            pcN = 0;
+        } else {
+            match insn {
+                16b1_000_0000_0000_0001 => pcN = st0,
+                _ => pcN = pc_plus_1,
+            }
+        }
+    }
+
+    on clk.posedge {
+        if reset {
+            reboot <= 1;
+            // { pc, st0 } <= 0;
+            pc <= 0;
+            st0 <= 0;
+        } else {
+            reboot <= 0;
+            // { pc, st0 } <= { pcN, st0N };
+            pc <= pcN;
+            st0 <= st0N;
+        }
+    }
+}
+
+
+
+entity Main {
+    in clk: bit,
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+    out LED4: bit,
+    out LED5: bit,
+}
+
+impl Main {
+    // Reset is active high. We declare it inverse of a temporary value which is initialized to 0.
+    let reset;
+    let init_active;
+    always {
+        reset = !init_active;
+    }
+
+    // This is our one-second initial delay.
+    let sec = Second {
+        clk: clk,
+        ready: init_active,
+    };
+
+    let code: bit[16][4] = {
+        16b0000_0000_0000_0011,
+        16b1000_0000_0000_0101,
+        16b0000_0000_0000_0000,
+        16b1000_0000_0000_0001,
+    };
+
+    let insn: bit[16];
+    let code_addr: bit[13];
+    let j1 = J1a {
+        clk: clk,
+        reset: reset,
+        code_addr: code_addr,
+        insn: insn,
+        LED1: LED1,
+        LED2: LED2,
+        LED3: LED3,
+    };
+
+    let error_Z: bit;
+
+    always {
+        // LED2 = 0;
+        // LED3 = 0;
+        LED4 = 0;
+    }
+
+    on clk.negedge {
+        if code_addr >= 0 && code_addr < 4 {
+            insn <= code[code_addr];
+        } else if code_addr >= 4 {
+            error_Z <= 1;
+        }
+    }
+
+    always {
+        LED5 = reset | error_Z;
+    }
+}

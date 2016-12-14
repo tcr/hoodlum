@@ -7,11 +7,11 @@
 set_io clk 21   # 12 MHz clock
 
 # LEDs
-set_io --warn-no-port LED1 99  # red
-set_io --warn-no-port LED2 98  # red
-set_io --warn-no-port LED3 97  # red
-set_io --warn-no-port LED4 96  # red
-set_io --warn-no-port LED5 95  # green
+set_io LED1 99  # red
+set_io LED2 98  # red
+set_io LED3 97  # red
+set_io LED4 96  # red
+set_io LED5 95  # green
 
 # IRDA interface
 #set_io IRRXD 106
@@ -50,14 +50,14 @@ set_io --warn-no-port LED5 95  # green
 
 # PMOD
 # Note: pin 5 and 11 are ground, pins 6 and 12 are Vcc
-set_io --warn-no-port PMOD1 78 # PIO1_02
-set_io --warn-no-port PMOD2 79 # PIO1_03
-set_io --warn-no-port PMOD3 80 # PIO1_04
-set_io --warn-no-port PMOD4 81 # PIO1_05
-set_io --warn-no-port PMOD7 87 # PIO1_06
-set_io --warn-no-port PMOD8 88 # PIO1_07
-set_io --warn-no-port PMOD9 90 # PIO1_08
-set_io --warn-no-port PMOD10 91 # PIO1_09
+set_io PMOD1 78 # PIO1_02
+set_io PMOD2 79 # PIO1_03
+set_io PMOD3 80 # PIO1_04
+set_io PMOD4 81 # PIO1_05
+set_io PMOD7 87 # PIO1_06
+set_io PMOD8 88 # PIO1_07
+set_io PMOD9 90 # PIO1_08
+set_io PMOD10 91 # PIO1_09
 
 # FTDI Port B UART
 #set_io DCDn 1

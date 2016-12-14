@@ -1,0 +1,8 @@
+[package]
+name = "blackadder"
+version = "0.1.0"
+authors = ["Tim Ryan <id@timryan.org>"]
+
+[dependencies]
+regex = "0.1"
+maplit = "0.1.4"

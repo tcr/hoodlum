@@ -1,0 +1,38 @@
+module Stack2 (     input clk,     output [16:0] rd,     input we,     input [2:0] delta,     input [16:0] wd );
+     localparam WIDTH = 16;
+     localparam DEPTH = 18;
+     localparam BITS = (WIDTH * DEPTH);
+     reg [(1)-1:0] do_move;
+     always @(*) begin         headN = (we ? wd : tail[(16)-1:0]);
+     end     reg [(288)-1:0] tailN;
+     always @(*) begin         tailN = (move_dir ? {
+21930, tail[(BITS)-1:16]}
+ : {
+tail[((BITS - 16))-1:0], head}
+);
+     end     always @(posedge clk) begin         if ((we | do_move)) begin             head <= headN;
+         end         if (do_move) begin             tail <= tailN;
+         end     end     always @(*) begin         rd = head;
+     end endmodule  module J1a (     input clk,     input reset,     output [13:0] code_addr,     input [16:0] insn,     output LED1 );
+     localparam WIDTH = 16;
+     always @(*) pc_plus_1 = (pc + 1);
+     reg [(1)-1:0] reboot;
+     always @(*) begin         code_addr = pcN;
+     end     reg [(16)-1:0] st1;
+     reg [(2)-1:0] dspI;
+     Stack2 dstack(.clk (clk),         .rd (st1),         .we (dstkW),         .wd (st0),         .delta (dspI));
+     reg [(17)-1:0] minus;
+     always @(*) minus = (({
+1, !(st0)}
+ + st1) + 1);
+     always @(*) begin         if ((insn[15] == 0)) begin             st0N = insn;
+             dstkW = 1;
+             dspI = 2;
+         end         else begin             case (insn[(15)-1:0])                 0: begin                     st0N = minus[(16)-1:0];
+                     dstkW = 0;
+                 end             endcase         end     end     always @(posedge clk) begin         if (reset) begin             reboot <= 1;
+         end     end endmodule  module Main (     input clk,     output LED1,     output LED2,     output LED3,     output LED4 );
+     always @(*) begin         LED2 = 0;
+         LED3 = 0;
+     end     always @(negedge clk) begin         insn <= code[code_addr];
+     end endmodule  

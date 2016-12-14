@@ -26,8 +26,7 @@ pub struct EdgeRef(pub Ident, pub Edge);
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Decl {
-    Reg(Ident, Option<Expr>),
-    RegArray(Ident, Expr, Option<Expr>),
+    Reg(Ident, Vec<Expr>, Option<Expr>),
     Let(Ident, Ident, Vec<(Ident, Expr)>),
     Const(Ident, Expr),
     On(EdgeRef, SeqBlock),
@@ -79,6 +78,8 @@ pub enum Op {
     Mul,
     Div,
     Eq,
+    Lte,
+    Gte,
     And,
     Or,
     Lt,
@@ -98,11 +99,14 @@ pub enum UnaryOp {
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Expr {
     Slice(Ident, Box<Expr>, Option<Box<Expr>>),
+    Ternary(Box<Expr>, Box<Expr>, Box<Expr>),
     Concat(Vec<Expr>),
+    Repeat(Box<Expr>, Box<Expr>),
     Ref(Ident),
     Arith(Op, Box<Expr>, Box<Expr>),
     Unary(UnaryOp, Box<Expr>),
     Num(i32),
+    Placeholder,
 
     FsmEq(BTreeSet<i32>),
     FsmNe(BTreeSet<i32>),

@@ -156,12 +156,7 @@ impl InitWalker {
 impl Walker for InitWalker {
     fn decl(&mut self, item: &ast::Decl) {
         match *item {
-            ast::Decl::Reg(ref ident, ref init) => {
-                if let &Some(ref init) = init {
-                    self.init.insert(ident.clone(), init.clone());
-                }
-            }
-            ast::Decl::RegArray(ref ident, _, ref init) => {
+            ast::Decl::Reg(ref ident, _, ref init) => {
                 if let &Some(ref init) = init {
                     self.init.insert(ident.clone(), init.clone());
                 }
@@ -199,6 +194,26 @@ impl Walker for CountWalker {
         }
     }
 }
+
+
+//pub struct PlaceholderReplacer;
+//
+//impl PlaceholderReplacer {
+//    fn new() -> PlaceholderReplacer {
+//        PlaceholderReplacer
+//    }
+//}
+//
+//impl Walker for PlaceholderReplacer {
+//    fn expr(&mut self, item: &ast::Expr) {
+//        match *item {
+//            ast::Seq::Placeholder => {
+//                *self = ast::Expr::VerilogLiteral("1'bx")
+//            }
+//            _ => { }
+//        }
+//    }
+//}
 
 
 
@@ -287,6 +302,8 @@ impl ToVerilog for ast::Op {
             ast::Op::Or => "||",
             ast::Op::Lt => "<",
             ast::Op::Gt => ">",
+            ast::Op::Lte => "<=",
+            ast::Op::Gte => ">=",
             ast::Op::Ne => "!=",
             ast::Op::BinAnd => "&",
             ast::Op::BinOr => "|",
@@ -307,20 +324,59 @@ impl ToVerilog for ast::UnaryOp {
 impl ToVerilog for ast::Decl {
     fn to_verilog(&self, v: &VerilogState) -> String {
         match *self {
-            ast::Decl::Reg(ref i, ref init) => {
-                format!("{ind}reg {name}{init};\n", ind=v.indent, name=i.to_verilog(v),
-                    init=if init.is_some() {
-                        " = 0"
-                    } else {
-                        ""
-                    })
-            }
-            ast::Decl::RegArray(ref i, ref e, ref value) => {
-                format!("{ind}reg [({len})-1:0] {name}{value};\n",
-                    ind=v.indent,
-                    len=e.to_verilog(v),
-                    name=i.to_verilog(v),
-                    value=if value.is_some() { " = 0" } else { "" })
+            ast::Decl::Reg(ref i, ref e, ref value) => {
+                let mut dims = vec![];
+                for item in e {
+                    dims.push(format!("[({})-1:0]", item.to_verilog(v)));
+                }
+                let dim0 = if dims.len() > 0 {
+                    Some(dims.remove(0))
+                } else {
+                    None
+                };
+
+                let name = i.to_verilog(v);
+
+                match (dims.len() > 0, value, name.ends_with("_Z")) {
+                    // Zero init
+                    (false, _, true) => {
+                        format!("{ind}reg{dim0} {name} = 0;\n",
+                            ind=v.indent,
+                            dim0=if dim0.is_some() { format!(" {}", dim0.unwrap()) } else { " [(1)-1:0]".to_string() },
+                            name=name)
+                    }
+
+                    // Hack for multidimensional array assignment
+                    (true, &Some(ast::Expr::Concat(ref values)), _) => {
+                        format!("{ind}reg{dim0} {name}{dims};\n{ind}always @(*) begin\n{value}{ind}end\n",
+                            ind=v.indent,
+                            dim0=if dim0.is_some() { format!(" {}", dim0.unwrap()) } else { " [(1)-1:0]".to_string() },
+                            name=name,
+                            dims=if dims.len() > 0 { format!(" {}", dims.join(" ")) } else { "".to_string() },
+                            value=values.iter().enumerate().map(|(idx, x)| {
+                                format!("{ind}{name}[{idx}] = {value};\n",
+                                    ind=v.tab().indent,
+                                    name=i.to_verilog(v),
+                                    idx=idx,
+                                    value=x.to_verilog(v))
+                            }).collect::<Vec<_>>().join(""))
+                    },
+                    _ => {
+                        format!("{ind}reg{dim0} {name}{dims};\n{value}",
+                            ind=v.indent,
+                            dim0=if dim0.is_some() { format!(" {}", dim0.unwrap()) } else { " [(1)-1:0]".to_string() },
+                            name=name,
+                            dims=if dims.len() > 0 { format!(" {}", dims.join(" ")) } else { "".to_string() },
+                            value=if let &Some(ref value) = value {
+                                format!("{ind}always @(*) {name} = {value};\n",
+                                    ind=v.indent,
+                                    name=i.to_verilog(v),
+                                    value=value.to_verilog(v))
+                            } else {
+                                "".to_string()
+                            })
+                    }
+                }
             }
             ast::Decl::Let(ref i, ref entity, ref args) => {
                 format!("{ind}{entity} {i}({args});\n",
@@ -328,8 +384,12 @@ impl ToVerilog for ast::Decl {
                     entity=entity.to_verilog(v),
                     i=i.to_verilog(v),
                     args=args.iter().map(|x| {
-                        format!(".{} ({})", x.0.to_verilog(v), x.1.to_verilog(v))
-                    }).collect::<Vec<_>>().join(", "))
+                        if matches!(x.1, ast::Expr::Placeholder) {
+                            format!(".{} ()", x.0.to_verilog(v))
+                        } else {
+                            format!(".{} ({})", x.0.to_verilog(v), x.1.to_verilog(v))
+                        }
+                    }).collect::<Vec<_>>().join(&format!(",\n{}", v.tab().indent)))
             }
             ast::Decl::Const(ref name, ref value) => {
                 format!("{ind}localparam {name} = {value};\n",
@@ -361,6 +421,7 @@ impl ToVerilog for ast::SeqBlock {
 // TODO get rid of this with rewriting AST
 lazy_static! {
     static ref FSM_MAP: RwLock<HashMap<String, i32>> = RwLock::new(HashMap::new());
+    static ref IS_MATCH: RwLock<bool> = RwLock::new(false);
 }
 
 impl ToVerilog for ast::Seq {
@@ -372,9 +433,16 @@ impl ToVerilog for ast::Seq {
                     cond=c.to_verilog(v),
                     body=t.to_verilog(&v.tab()),
                     f=f.as_ref().map_or("".to_string(), |e| {
-                        format!("{ind}else begin\n{body}{ind}end\n",
-                            ind=v.indent,
-                            body=e.to_verilog(&v.tab()))
+                        if e.0.len() == 1 && matches!(e.0[0], ast::Seq::If(..)) {
+                            let if_body = e.0[0].to_verilog(v);
+                            format!("{ind}else {body}",
+                                ind=v.indent,
+                                body=if_body.trim_left())
+                        } else {
+                            format!("{ind}else begin\n{body}{ind}end\n",
+                                ind=v.indent,
+                                body=e.to_verilog(&v.tab()))
+                        }
                     }))
             },
             ast::Seq::Set(ref block_type, ref id, ref value) => {
@@ -408,13 +476,16 @@ impl ToVerilog for ast::Seq {
                     body=arms.iter().map(|arm| {
                         format!("{ind}{cond}: begin\n{body}{ind}end\n",
                             ind=v.tab().indent,
-                            cond=if arm.0.is_empty() {
-                                "default".to_string()
-                            } else {
-                                arm.0.iter().map(|x| {
-                                    x.to_verilog(v)
-                                }).collect::<Vec<_>>().join(", ")
-                            },
+                            cond=arm.0.iter().map(|x| {
+                                if matches!(*x, ast::Expr::Placeholder) {
+                                    format!("default")
+                                } else {
+                                    *IS_MATCH.write().unwrap() = true;
+                                    let ret = x.to_verilog(v);
+                                    *IS_MATCH.write().unwrap() = false;
+                                    ret
+                                }
+                            }).collect::<Vec<_>>().join(", "),
                             body=arm.1.to_verilog(&v.tab().tab()))
                     }).collect::<Vec<_>>().join(""))
             }
@@ -530,15 +601,28 @@ impl ToVerilog for ast::Expr {
             ast::Expr::Num(v) => format!("{}", v),
             ast::Expr::Ref(ref id) => id.to_verilog(v),
             ast::Expr::Slice(ref id, ref from, ref to) => {
-                format!("{}[{}{}]", id.to_verilog(v), from.to_verilog(v),
-                    to.as_ref().map_or("".to_string(), |x| {
-                        format!(":{}", x.to_verilog(v))
-                    }))
+                format!("{}[{}]",
+                    id.to_verilog(v),
+                    match *to {
+                        Some(ref to) => format!("({})-1:{}", from.to_verilog(v), to.to_verilog(v)),
+                        None => from.to_verilog(v),
+                    })
             }
+            ast::Expr::Ternary(ref c, ref t, ref e) => {
+                format!("({cond} ? {th} : {el})",
+                    cond=c.to_verilog(v),
+                    th=t.to_verilog(&v.tab()),
+                    el=e.to_verilog(&v.tab()))
+            },
             ast::Expr::Concat(ref body) => {
                 format!("{{{}}}", body.iter().map(|x| {
                     x.to_verilog(v)
                 }).collect::<Vec<_>>().join(", "))
+            }
+            ast::Expr::Repeat(ref body, ref count) => {
+                format!("{{({}){{{}}}}}",
+                    count.to_verilog(v),
+                    body.to_verilog(v))
             }
             ast::Expr::Arith(ref op, ref l, ref r) => {
                 format!("({left} {op} {right})",
@@ -563,6 +647,13 @@ impl ToVerilog for ast::Expr {
                     .collect::<Vec<_>>()
                     .join(" && "))
             }
+            ast::Expr::Placeholder => {
+                if *IS_MATCH.read().unwrap() {
+                    format!("'b?")
+                } else {
+                    panic!("Placeholer cannot be compiled to Verilog.");
+                }
+            }
         }
     }
 }
@@ -580,7 +671,7 @@ impl ToVerilog for ast::Entity {
             name=self.0.to_verilog(&v),
             args=self.1.iter().map(|x| {
                 if let Some(len) = x.2 {
-                    format!("\n    {} [{}:0] {}", x.1.to_verilog(&v), len, x.0.to_verilog(&v))
+                    format!("\n    {} [({})-1:0] {}", x.1.to_verilog(&v), len, x.0.to_verilog(&v))
                 } else {
                     format!("\n    {} {}", x.1.to_verilog(&v), x.0.to_verilog(&v))
                 }

@@ -160,3 +160,70 @@ flattening out.hdl
 verify still passes script
 applying delta to out.hdl
 /usr/local/bin/delta -in_place -test=./test.sh out.hdl
+verify the script passes now
+verify the script passes now
+verify the script passes now
+making a backup copy of test.v
+cp -f test.v test.v.bak
+flattening test.v
+/usr/local/bin/topformflat 1 <test.v.bak >test.v
+verify still passes script
+applying delta to test.v
+/usr/local/bin/delta -in_place -test=./test.sh test.v
+verify the script passes now
+making a backup copy of test.v
+cp -f test.v test.v.bak
+flattening test.v
+/usr/local/bin/topformflat 1 <test.v.bak >test.v
+verify still passes script
+applying delta to test.v
+/usr/local/bin/delta -in_place -test=./test.sh test.v
+verify the script passes now
+making a backup copy of test.v
+cp -f test.v test.v.bak
+flattening test.v
+/usr/local/bin/topformflat 10 <test.v.bak >test.v
+verify still passes script
+applying delta to test.v
+/usr/local/bin/delta -in_place -test=./test.sh test.v
+verify the script passes now
+making a backup copy of test.v
+cp -f test.v test.v.bak
+flattening test.v
+/usr/local/bin/topformflat 10 <test.v.bak >test.v
+verify still passes script
+applying delta to test.v
+/usr/local/bin/delta -in_place -test=./test.sh test.v
+verify the script passes now
+making a backup copy of test.v
+cp -f test.v test.v.bak
+flattening test.v
+/usr/local/bin/topformflat 100 <test.v.bak >test.v
+verify still passes script
+applying delta to test.v
+/usr/local/bin/delta -in_place -test=./test.sh test.v
+verify the script passes now
+making a backup copy of test.v
+cp -f test.v test.v.bak
+flattening test.v
+/usr/local/bin/topformflat 100 <test.v.bak >test.v
+verify still passes script
+applying delta to test.v
+/usr/local/bin/delta -in_place -test=./test.sh test.v
+verify the script passes now
+making a backup copy of test.v
+cp -f test.v test.v.bak
+flattening test.v
+/usr/local/bin/topformflat 100 <test.v.bak >test.v
+verify still passes script
+applying delta to test.v
+/usr/local/bin/delta -in_place -test=./test.sh test.v
+verify the script passes now
+verify the script passes now
+making a backup copy of test.v
+cp -f test.v test.v.bak
+flattening test.v
+/usr/local/bin/topformflat 100 <test.v.bak >test.v
+verify still passes script
+applying delta to test.v
+/usr/local/bin/delta -in_place -test=./test.sh test.v
