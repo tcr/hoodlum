@@ -1,0 +1,24 @@
+//TODO implement Sub
+// then split main namespace and secondary namespace for fns
+// then test .ifz and .ifnz
+// then add memory storage
+// then integrate SPI
+
+#fn led_toggle
+#fn sleep
+
+//.start:
+//1 2 pop led_toggle
+//32767 sleep
+//3 led_toggle
+//300 sleep
+//.start goto
+
+//.start:
+//1 1 sub .start ifz goto
+//2 led_toggle
+//.start goto
+
+.start:
+2 5 store pop 3 5 load sub led_toggle
+.start goto

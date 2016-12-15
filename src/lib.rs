@@ -316,7 +316,7 @@ impl ToVerilog for ast::Op {
 impl ToVerilog for ast::UnaryOp {
     fn to_verilog(&self, _: &VerilogState) -> String {
         (match *self {
-            ast::UnaryOp::Not => "!",
+            ast::UnaryOp::Not => "~",
         }).to_string()
     }
 }
@@ -335,11 +335,12 @@ impl ToVerilog for ast::Decl {
                     None
                 };
 
-                format!("{ind}reg{dim0} {name}{dims} = 0;\n",
+                format!("{ind}reg{dim0} {name}{dims}{value};\n",
                     ind=v.indent,
                     dim0=if dim0.is_some() { format!(" {}", dim0.unwrap()) } else { " [(1)-1:0]".to_string() },
                     name=i.to_verilog(v),
-                    dims=if dims.len() > 0 { format!(" {}", dims.join(" ")) } else { "".to_string() })
+                    dims=if dims.len() > 0 { format!(" {}", dims.join(" ")) } else { "".to_string() },
+                    value=if dims.len() > 0 { format!("") } else { format!(" = 0") })
             }
             ast::Decl::Reg(ref i, ref e, ref value) => {
                 let mut dims = vec![];

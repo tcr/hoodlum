@@ -7,6 +7,7 @@ use std::env;
 use regex::Regex;
 
 struct Output {
+    builtins: Vec<String>,
     fns: Vec<String>,
     buffer: Vec<u16>,
 }
@@ -14,7 +15,12 @@ struct Output {
 impl Output {
     fn builtin(&mut self, arg: u16) {
         self.buffer.push(0b1000000000000000 |
-            (arg & 0b1111111111111111));
+            (arg & 0b111111111111111));
+    }
+
+    fn user(&mut self, arg: u16) {
+        self.buffer.push(0b1100000000000000 |
+            (arg & 0b111111111111111));
     }
 
     fn literal(&mut self, value: i16) {
@@ -26,8 +32,20 @@ impl Output {
     }
 
     fn call(&mut self, arg: &str) {
-        let key = self.fns.iter().position(|x| x == arg).expect(&format!("Could not find arg {:?}", arg)) as u16;
-        self.builtin(key);
+        match (
+            self.builtins.iter().position(|x| x == arg),
+            self.fns.iter().position(|x| x == arg)
+        ) {
+            (Some(pos), _) => {
+                self.builtin(pos as u16);
+            }
+            (_, Some(pos)) => {
+                self.user(pos as u16);
+            }
+            _ => {
+                panic!("Could not find arg {:?}", arg)
+            }
+        }
     }
 
     fn pos(&self) -> u16 {
@@ -52,12 +70,20 @@ fn main() {
     let mut code = String::new();
     let _ = f.read_to_string(&mut code);
 
-    let mut state_fn = vec![
+    let mut builtin_fn = vec![
         "invert".to_string(),
         "goto".to_string(),
         "and".to_string(),
         "or".to_string(),
+        "add".to_string(),
+        "sub".to_string(),
+        "pop".to_string(),
+        "ifz".to_string(),
+        "ifnz".to_string(),
+        "load".to_string(),
+        "store".to_string(),
     ];
+    let mut state_fn = vec![];
     let mut state_mem = vec![];
     let mut state_define = hashmap![];
 
@@ -103,9 +129,10 @@ fn main() {
     let re_labelref = Regex::new(r"^\.([^:]+)$").unwrap();
     let re_num_hex = Regex::new(r"(-?)0x([a-fA-F0-9]+)").unwrap();
     let re_num_bin = Regex::new(r"(-?)0b([01]+)").unwrap();
-    let re_num_dec = Regex::new(r"(-?)([1-9][0-9]*)").unwrap();
+    let re_num_dec = Regex::new(r"(-?)([0-9]+)").unwrap();
     let mut out = Output {
         buffer: vec![],
+        builtins: builtin_fn.clone(),
         fns: state_fn.clone(),
     };
     let mut label_patch: Vec<(String, u16)> = vec![];
@@ -139,7 +166,7 @@ fn main() {
             if state_mem.iter().find(|&x| *x == term).is_some() {
                 //println!("mem {:?}", term);
                 out.literal(state_mem.iter().position(|x| *x == term).unwrap() as i16);
-            } else if state_fn.iter().find(|&x| *x == term).is_some() {
+            } else if state_fn.iter().find(|&x| *x == term).is_some() || builtin_fn.iter().find(|&x| *x == term).is_some() {
                 //println!("fn {:?}", term);
                 out.call(&term);
             } else if state_define.iter().find(|&x| *x.0 == term).is_some() {
@@ -157,6 +184,17 @@ fn main() {
     }
 
     // Print.
-    println!("{:?}", out.buffer);
+    println!("");
+    println!("");
+    println!("");
+    println!("const BINARY_LEN = {};", out.buffer.len());
+    println!("def binary: bit[16][{}] = {{", out.buffer.len());
+    for item in out.buffer {
+        println!("    16b{},", format!("{:016b}", item)
+            .chars().map(|x| x.to_string()).collect::<Vec<String>>()
+            .chunks(4).map(|x| x.join("")).collect::<Vec<String>>()
+            .join("_"));
+    }
+    println!("}};")
     //println!("{}", code);
 }

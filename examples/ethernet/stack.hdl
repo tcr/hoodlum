@@ -20,22 +20,32 @@ impl Second {
 entity MiniCounter {
     in clk: bit,
     in reset: bit,
-    out ready: bit
+    out ready: bit,
+    in max: bit[16],
 }
 
 impl MiniCounter {
-    def mut index: uint{..3000000};
+    def mut index: bit[16]; // total is a 16-bit value
+
+    // def mut milli_tick: uint{..12000}; // one microsecond
+    const MICRO_MAX = 12;
+    def mut micro_tick: uint{..12}; // one microsecond
 
     on clk.posedge {
         if reset {
             ready <= 0;
             index <= 0;
+            micro_tick <= 0;
         } else {
-            if index == 3000000 - 1 {
-                ready <= 1;
+            if micro_tick == MICRO_MAX - 1 {
+                if index == max - 1 {
+                    ready <= 1;
+                } else {
+                    micro_tick <= 0;
+                    index <= index + 1;
+                }
             } else {
-                index <= index + 1;
-                ready <= 0;
+                micro_tick <= micro_tick + 1;
             }
         }
     }
@@ -48,8 +58,8 @@ impl MiniCounter {
 /// we | delta | action
 /// -------------------
 ///  0 |   0 ? | n/a
-///  0 |   1 0 | push head, head <= overflowed item
-///  0 |   1 1 | pop, head <= lowest item
+///  0 |   1 0 | dup second into list
+///  0 |   1 1 | pop, head <= popped item
 ///  1 |   0 ? | head <= wd
 ///  1 |   1 0 | push wd
 ///  1 |   1 1 | pop, head <= wd
@@ -117,6 +127,13 @@ entity J1a {
 
 impl J1a {
     const WIDTH = 16; // TODO global const
+
+    const GOTO_INSN = 16b1000_0000_0000_0000 + 1;
+    const STORE_INSN = 16b1000_0000_0000_0000 + 10;
+
+    const LED_INSN = 16b1100_0000_0000_0000 + 0;
+    const SLEEP_INSN = 16b1100_0000_0000_0000 + 1;
+
     // top of data stack
     def mut st0: bit[16];
     def st0N: bit[16];
@@ -147,6 +164,8 @@ impl J1a {
         delta: dspI,
     };
 
+    def mut mem_set: bit[8][16];
+
     def minus: bit[17] = {1b1, !st0} + st1 + 1;
     // def signedless: bit = if st0[15] ^ st1[15] { st1[15] } else { minus[16] };
 
@@ -158,51 +177,110 @@ impl J1a {
             // {dstkW, dspI} = {1b1, 2b10};
             dstkW = 1b1;
             dspI = 2b10;
-        } else {
-            match insn[15:0] {
+        } else if insn[14] == 0 {
+            match insn[14:0] {
                 // Inverse
-                15b000_0000_0000_0000 => {
-                    st0N = minus[16:0];
+                0 => {
+                    st0N = !minus[16:0];
                     // {dstkW, dspI} = {1b0, 2b00};
                     dstkW = 1b0;
                     dspI = 2b00;
                 },
                 // Goto
-                15b000_0000_0000_0001 => {
+                1 => {
                     st0N = st1;
                     // {dstkW, dspI} = {1b0, 2b11};
                     dstkW = 1b0;
                     dspI = 2b11;
                 },
                 // And
-                15b000_0000_0000_0010 => {
+                2 => {
                     st0N = st0 & st1;
                     // {dstkW, dspI} = {1b1, 2b11};
                     dstkW = 1b0;
                     dspI = 2b11;
                 },
                 // Or
-                15b000_0000_0000_0011 => {
+                3 => {
                     st0N = st0 | st1;
                     // {dstkW, dspI} = {1b1, 2b11};
                     dstkW = 1b0;
                     dspI = 2b11;
                 },
                 // Add
-                15b000_0000_0000_0100 => {
+                4 => {
                     st0N = st0 + st1;
                     // {dstkW, dspI} = {1b1, 2b11};
                     dstkW = 1b0;
                     dspI = 2b11;
                 },
+                // Sub
+                5 => {
+                    st0N = minus[16:0];
+                    // {dstkW, dspI} = {1b1, 2b11};
+                    dstkW = 1b0;
+                    dspI = 2b11;
+                },
+                // Pop
+                6 => {
+                    st0N = st1;
+                    // {dstkW, dspI} = {1b0, 2b11};
+                    dstkW = 1b0;
+                    dspI = 2b11;
+                },
+                // ifz
+                7 => {
+                    st0N = if st1 == 0 {
+                        st0
+                    } else {
+                        pc + 2
+                    };
+                    // {dstkW, dspI} = {1b0, 2b11};
+                    dstkW = 1b0;
+                    dspI = 2b11;
+                },
+                // ifnz
+                8 => {
+                    st0N = if st1 != 0 {
+                        st0
+                    } else {
+                        pc + 3
+                    };
+                    // {dstkW, dspI} = {1b0, 2b11};
+                    dstkW = 1b0;
+                    dspI = 2b11;
+                },
+                // load
+                9 => {
+                    st0N = mem_set[st0];
+                    // {dstkW, dspI} = {1b0, 2b11};
+                    dstkW = 1b0;
+                    dspI = 2b00;
+                },
+                // store
+                10 => {
+                    st0N = st1;
+                    // {dstkW, dspI} = {1b0, 2b11};
+                    dstkW = 1b0;
+                    dspI = 2b11;
+                },
+                _ => {
+                    st0N = {1; 16};
+                    // {dstkW, dspI} = {1b0, 2b11};
+                    dstkW = 1b0;
+                    dspI = 2b11;
+                },
+            }
+        } else {
+            match insn[14:0] {
                 // LED
-                15b000_0000_0000_0101 => {
+                0 => {
                     st0N = st0;
                     dstkW = 1b0;
                     dspI = 2b00;
                 },
                 // Sleepsville
-                15b000_0000_0000_0110 => {
+                1 => {
                     st0N = st0;
                     dstkW = 1b0;
                     dspI = 2b00;
@@ -245,7 +323,7 @@ impl J1a {
     // LED status
     on clk.posedge {
         if !reset && (!sleeping) {
-            if insn == 16b1000_0000_0000_0101 {
+            if insn == LED_INSN {
                 match st0 {
                     1 => {
                         LED1 <= 1;
@@ -288,7 +366,7 @@ impl J1a {
             pcN = 0;
         } else {
             match insn {
-                16b1_000_0000_0000_0001 => pcN = st0,
+                GOTO_INSN => pcN = st0,
                 _ => pcN = pc_plus_1,
             }
         }
@@ -300,6 +378,7 @@ impl J1a {
         clk: clk,
         reset: counter_trigger,
         ready: counter_ready,
+        max: st0,
     };
 
     def mut sleeping: bit;
@@ -312,9 +391,17 @@ impl J1a {
             if counter_ready {
                 sleeping <= 0;
                 counter_trigger <= 1;
-            } else if insn == 16b1000_0000_0000_0110 {
+            } else if insn == SLEEP_INSN {
                 sleeping <= 1;
                 counter_trigger <= 0;
+            }
+        }
+    }
+
+    on clk.negedge {
+        if !reset {
+            if insn == STORE_INSN {
+                mem_set[st0] <= st1;
             }
         }
     }
@@ -360,14 +447,17 @@ impl Main {
         ready: init_active,
     };
 
-    const CODE_LEN = 8;
-    def code: bit[16][8] = {
-        16b0000_0000_0000_0001,
-        16b1000_0000_0000_0101,
-        16b1000_0000_0000_0110,
+    const BINARY_LEN = 11;
+    def binary: bit[16][11] = {
         16b0000_0000_0000_0010,
-        16b1000_0000_0000_0101,
+        16b0000_0000_0000_0101,
+        16b1000_0000_0000_1010,
         16b1000_0000_0000_0110,
+        16b0000_0000_0000_0011,
+        16b0000_0000_0000_0101,
+        16b1000_0000_0000_1001,
+        16b1000_0000_0000_0101,
+        16b1100_0000_0000_0000,
         16b0000_0000_0000_0000,
         16b1000_0000_0000_0001,
     };
@@ -388,9 +478,9 @@ impl Main {
     def mut error: bit;
 
     on clk.posedge {
-        if code_addr >= 0 && code_addr < CODE_LEN {
-            insn <= code[code_addr];
-        } else if code_addr >= CODE_LEN {
+        if code_addr >= 0 && code_addr < BINARY_LEN {
+            insn <= binary[code_addr];
+        } else if code_addr >= BINARY_LEN {
             error <= 1;
         }
     }

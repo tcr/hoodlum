@@ -57,8 +57,8 @@ EEUDASTL tx
 cs
 ERCRU tx
 EEUDASTL tx
-rx 0x34 .start assert_eq
-rx 0x12 .start assert_eq
+rx 0x34 sub .start ifnz goto
+rx 0x12 sub .start ifnz goto
 
 cs
 ESSETETHRST tx
@@ -133,7 +133,7 @@ cs
 ESENABLERX tx
 cs
 EESTATL tx
-rx .loop ifnz
+rx .loop ifnz goto
 
 // Configure ERXDATA for reading.
 cs
@@ -155,9 +155,13 @@ rx RECEIVED_H store
 
 rx // STATUS_VECTOR store
 0b10000000 and
-.next ifz
+.next ifz goto
 3 led_on
 
 .next:
 rx pop // dummy
 .loop goto
+
+.error:
+5 led_on
+.start goto
