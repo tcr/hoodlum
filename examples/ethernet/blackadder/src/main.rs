@@ -82,6 +82,7 @@ fn main() {
         "ifnz".to_string(),
         "load".to_string(),
         "store".to_string(),
+        "pop2".to_string(),
     ];
     let mut state_fn = vec![];
     let mut state_mem = vec![];
@@ -127,9 +128,9 @@ fn main() {
     // Parse.
     let re_label = Regex::new(r"^\.([^:]+):$").unwrap();
     let re_labelref = Regex::new(r"^\.([^:]+)$").unwrap();
-    let re_num_hex = Regex::new(r"(-?)0x([a-fA-F0-9]+)").unwrap();
-    let re_num_bin = Regex::new(r"(-?)0b([01]+)").unwrap();
-    let re_num_dec = Regex::new(r"(-?)([0-9]+)").unwrap();
+    let re_num_hex = Regex::new(r"^(-?)0x([a-fA-F0-9]+)$").unwrap();
+    let re_num_bin = Regex::new(r"^(-?)0b([01]+)$").unwrap();
+    let re_num_dec = Regex::new(r"^(-?)([0-9]+)$").unwrap();
     let mut out = Output {
         buffer: vec![],
         builtins: builtin_fn.clone(),
@@ -138,6 +139,7 @@ fn main() {
     let mut label_patch: Vec<(String, u16)> = vec![];
     let mut labels = hashmap![];
     for term in split_terms(&code) {
+        println!("term {:?}", term);
         if let Some(m) = re_label.captures(&term) {
             let label = m.at(1).unwrap().to_string();
             labels.insert(label.clone(), out.pos());

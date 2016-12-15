@@ -278,7 +278,6 @@ Expr: ast::Expr = {
     "else" "{" <e:Expr> "}" => {
         ast::Expr::Ternary(Box::new(c), Box::new(t), Box::new(e))
     },
-    "!" <r:Term> => ast::Expr::Unary(ast::UnaryOp::Not, Box::new(r)),
     <l:Expr> "&&" <r:Expr2> => ast::Expr::Arith(ast::Op::And, Box::new(l), Box::new(r)),
     <l:Expr> "||" <r:Expr2> => ast::Expr::Arith(ast::Op::Or, Box::new(l), Box::new(r)),
     <l:Expr> "<<" <r:Expr2> => ast::Expr::Arith(ast::Op::LShift, Box::new(l), Box::new(r)),
@@ -293,19 +292,24 @@ Expr2: ast::Expr = {
 };
 
 Expr3: ast::Expr = {
-    <l:Expr3> "+" <r:Term> => ast::Expr::Arith(ast::Op::Add, Box::new(l), Box::new(r)),
-    <l:Expr3> "-" <r:Term> => ast::Expr::Arith(ast::Op::Sub, Box::new(l), Box::new(r)),
-    <l:Expr3> "*" <r:Term> => ast::Expr::Arith(ast::Op::Mul, Box::new(l), Box::new(r)),
-    <l:Expr3> "<" <r:Term> => ast::Expr::Arith(ast::Op::Lt, Box::new(l), Box::new(r)),
-    <l:Expr3> ">" <r:Term> => ast::Expr::Arith(ast::Op::Gt, Box::new(l), Box::new(r)),
-    <l:Expr3> ">=" <r:Term> => ast::Expr::Arith(ast::Op::Gte, Box::new(l), Box::new(r)),
-    <l:Expr3> "<=" <r:Term> => ast::Expr::Arith(ast::Op::Lte, Box::new(l), Box::new(r)),
-    <l:Expr3> "|" <r:Term> => ast::Expr::Arith(ast::Op::BinOr, Box::new(l), Box::new(r)),
-    <l:Expr3> "&" <r:Term> => ast::Expr::Arith(ast::Op::BinAnd, Box::new(l), Box::new(r)),
+    <l:Expr3> "<" <r:Expr4> => ast::Expr::Arith(ast::Op::Lt, Box::new(l), Box::new(r)),
+    <l:Expr3> ">" <r:Expr4> => ast::Expr::Arith(ast::Op::Gt, Box::new(l), Box::new(r)),
+    <l:Expr3> ">=" <r:Expr4> => ast::Expr::Arith(ast::Op::Gte, Box::new(l), Box::new(r)),
+    <l:Expr3> "<=" <r:Expr4> => ast::Expr::Arith(ast::Op::Lte, Box::new(l), Box::new(r)),
+    Expr4 => <>,
+};
+
+Expr4: ast::Expr = {
+    <l:Expr4> "+" <r:Term> => ast::Expr::Arith(ast::Op::Add, Box::new(l), Box::new(r)),
+    <l:Expr4> "-" <r:Term> => ast::Expr::Arith(ast::Op::Sub, Box::new(l), Box::new(r)),
+    <l:Expr4> "*" <r:Term> => ast::Expr::Arith(ast::Op::Mul, Box::new(l), Box::new(r)),
+    <l:Expr4> "|" <r:Term> => ast::Expr::Arith(ast::Op::BinOr, Box::new(l), Box::new(r)),
+    <l:Expr4> "&" <r:Term> => ast::Expr::Arith(ast::Op::BinAnd, Box::new(l), Box::new(r)),
     Term => <>,
 };
 
 Term: ast::Expr = {
+    "!" <r:Term> => ast::Expr::Unary(ast::UnaryOp::Not, Box::new(r)),
     "(" <e:Expr> ")" => e,
     "{" <v:Expr> ";" <r:Expr> "}" => ast::Expr::Repeat(Box::new(v), Box::new(r)),
     "{" <v:Comma<Expr>> "}" => ast::Expr::Concat(v),

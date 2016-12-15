@@ -1,0 +1,36 @@
+entity Second {
+    in clk: bit,
+    out value: bit
+}
+
+impl Second {
+    def mut index: uint{..50000000};
+
+    on clk.posedge {
+        if index == 25000000 - 1 {
+            index <= 0;
+            value <= !value;
+        } else {
+            index <= index + 1;
+            ready <= 0;
+        }
+    }
+}
+
+
+entity Main {
+    in clk: bit,
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+    out LED4: bit,
+    in PMOD1: bit,
+}
+
+impl Main {
+    def pixel_x;
+    def s = Second {
+        clk: PMOD1,
+        value: LED1,
+    };
+}

@@ -1,15 +1,8 @@
-#fn load
-#fn store
-#fn pop
-#fn ifz
-#fn ifnz
-
+#fn led_toggle
+#fn sleep
 #fn tx
 #fn rx
-#fn sleep
 #fn cs
-#fn assert_eq
-#fn led_on
 
 #mem NEXT_PACKET_H
 #mem NEXT_PACKET_L
@@ -57,8 +50,8 @@ EEUDASTL tx
 cs
 ERCRU tx
 EEUDASTL tx
-rx 0x34 sub .start ifnz goto
-rx 0x12 sub .start ifnz goto
+rx 0x34 sub .start ifnz
+rx 0x12 sub .start ifnz
 
 cs
 ESSETETHRST tx
@@ -133,7 +126,7 @@ cs
 ESENABLERX tx
 cs
 EESTATL tx
-rx .loop ifnz goto
+rx .loop ifnz
 
 // Configure ERXDATA for reading.
 cs
@@ -155,13 +148,13 @@ rx RECEIVED_H store
 
 rx // STATUS_VECTOR store
 0b10000000 and
-.next ifz goto
-3 led_on
+.next ifz
+3 led_toggle
 
 .next:
 rx pop // dummy
 .loop goto
 
 .error:
-5 led_on
+5 led_toggle
 .start goto

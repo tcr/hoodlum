@@ -1,6 +1,24 @@
 // http://chasingtrons.com/main/2012/6/14/television-fpga-verilog.html
 // https://en.wikipedia.org/wiki/Resistor_ladder#R.E2.80.932R_resistor_ladder_network_.28digital_to_analog_conversion.29
 
+entity Second {
+    in clk: bit,
+    out value: bit
+}
+
+impl Second {
+    def mut index: uint{..50000000};
+
+    on clk.posedge {
+        if index == 25000000 - 1 {
+            index <= 0;
+            value <= !value;
+        } else {
+            index <= index + 1;
+        }
+    }
+}
+
 entity Ntsc {
     in clk: bit,
     // 0 ( black )..5 (bright white)
@@ -23,18 +41,18 @@ impl Ntsc {
     const RESOLUTION_VERTICAL = 400;
 
     // TODO: Make a better interface for inputting luminance
-    let luminance: bit[3];
+    def luminance: bit[3];
 
     // 0..524
-    let line_count_reg: bit[10];
-    let line_count_reg_next: bit[10];
+    def mut line_count_reg: bit[10];
+    def line_count_reg_next: bit[10];
 
     // One of EQ, VERTICAL_BLANK, or SCANLINE.
-    let line_type_reg: bit[2];
-    let line_type_reg_next: bit[2];
+    def mut line_type_reg: bit[2];
+    def line_type_reg_next: bit[2];
 
-    let horizontal_count_reg: bit[12];
-    let horizontal_count_reg_next: bit[12];
+    def mut horizontal_count_reg: bit[12];
+    def horizontal_count_reg_next: bit[12];
 
     const LINE_TYPE_EQ = 0b00;
     const LINE_TYPE_VERTICAL_BLANK = 0b01;
@@ -79,27 +97,27 @@ impl Ntsc {
 //  [__   \_/  |\ | |       [__  | | __ |\ | |__| |    [__
 //  ___]   |   | \| |___    ___] | |__] | \| |  | |___ ___]
 //
-    let at_half_line_width: bit = horizontal_count_reg >= WIDTH_HALF_LINE;                                        // signals that the current line has
+    def at_half_line_width: bit = horizontal_count_reg >= WIDTH_HALF_LINE;                                        // signals that the current line has
                                                                                                                   // reached a half scanline's 31.75
-    let at_full_line_width: bit = ( horizontal_count_reg >= WIDTH_WHOLE_LINE );                                       // signals that the current line has
+    def at_full_line_width: bit = ( horizontal_count_reg >= WIDTH_WHOLE_LINE );                                       // signals that the current line has
                                                                                                                   // reached a normal scanline's 63.5us
-    let is_a_half_line: bit = ( line_count_reg == HALF_LINE_EVEN_FIELD ) | ( line_count_reg == HALF_LINE_ODD_FIELD ); // signals current line should be treaded as a half
-    let is_a_whole_line: bit = !is_a_half_line;                                                                      // signals current line should be treaded as a whole
+    def is_a_half_line: bit = ( line_count_reg == HALF_LINE_EVEN_FIELD ) | ( line_count_reg == HALF_LINE_ODD_FIELD ); // signals current line should be treaded as a half
+    def is_a_whole_line: bit = !is_a_half_line;                                                                      // signals current line should be treaded as a whole
 
-    let h_sync: bit = (is_a_half_line & at_half_line_width) | (is_a_whole_line & at_full_line_width);
-    let v_sync: bit = h_sync & (line_count_reg >= 526);
+    def h_sync: bit = (is_a_half_line & at_half_line_width) | (is_a_whole_line & at_full_line_width);
+    def v_sync: bit = h_sync & (line_count_reg >= 526);
 
-    let h_sync_out: bit = h_sync;
-    let v_sync_out: bit = v_sync;
+    def h_sync_out: bit = h_sync;
+    def v_sync_out: bit = v_sync;
 
 
-    let pixel_is_visible: bit = (horizontal_count_reg[2:12] >= BASE_PIXEL_X) &
-        (horizontal_count_reg[2:12] < BASE_PIXEL_X + RESOLUTION_HORIZONTAL) &
+    def pixel_is_visible: bit = (horizontal_count_reg[12:2] >= BASE_PIXEL_X) &
+        (horizontal_count_reg[12:2] < BASE_PIXEL_X + RESOLUTION_HORIZONTAL) &
         (line_count_reg >= BASE_PIXEL_Y) &
         (line_count_reg < BASE_PIXEL_Y + RESOLUTION_VERTICAL);
 
     always {
-        pixel_x = if pixel_is_visible { horizontal_count_reg[2:12] - BASE_PIXEL_X } else { 0 };
+        pixel_x = if pixel_is_visible { horizontal_count_reg[12:2] - BASE_PIXEL_X } else { 0 };
         pixel_y = if pixel_is_visible { line_count_reg - BASE_PIXEL_Y } else { 0 };
     }
 
@@ -181,17 +199,27 @@ impl Ntsc {
     }
 
     always {
-        // a lookup table to determing next line number
-        match {v_sync, h_sync, line_count_reg} {
-            // v_sync & line number 526, go to line 1
-            {0b1, 0b1, 526} => line_count_reg_next = 1,
-            // v_sync & line number 527, go to line 0
-            {0b1, 0b1, 527} => line_count_reg_next = 0,
-            // hsync, but not vsync, jump a line
-            {0b0, 0b1, _} => line_count_reg_next = line_count_reg + 2,
-            // do nothing
-            _ => line_count_reg_next = line_count_reg,
-        }
+        if v_sync == 1 && h_sync == 1 && line_count_reg == 526 {
+            line_count_reg_next = 1;
+        } else if v_sync == 1 && h_sync == 1 && line_count_reg == 527 {
+            line_count_reg_next = 0;
+        } else if v_sync == 0 && h_sync == 1 {
+            line_count_reg_next = line_count_reg + 2;
+        } else {
+            line_count_reg_next = line_count_reg;
+        };
+
+            // a lookup table to determing next line number
+        // match {v_sync, h_sync, line_count_reg} {
+        //     // v_sync & line number 526, go to line 1
+        //     {0b1, 0b1, 526} => line_count_reg_next = 1,
+        //     // v_sync & line number 527, go to line 0
+        //     {0b1, 0b1, 527} => line_count_reg_next = 0,
+        //     // hsync, but not vsync, jump a line
+        //     {0b0, 0b1, _} => line_count_reg_next = line_count_reg + 2,
+        //     // do nothing
+        //     _ => line_count_reg_next = line_count_reg,
+        // }
     }
 
 
@@ -220,18 +248,29 @@ entity Main {
     out LED2: bit,
     out LED3: bit,
     out LED4: bit,
+    out LED5: bit,
+    in PMOD1: bit,
+    out PMOD2: bit,
+    out PMOD3: bit,
+    out PMOD4: bit,
 }
 
 impl Main {
-    let pixel_x;
-    let ntsc = Ntsc {
-        clk: clk,
-        pixel_data: pixel_x,
+    def pixel_x: bit[10];
+    def pixel_y: bit[10];
+    def ntsc = Ntsc {
+        clk: PMOD1,
+        pixel_data: pixel_x + pixel_y,
         h_sync_out: _,
         v_sync_out: _,
-        pixel_y: _,
+        pixel_y: pixel_y,
         pixel_x: pixel_x,
         pixel_is_visible: _,
-        ntsc_out: {LED1, LED2, LED3},
+        ntsc_out: {PMOD2, PMOD3, PMOD4},
+    };
+
+    def s = Second {
+        clk: PMOD1,
+        value: LED5,
     };
 }

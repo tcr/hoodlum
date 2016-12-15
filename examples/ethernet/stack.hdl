@@ -57,17 +57,18 @@ impl MiniCounter {
 ///
 /// we | delta | action
 /// -------------------
-///  0 |   0 ? | n/a
-///  0 |   1 0 | dup second into list
+///  0 |   ? 0 | n/a
+///  0 |   0 1 | dup second into list
 ///  0 |   1 1 | pop, head <= popped item
-///  1 |   0 ? | head <= wd
-///  1 |   1 0 | push wd
+///  1 |   ? 0 | head <= wd
+///  1 |   0 1 | push wd
 ///  1 |   1 1 | pop, head <= wd
 entity Stack2 {
     in clk: bit,
     out rd: bit[16],
+    out rd2: bit[16],
     in we: bit,
-    in delta: bit[2],
+    in delta: bit[3],
     in wd: bit[16],
 }
 
@@ -76,10 +77,12 @@ impl Stack2 {
     const DEPTH = 18;
     const BITS = WIDTH * DEPTH;
 
-    // Whether to push or pop
-    def do_move: bit = delta[0];
+    // 0 = move 1, 1 = move 2
+    def move_2: bit = delta[2];
     // 0 = push, 1 = pop
     def move_dir: bit = delta[1];
+    // Whether to push or pop
+    def do_move: bit = delta[0];
 
     def mut head: bit[16];
     def mut tail: bit[288];
@@ -87,10 +90,18 @@ impl Stack2 {
     def headN: bit[16] = if we {
         wd
     } else {
-        tail[16:0]
+        if move_2 {
+            tail[32:16]
+        } else {
+            tail[16:0]
+        }
     };
     def tailN: bit[288] = if move_dir {
-        {0x55aa, tail[BITS:16]}
+        if move_2 {
+            {0x55aa, 0x55aa, tail[BITS:32]}
+        } else {
+            {0x55aa, tail[BITS:16]}
+        }
     } else {
         {tail[BITS-16:0], head}
     };
@@ -106,6 +117,7 @@ impl Stack2 {
 
     always {
         rd = head;
+        rd2 = tail[16:0];
     }
 }
 
@@ -129,6 +141,8 @@ impl J1a {
     const WIDTH = 16; // TODO global const
 
     const GOTO_INSN = 16b1000_0000_0000_0000 + 1;
+    const IFZ_INSN = 16b1000_0000_0000_0000 + 7;
+    const IFNZ_INSN = 16b1000_0000_0000_0000 + 8;
     const STORE_INSN = 16b1000_0000_0000_0000 + 10;
 
     const LED_INSN = 16b1100_0000_0000_0000 + 0;
@@ -154,11 +168,13 @@ impl J1a {
 
     // The D and R stacks
     def st1: bit[16];
-    def dspI: bit[2];
+    def st2: bit[16];
+    def dspI: bit[3];
     // stack2 #(.DEPTH(15)) dstack(.clk(clk), .rd(st1),  .we(dstkW), .wd(st0),   .delta(dspI));
     def dstack = Stack2 {
         clk: clk,
         rd: st1,
+        rd2: st2,
         we: dstkW,
         wd: st0,
         delta: dspI,
@@ -176,7 +192,7 @@ impl J1a {
             st0N = insn;
             // {dstkW, dspI} = {1b1, 2b10};
             dstkW = 1b1;
-            dspI = 2b10;
+            dspI = 3b001;
         } else if insn[14] == 0 {
             match insn[14:0] {
                 // Inverse
@@ -184,91 +200,90 @@ impl J1a {
                     st0N = !minus[16:0];
                     // {dstkW, dspI} = {1b0, 2b00};
                     dstkW = 1b0;
-                    dspI = 2b00;
+                    dspI = 3b000;
                 },
                 // Goto
                 1 => {
                     st0N = st1;
                     // {dstkW, dspI} = {1b0, 2b11};
                     dstkW = 1b0;
-                    dspI = 2b11;
+                    dspI = 3b011;
                 },
                 // And
                 2 => {
                     st0N = st0 & st1;
                     // {dstkW, dspI} = {1b1, 2b11};
                     dstkW = 1b0;
-                    dspI = 2b11;
+                    dspI = 3b011;
                 },
                 // Or
                 3 => {
                     st0N = st0 | st1;
                     // {dstkW, dspI} = {1b1, 2b11};
                     dstkW = 1b0;
-                    dspI = 2b11;
+                    dspI = 3b011;
                 },
                 // Add
                 4 => {
                     st0N = st0 + st1;
                     // {dstkW, dspI} = {1b1, 2b11};
                     dstkW = 1b0;
-                    dspI = 2b11;
+                    dspI = 3b011;
                 },
                 // Sub
                 5 => {
                     st0N = minus[16:0];
                     // {dstkW, dspI} = {1b1, 2b11};
                     dstkW = 1b0;
-                    dspI = 2b11;
+                    dspI = 3b011;
                 },
                 // Pop
                 6 => {
                     st0N = st1;
                     // {dstkW, dspI} = {1b0, 2b11};
                     dstkW = 1b0;
-                    dspI = 2b11;
+                    dspI = 3b011;
                 },
                 // ifz
                 7 => {
-                    st0N = if st1 == 0 {
-                        st0
-                    } else {
-                        pc + 2
-                    };
+                    st0N = st2;
                     // {dstkW, dspI} = {1b0, 2b11};
                     dstkW = 1b0;
-                    dspI = 2b11;
+                    dspI = 3b111;
                 },
                 // ifnz
                 8 => {
-                    st0N = if st1 != 0 {
-                        st0
-                    } else {
-                        pc + 3
-                    };
+                    st0N = st2;
                     // {dstkW, dspI} = {1b0, 2b11};
                     dstkW = 1b0;
-                    dspI = 2b11;
+                    dspI = 3b111;
                 },
                 // load
                 9 => {
                     st0N = mem_set[st0];
                     // {dstkW, dspI} = {1b0, 2b11};
                     dstkW = 1b0;
-                    dspI = 2b00;
+                    dspI = 3b000;
                 },
                 // store
                 10 => {
-                    st0N = st1;
+                    st0N = st2;
                     // {dstkW, dspI} = {1b0, 2b11};
                     dstkW = 1b0;
-                    dspI = 2b11;
+                    dspI = 3b111;
+                },
+                // pop2
+                11 => {
+                    st0N = st2;
+                    // {dstkW, dspI} = {1b0, 2b11};
+                    dstkW = 1b0;
+                    dspI = 3b111;
                 },
                 _ => {
                     st0N = {1; 16};
                     // {dstkW, dspI} = {1b0, 2b11};
                     dstkW = 1b0;
-                    dspI = 2b11;
+                    dspI = 3b000;
                 },
             }
         } else {
@@ -277,20 +292,20 @@ impl J1a {
                 0 => {
                     st0N = st0;
                     dstkW = 1b0;
-                    dspI = 2b00;
+                    dspI = 2b011;
                 },
                 // Sleepsville
                 1 => {
                     st0N = st0;
                     dstkW = 1b0;
-                    dspI = 2b00;
+                    dspI = 3b011;
                 },
 
                 _ => {
                     st0N = {1; 16};
                     // {dstkW, dspI} = {1b0, 2b11};
                     dstkW = 1b0;
-                    dspI = 2b11;
+                    dspI = 3b000;
                 },
             }
         }
@@ -367,6 +382,16 @@ impl J1a {
         } else {
             match insn {
                 GOTO_INSN => pcN = st0,
+                IFZ_INSN => pcN = if st1 == 0 {
+                    st0
+                } else {
+                    pc_plus_1
+                },
+                IFNZ_INSN => pcN = if st1 != 0 {
+                    st0
+                } else {
+                    pc_plus_1
+                },
                 _ => pcN = pc_plus_1,
             }
         }
@@ -447,16 +472,14 @@ impl Main {
         ready: init_active,
     };
 
-    const BINARY_LEN = 11;
-    def binary: bit[16][11] = {
+    const BINARY_LEN = 9;
+    def binary: bit[16][9] = {
         16b0000_0000_0000_0010,
-        16b0000_0000_0000_0101,
-        16b1000_0000_0000_1010,
-        16b1000_0000_0000_0110,
-        16b0000_0000_0000_0011,
-        16b0000_0000_0000_0101,
-        16b1000_0000_0000_1001,
+        16b0000_0000_0000_0100,
+        16b0000_0000_0000_0100,
         16b1000_0000_0000_0101,
+        16b0000_0000_0000_0000,
+        16b1000_0000_0000_0111,
         16b1100_0000_0000_0000,
         16b0000_0000_0000_0000,
         16b1000_0000_0000_0001,

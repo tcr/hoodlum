@@ -1,8 +1,7 @@
-//TODO implement Sub
-// then split main namespace and secondary namespace for fns
-// then test .ifz and .ifnz
-// then add memory storage
-// then integrate SPI
+//TODO integrate SPI commands (tx, rx, CS)
+// then fix led_toggle to not toggle all and support all five LEDs
+// then test a simple eth checksum example
+// then the whole thing with a logic analyzer at desk
 
 #fn led_toggle
 #fn sleep
@@ -14,11 +13,11 @@
 //300 sleep
 //.start goto
 
-//.start:
-//1 1 sub .start ifz goto
-//2 led_toggle
-//.start goto
-
 .start:
-2 5 store pop 3 5 load sub led_toggle
+2 4 4 sub .start ifz
+led_toggle
 .start goto
+
+//.start:
+//5 2 5 store 5 load sub led_toggle
+//.start goto
