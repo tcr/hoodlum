@@ -26,10 +26,14 @@ entity MiniCounter {
 
 impl MiniCounter {
     def mut index: bit[16]; // total is a 16-bit value
+    def index_next: bit[16] = index + 1;
 
     // def mut milli_tick: uint{..12000}; // one microsecond
-    const MICRO_MAX = 12;
     def mut micro_tick: uint{..12}; // one microsecond
+    def micro_tick_next: uint{..12} = micro_tick + 1;
+
+    const MICRO_MAX = 12;
+    def max_cap: bit[16] = max - 1;
 
     on clk.posedge {
         if reset {
@@ -38,14 +42,119 @@ impl MiniCounter {
             micro_tick <= 0;
         } else {
             if micro_tick == MICRO_MAX - 1 {
-                if index == max - 1 {
+                if index == max_cap {
                     ready <= 1;
                 } else {
                     micro_tick <= 0;
-                    index <= index + 1;
+                    index <= index_next;
                 }
             } else {
-                micro_tick <= micro_tick + 1;
+                micro_tick <= micro_tick_next;
+            }
+        }
+    }
+}
+
+
+entity SpiMaster {
+    in reset: bit,
+    in clk: bit,
+    in trigger: bit,
+    out ready: bit,
+    in tx_byte: bit[8],
+    out rx_byte: bit[8],
+    out spi_clk: bit,
+    out spi_tx: bit,
+    in spi_rx: bit,
+}
+
+impl SpiMaster {
+    def mut live_clk: bit;
+
+    // Internal signals.
+    def mut read_index: uint{..9};
+    def mut internal_clk: bit;
+
+    // Generate SPI signal from internal clock + SPI state.
+    always {
+        spi_clk = live_clk && internal_clk;
+    }
+
+    // Generate divided SPI clock.
+    def mut div_idx: uint{..40};
+    on clk.negedge {
+        if reset {
+            div_idx <= 0;
+            internal_clk <= 0;
+        } else {
+            if div_idx == 40 - 1 {
+                internal_clk <= !internal_clk;
+                div_idx <= 0;
+            } else {
+                div_idx <= div_idx + 1;
+            }
+        }
+    }
+
+    // Sample read values from positive clock edge.
+    on internal_clk.posedge {
+        if live_clk {
+            rx_byte[read_index] <= spi_rx;
+        }
+    }
+
+    def mut transmitting;
+    def mut transmit_save;
+
+    // On positive edge, check the tx_ready state.
+    on clk.posedge {
+        if reset {
+            ready <= 0;
+            transmit_save <= 0;
+        } else {
+            // if trigger is high, and we are not transmitting, start
+            if transmit_save == transmitting {
+                ready <= 1;
+                transmit_save <= !transmitting;
+            } else if trigger {
+                ready <= 0;
+            }
+        }
+    }
+
+    // SPI output state machine.
+    def mut _FSM: bit[4];
+    on internal_clk.negedge {
+        if reset {
+            transmitting <= 0;
+        } else {
+            fsm {
+                INIT => {
+                    // Wait for transition trigger.
+                    spi_tx <= 0;
+                    if ready == 0 {
+                        read_index <= 8;
+                        fsm <= WRITING;
+                    }
+                }
+                WRITING => {
+                    // Enable output clock.
+                    live_clk <= 1;
+
+                    // Write bits.
+                    if read_index > 0 {
+                        spi_tx <= tx_byte[read_index - 1];
+                        read_index <= read_index - 1;
+                    } else {
+                        // Disable output clock.
+                        live_clk <= 0;
+                        fsm <= FINISH;
+                    }
+                }
+                FINISH => {
+                    transmitting <= !transmitting;
+                    fsm <= INIT;
+                }
             }
         }
     }
@@ -135,6 +244,10 @@ entity J1a {
     out LED2: bit,
     out LED3: bit,
     out LED4: bit,
+    out CS: bit,
+    out SCK: bit,
+    in MISO: bit,
+    out MOSI: bit,
 }
 
 impl J1a {
@@ -147,6 +260,9 @@ impl J1a {
 
     const LED_INSN = 16b1100_0000_0000_0000 + 0;
     const SLEEP_INSN = 16b1100_0000_0000_0000 + 1;
+    const TX_INSN = 16b1100_0000_0000_0000 + 2;
+    const RX_INSN = 16b1100_0000_0000_0000 + 3;
+    const CS_INSN = 16b1100_0000_0000_0000 + 4;
 
     // top of data stack
     def mut st0: bit[16];
@@ -292,7 +408,7 @@ impl J1a {
                 0 => {
                     st0N = st0;
                     dstkW = 1b0;
-                    dspI = 2b011;
+                    dspI = 3b011;
                 },
                 // Sleepsville
                 1 => {
@@ -300,6 +416,28 @@ impl J1a {
                     dstkW = 1b0;
                     dspI = 3b011;
                 },
+                // // TX
+                // 2 => {
+                //     st0N = st1;
+                //     // {dstkW, dspI} = {1b0, 2b11};
+                //     dstkW = 1b0;
+                //     dspI = 3b011;
+                // }
+                // // RX
+                // 3 => {
+                //     // Literal
+                //     st0N = spi_rx;
+                //     // {dstkW, dspI} = {1b1, 2b10};
+                //     dstkW = 1b1;
+                //     dspI = 3b001;
+                // }
+                // // CS
+                // 4 => {
+                //     st0N = st0;
+                //     // {dstkW, dspI} = {1b0, 2b00};
+                //     dstkW = 1b0;
+                //     dspI = 3b000;
+                // }
 
                 _ => {
                     st0N = {1; 16};
@@ -399,26 +537,63 @@ impl J1a {
 
     def counter_ready;
     def mut counter_trigger;
+    def mut counter_value: bit[16];
     def counter = MiniCounter {
         clk: clk,
         reset: counter_trigger,
         ready: counter_ready,
-        max: st0,
+        max: counter_value,
     };
 
-    def mut sleeping: bit;
+    def sleeping: bit = !counter_trigger;
+
+    // def mut spi_trigger;
+    // def spi_ready;
+    // def mut spi_tx: bit[8];
+    // def spi_rx: bit[8];
+    // def spi = SpiMaster {
+    //     reset: reset,
+    //     clk: clk,
+    //     trigger: spi_trigger,
+    //     ready: spi_ready,
+    //     tx_byte: spi_tx,
+    //     rx_byte: spi_rx,
+    //     spi_clk: SCK,
+    //     spi_tx: MOSI,
+    //     spi_rx: MISO,
+    // };
+
+    // def is_cs_insn: bit = insn == CS_INSN;
 
     on clk.negedge {
         if reset {
-            sleeping <= 0;
             counter_trigger <= 1;
+            // spi_trigger <= 0;
+            // CS <= 1;
         } else {
-            if counter_ready {
-                sleeping <= 0;
+            if counter_ready { // | spi_ready {
                 counter_trigger <= 1;
-            } else if insn == SLEEP_INSN {
-                sleeping <= 1;
-                counter_trigger <= 0;
+                // spi_trigger <= 0;
+            } else {
+                if insn == SLEEP_INSN {
+                    counter_trigger <= 0;
+                    counter_value <= st0;
+                }
+                // if insn == TX_INSN {
+                //     CS <= 0;
+                //     spi_trigger <= 1;
+                //     spi_tx <= st0;
+                // }
+                // if insn == RX_INSN {
+                //     CS <= 0;
+                //     spi_trigger <= 1;
+                // }
+                // if insn == CS_INSN {
+                //     CS <= 1;
+                //     LED4 <= 1;
+                //     counter_trigger <= 0;
+                //     counter_value <= 10000;
+                // }
             }
         }
     }
@@ -459,6 +634,10 @@ entity Main {
     out LED3: bit,
     out LED4: bit,
     out LED5: bit,
+    out PMOD1: bit,
+    out PMOD2: bit,
+    in PMOD3: bit,
+    out PMOD4: bit,
 }
 
 impl Main {
@@ -472,15 +651,18 @@ impl Main {
         ready: init_active,
     };
 
-    const BINARY_LEN = 9;
-    def binary: bit[16][9] = {
+    const BINARY_LEN = 12;
+    def binary: bit[16][12] = {
         16b0000_0000_0000_0010,
-        16b0000_0000_0000_0100,
-        16b0000_0000_0000_0100,
-        16b1000_0000_0000_0101,
-        16b0000_0000_0000_0000,
-        16b1000_0000_0000_0111,
+        16b0000_0000_0000_0010,
+        16b1000_0000_0000_0110,
         16b1100_0000_0000_0000,
+        16b0111_1111_1111_1111,
+        16b1100_0000_0000_0001,
+        16b0000_0000_0000_0011,
+        16b1100_0000_0000_0000,
+        16b0000_0001_0010_1100,
+        16b1100_0000_0000_0001,
         16b0000_0000_0000_0000,
         16b1000_0000_0000_0001,
     };
@@ -496,6 +678,10 @@ impl Main {
         LED2: LED2,
         LED3: LED3,
         LED4: LED4,
+        CS: PMOD1,
+        MOSI: PMOD2,
+        MISO: PMOD3,
+        SCK: PMOD4,
     };
 
     def mut error: bit;

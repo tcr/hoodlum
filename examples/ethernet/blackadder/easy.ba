@@ -6,17 +6,17 @@
 #fn led_toggle
 #fn sleep
 
-//.start:
-//1 2 pop led_toggle
-//32767 sleep
-//3 led_toggle
-//300 sleep
-//.start goto
-
 .start:
-2 4 4 sub .start ifz
-led_toggle
+1 2 pop led_toggle
+32767 sleep
+3 led_toggle
+300 sleep
 .start goto
+
+//.start:
+//2 4 4 sub .start ifz
+//led_toggle
+//.start goto
 
 //.start:
 //5 2 5 store 5 load sub led_toggle

@@ -1,0 +1,59 @@
+#fn led_toggle
+#fn sleep
+#fn tx
+#fn rx
+#fn cs
+
+#mem NEXT_PACKET_H
+#mem NEXT_PACKET_L
+#mem MAC_0
+#mem MAC_1
+#mem MAC_2
+#mem MAC_3
+#mem MAC_4
+#mem MAC_5
+#mem RECEIVED_L
+#mem RECEIVED_H
+
+#define ERCRU 0x20
+#define EWCRU 0x22
+#define EEUDASTL 0x16
+#define ESSETETHRST 0b11001010
+#define EECON2L 0x6E
+#define EERXSTL 0x04
+#define EMAMXFLL 0x4A
+#define EERXTAILL 0x06
+
+#define EMAADR3L 0x60
+#define EMAADR3H 0x61
+#define EMAADR2L 0x62
+#define EMAADR2H 0x63
+#define EMAADR1L 0x64
+#define EMAADR1H 0x65
+
+#define ESENABLERX 0b11101000
+
+#define ERCR 0x00
+#define EESTATL 0x1A
+
+#define EERXRDPTL 0x8A
+
+#define ERRXDATA 0b00101100
+
+.start:
+1 pop
+cs
+EWCRU tx
+EEUDASTL tx
+0x34 tx
+0x12 tx
+
+cs
+ERCRU tx
+EEUDASTL tx
+rx 0x34 sub .start ifnz
+rx 0x12 sub .start ifnz
+
+.loop:
+1 led_toggle
+.loop goto
