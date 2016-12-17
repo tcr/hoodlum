@@ -41,7 +41,6 @@
 #define ERRXDATA 0b00101100
 
 .start:
-1 pop
 cs
 EWCRU tx
 EEUDASTL tx
@@ -51,9 +50,14 @@ EEUDASTL tx
 cs
 ERCRU tx
 EEUDASTL tx
-rx 0x34 sub .start ifnz
-rx 0x12 sub .start ifnz
+rx 0x34 sub .error ifnz
+rx 0x12 sub .error ifnz
 
+cs
 .loop:
-1 led_toggle
+2 led_toggle
+.loop goto
+
+.error:
+5 led_toggle
 .loop goto

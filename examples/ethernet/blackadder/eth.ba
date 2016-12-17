@@ -50,12 +50,13 @@ EEUDASTL tx
 cs
 ERCRU tx
 EEUDASTL tx
-rx 0x34 sub .start ifnz
-rx 0x12 sub .start ifnz
+rx tx
+rx tx
+1 led_toggle
 
 cs
 ESSETETHRST tx
-360 sleep
+30 sleep
 
 // NOTE: don't raise CS high
 // magic number
@@ -126,7 +127,7 @@ cs
 ESENABLERX tx
 cs
 EESTATL tx
-rx .loop ifnz
+rx tx .loop goto
 
 // Configure ERXDATA for reading.
 cs

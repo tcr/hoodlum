@@ -138,50 +138,57 @@ fn main() {
     };
     let mut label_patch: Vec<(String, u16)> = vec![];
     let mut labels = hashmap![];
-    for term in split_terms(&code) {
-        println!("term {:?}", term);
-        if let Some(m) = re_label.captures(&term) {
-            let label = m.at(1).unwrap().to_string();
-            labels.insert(label.clone(), out.pos());
-            //println!("label {:?}", label);
-        } else if let Some(m) = re_labelref.captures(&term) {
-            let label = m.at(1).unwrap().to_string();
-            label_patch.push((label, out.pos()));
-            out.literal(0);
-            //println!("labelref {:?}", label);
-        } else if let Some(m) = re_num_hex.captures(&term) {
-            let num = m.at(0).unwrap().clone();
-            let num = i16::from_str_radix(&num[2..], 16).unwrap();
-            out.literal(num);
-            //println!("num hex {:?}", term);
-        } else if let Some(m) = re_num_bin.captures(&term) {
-            let num = m.at(0).unwrap().clone();
-            let num = i16::from_str_radix(&num[2..], 2).unwrap();
-            out.literal(num);
-            //println!("num bin {:?}", term);
-        } else if let Some(m) = re_num_dec.captures(&term) {
-            let num = m.at(0).unwrap().clone();
-            let num = i16::from_str_radix(&num, 10).unwrap();
-            out.literal(num);
-            //println!("num dec {:?}", term);
-        } else {
-            if state_mem.iter().find(|&x| *x == term).is_some() {
-                //println!("mem {:?}", term);
-                out.literal(state_mem.iter().position(|x| *x == term).unwrap() as i16);
-            } else if state_fn.iter().find(|&x| *x == term).is_some() || builtin_fn.iter().find(|&x| *x == term).is_some() {
-                //println!("fn {:?}", term);
-                out.call(&term);
-            } else if state_define.iter().find(|&x| *x.0 == term).is_some() {
-                //println!("define {:?}", term);
-                out.literal(state_define.iter().position(|x| *x.0 == term).unwrap() as i16);
+    for mut loop_term in split_terms(&code) {
+        loop {
+            let term = loop_term.clone();
+            println!("term {:?}", term);
+            if let Some(m) = re_label.captures(&term) {
+                let label = m.at(1).unwrap().to_string();
+                labels.insert(label.clone(), out.pos());
+                //println!("label {:?}", label);
+            } else if let Some(m) = re_labelref.captures(&term) {
+                let label = m.at(1).unwrap().to_string();
+                label_patch.push((label, out.pos()));
+                out.literal(0);
+                //println!("labelref {:?}", label);
+            } else if let Some(m) = re_num_hex.captures(&term) {
+                let num = m.at(0).unwrap().clone();
+                let num = i16::from_str_radix(&num[2..], 16).unwrap();
+                out.literal(num);
+                //println!("num hex {:?}", term);
+            } else if let Some(m) = re_num_bin.captures(&term) {
+                let num = m.at(0).unwrap().clone();
+                let num = i16::from_str_radix(&num[2..], 2).unwrap();
+                out.literal(num);
+                //println!("num bin {:?}", term);
+            } else if let Some(m) = re_num_dec.captures(&term) {
+                let num = m.at(0).unwrap().clone();
+                let num = i16::from_str_radix(&num, 10).unwrap();
+                out.literal(num);
+                //println!("num dec {:?}", term);
             } else {
-                panic!("unknown term {:?}", term);
+                if state_mem.iter().find(|&x| *x == term).is_some() {
+                    //println!("mem {:?}", term);
+                    out.literal(state_mem.iter().position(|x| *x == term).unwrap() as i16);
+                } else if state_fn.iter().find(|&x| *x == term).is_some() || builtin_fn.iter().find(|&x| *x == term).is_some() {
+                    //println!("fn {:?}", term);
+                    out.call(&term);
+                } else if state_define.iter().find(|&x| *x.0 == term).is_some() {
+                    //println!("define {:?}", term);
+                    let def = state_define.iter().find(|x| *x.0 == term).unwrap().1;
+                    loop_term = def.clone();
+                    continue;
+                } else {
+                    panic!("unknown term {:?}", term);
+                }
             }
+            break;
         }
     }
 
     for (name, pos) in label_patch {
-        let label_pos = labels.iter().position(|x| *x.0 == name).expect(&format!("Could not find label ref {:?}", name));
+        let label_pos = *labels.iter().find(|x| *x.0 == name).expect(&format!("Could not find label ref {:?}", name)).1;
+        //println!("MATCHING LABEL {:?} to {:?} at {:?}", name, label_pos, pos);
         out.buffer[pos as usize] = label_pos as u16;
     }
 

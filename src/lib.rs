@@ -517,7 +517,7 @@ impl ToVerilog for ast::Seq {
                 res.to_verilog(&v_new)
             }
             ast::Seq::FsmTransition(n) => {
-                format!("{ind}_FSM = {id};\n",
+                format!("{ind}_FSM <= {id};\n",
                     ind=v.indent,
                     id=n)
                     //id=v.fsm.get(&n).map(|x| x.to_string()).unwrap_or(format!("$$${}$$$", n))) //.expect(format!("Missing FSM state in generation step: {:?}!"))

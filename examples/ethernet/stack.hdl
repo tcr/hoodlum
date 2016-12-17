@@ -1,22 +1,3 @@
-entity Second {
-    in clk: bit,
-    out ready: bit
-}
-
-impl Second {
-    def mut index: uint{..6000000};
-
-    on clk.posedge {
-        if index == 6000000 - 1 {
-            ready <= 1;
-        } else {
-            index <= index + 1;
-            ready <= 0;
-        }
-    }
-}
-
-
 entity MiniCounter {
     in clk: bit,
     in reset: bit,
@@ -41,7 +22,7 @@ impl MiniCounter {
             index <= 0;
             micro_tick <= 0;
         } else {
-            if micro_tick == MICRO_MAX - 1 {
+            if micro_tick == (MICRO_MAX - 1) {
                 if index == max_cap {
                     ready <= 1;
                 } else {
@@ -73,7 +54,9 @@ impl SpiMaster {
 
     // Internal signals.
     def mut read_index: uint{..9};
+    def read_index_next: uint{..9} = read_index - 1;
     def mut internal_clk: bit;
+    def internal_clk_next: bit = !internal_clk;
 
     // Generate SPI signal from internal clock + SPI state.
     always {
@@ -82,16 +65,17 @@ impl SpiMaster {
 
     // Generate divided SPI clock.
     def mut div_idx: uint{..40};
+    def div_idx_next: uint{..40} = div_idx + 1;
     on clk.negedge {
         if reset {
             div_idx <= 0;
             internal_clk <= 0;
         } else {
-            if div_idx == 40 - 1 {
-                internal_clk <= !internal_clk;
+            if div_idx == (40 - 1) {
+                internal_clk <= internal_clk_next;
                 div_idx <= 0;
             } else {
-                div_idx <= div_idx + 1;
+                div_idx <= div_idx_next;
             }
         }
     }
@@ -103,21 +87,16 @@ impl SpiMaster {
         }
     }
 
-    def mut transmitting;
-    def mut transmit_save;
-
-    // On positive edge, check the tx_ready state.
-    on clk.posedge {
+    def mut readier: bit;
+    on clk.negedge {
         if reset {
             ready <= 0;
-            transmit_save <= 0;
         } else {
-            // if trigger is high, and we are not transmitting, start
-            if transmit_save == transmitting {
-                ready <= 1;
-                transmit_save <= !transmitting;
-            } else if trigger {
-                ready <= 0;
+            if _FSM == 3 {
+                ready <= readier;
+                readier <= 0;
+            } else {
+                readier <= 1;
             }
         }
     }
@@ -125,14 +104,12 @@ impl SpiMaster {
     // SPI output state machine.
     def mut _FSM: bit[4];
     on internal_clk.negedge {
-        if reset {
-            transmitting <= 0;
-        } else {
+        if !reset {
             fsm {
                 INIT => {
                     // Wait for transition trigger.
                     spi_tx <= 0;
-                    if ready == 0 {
+                    if trigger {
                         read_index <= 8;
                         fsm <= WRITING;
                     }
@@ -142,9 +119,9 @@ impl SpiMaster {
                     live_clk <= 1;
 
                     // Write bits.
-                    if read_index > 0 {
-                        spi_tx <= tx_byte[read_index - 1];
-                        read_index <= read_index - 1;
+                    if read_index != 0 {
+                        spi_tx <= tx_byte[read_index_next];
+                        read_index <= read_index_next;
                     } else {
                         // Disable output clock.
                         live_clk <= 0;
@@ -152,7 +129,9 @@ impl SpiMaster {
                     }
                 }
                 FINISH => {
-                    transmitting <= !transmitting;
+                    fsm <= FINISH2;
+                }
+                FINISH2 => {
                     fsm <= INIT;
                 }
             }
@@ -179,11 +158,12 @@ entity Stack2 {
     in we: bit,
     in delta: bit[3],
     in wd: bit[16],
+    in sleeping: bit,
 }
 
 impl Stack2 {
     const WIDTH = 16; // TODO global const
-    const DEPTH = 18;
+    const DEPTH = 8;
     const BITS = WIDTH * DEPTH;
 
     // 0 = move 1, 1 = move 2
@@ -194,7 +174,7 @@ impl Stack2 {
     def do_move: bit = delta[0];
 
     def mut head: bit[16];
-    def mut tail: bit[288];
+    def mut tail: bit[128];
 
     def headN: bit[16] = if we {
         wd
@@ -205,7 +185,7 @@ impl Stack2 {
             tail[16:0]
         }
     };
-    def tailN: bit[288] = if move_dir {
+    def tailN: bit[128] = if move_dir {
         if move_2 {
             {0x55aa, 0x55aa, tail[BITS:32]}
         } else {
@@ -216,11 +196,13 @@ impl Stack2 {
     };
 
     on clk.posedge {
-        if we | do_move {
-            head <= headN;
-        }
-        if do_move {
-            tail <= tailN;
+        if !sleeping {
+            if we | do_move {
+                head <= headN;
+            }
+            if do_move {
+                tail <= tailN;
+            }
         }
     }
 
@@ -244,6 +226,7 @@ entity J1a {
     out LED2: bit,
     out LED3: bit,
     out LED4: bit,
+    out LED5: bit,
     out CS: bit,
     out SCK: bit,
     in MISO: bit,
@@ -294,6 +277,7 @@ impl J1a {
         we: dstkW,
         wd: st0,
         delta: dspI,
+        sleeping: sleeping,
     };
 
     def mut mem_set: bit[8][16];
@@ -416,28 +400,28 @@ impl J1a {
                     dstkW = 1b0;
                     dspI = 3b011;
                 },
-                // // TX
-                // 2 => {
-                //     st0N = st1;
-                //     // {dstkW, dspI} = {1b0, 2b11};
-                //     dstkW = 1b0;
-                //     dspI = 3b011;
-                // }
-                // // RX
-                // 3 => {
-                //     // Literal
-                //     st0N = spi_rx;
-                //     // {dstkW, dspI} = {1b1, 2b10};
-                //     dstkW = 1b1;
-                //     dspI = 3b001;
-                // }
-                // // CS
-                // 4 => {
-                //     st0N = st0;
-                //     // {dstkW, dspI} = {1b0, 2b00};
-                //     dstkW = 1b0;
-                //     dspI = 3b000;
-                // }
+                // TX
+                2 => {
+                    st0N = st1;
+                    // {dstkW, dspI} = {1b0, 2b11};
+                    dstkW = 1b0;
+                    dspI = 3b011;
+                }
+                // RX
+                3 => {
+                    // Literal
+                    st0N = 0x44aa;
+                    // {dstkW, dspI} = {1b1, 2b10};
+                    dstkW = 1b1;
+                    dspI = 3b001;
+                }
+                // CS
+                4 => {
+                    st0N = st0;
+                    // {dstkW, dspI} = {1b0, 2b00};
+                    dstkW = 1b0;
+                    dspI = 3b000;
+                }
 
                 _ => {
                     st0N = {1; 16};
@@ -480,18 +464,15 @@ impl J1a {
                 match st0 {
                     1 => {
                         LED1 <= 1;
-                        LED2 <= 0;
-                        LED3 <= 0;
                     },
                     2 => {
-                        LED1 <= 0;
                         LED2 <= 1;
-                        LED3 <= 0;
                     },
                     3 => {
-                        LED1 <= 0;
-                        LED2 <= 0;
                         LED3 <= 1;
+                    }
+                    5 => {
+                        LED5 <= 1;
                     }
                 }
             }
@@ -545,55 +526,55 @@ impl J1a {
         max: counter_value,
     };
 
-    def sleeping: bit = !counter_trigger;
+    def sleeping: bit = spi_trigger | (!counter_trigger);
 
-    // def mut spi_trigger;
-    // def spi_ready;
-    // def mut spi_tx: bit[8];
-    // def spi_rx: bit[8];
-    // def spi = SpiMaster {
-    //     reset: reset,
-    //     clk: clk,
-    //     trigger: spi_trigger,
-    //     ready: spi_ready,
-    //     tx_byte: spi_tx,
-    //     rx_byte: spi_rx,
-    //     spi_clk: SCK,
-    //     spi_tx: MOSI,
-    //     spi_rx: MISO,
-    // };
-
-    // def is_cs_insn: bit = insn == CS_INSN;
+    def mut spi_trigger;
+    def spi_ready;
+    def mut spi_tx: bit[8];
+    def spi_rx: bit[8];
+    def spi = SpiMaster {
+        reset: reset,
+        clk: clk,
+        trigger: spi_trigger,
+        ready: spi_ready,
+        tx_byte: spi_tx,
+        rx_byte: spi_rx,
+        spi_clk: SCK,
+        spi_tx: MOSI,
+        spi_rx: MISO,
+    };
 
     on clk.negedge {
         if reset {
             counter_trigger <= 1;
-            // spi_trigger <= 0;
-            // CS <= 1;
+            spi_trigger <= 0;
+            CS <= 1;
         } else {
-            if counter_ready { // | spi_ready {
+            if counter_ready | spi_ready {
                 counter_trigger <= 1;
-                // spi_trigger <= 0;
-            } else {
-                if insn == SLEEP_INSN {
-                    counter_trigger <= 0;
-                    counter_value <= st0;
+                spi_trigger <= 0;
+            } else if !sleeping {
+                match insn {
+                    SLEEP_INSN => {
+                        counter_trigger <= 0;
+                        counter_value <= st0;
+                    }
+                    TX_INSN => {
+                        CS <= 0;
+                        spi_trigger <= 1;
+                        spi_tx <= st0;
+                    }
+                    RX_INSN => {
+                        CS <= 0;
+                        spi_trigger <= 1;
+                        spi_tx <= 0xff;
+                    }
+                    CS_INSN => {
+                        CS <= 1;
+                        counter_trigger <= 0;
+                        counter_value <= 30;
+                    }
                 }
-                // if insn == TX_INSN {
-                //     CS <= 0;
-                //     spi_trigger <= 1;
-                //     spi_tx <= st0;
-                // }
-                // if insn == RX_INSN {
-                //     CS <= 0;
-                //     spi_trigger <= 1;
-                // }
-                // if insn == CS_INSN {
-                //     CS <= 1;
-                //     LED4 <= 1;
-                //     counter_trigger <= 0;
-                //     counter_value <= 10000;
-                // }
             }
         }
     }
@@ -621,7 +602,6 @@ impl J1a {
                 st0 <= st0N;
             }
         }
-
     }
 }
 
@@ -642,27 +622,170 @@ entity Main {
 
 impl Main {
     // Reset is active high. We declare it inverse of a temporary value which is initialized to 0.
-    def init_active;
+    def mut init_active;
+    def mut init_counter: bit[8];
     def reset = !init_active;
 
     // This is our one-second initial delay.
-    def sec = Second {
-        clk: clk,
-        ready: init_active,
-    };
+    on clk.negedge {
+        init_counter <= init_counter + 1;
+        if init_counter == 10 {
+            init_active <= 1;
+        }
+    }
 
-    const BINARY_LEN = 12;
-    def binary: bit[16][12] = {
-        16b0000_0000_0000_0010,
-        16b0000_0000_0000_0010,
-        16b1000_0000_0000_0110,
+    const BINARY_LEN = 152;
+    def binary: bit[16][152] = {
+        16b1100_0000_0000_0100,
+        16b0000_0000_0010_0010,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0001_0110,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0011_0100,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0001_0010,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0100,
+        16b0000_0000_0010_0000,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0001_0110,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0011,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0011,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0000_0001,
         16b1100_0000_0000_0000,
-        16b0111_1111_1111_1111,
+        16b1100_0000_0000_0100,
+        16b0000_0000_1100_1010,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0001_1110,
         16b1100_0000_0000_0001,
+        16b0000_0000_0010_0010,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0110_1110,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0000_0000,
+        16b1100_0000_0000_0010,
+        16b0000_0000_1100_1011,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0100,
+        16b0000_0000_0010_0010,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0000_0100,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0100_0000,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0101_0011,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0100,
+        16b0000_0000_0010_0010,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0100_1010,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0100_0000,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0101_0011,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0100,
+        16b0000_0000_0010_0010,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0000_0110,
+        16b1100_0000_0000_0010,
+        16b0000_0000_1111_1110,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0101_1111,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0100,
+        16b0000_0000_0010_0000,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0110_0100,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0011,
+        16b0000_0000_0000_0010,
+        16b1000_0000_0000_1010,
+        16b1100_0000_0000_0011,
+        16b0000_0000_0000_0011,
+        16b1000_0000_0000_1010,
+        16b1100_0000_0000_0100,
+        16b0000_0000_0010_0000,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0110_0010,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0011,
+        16b0000_0000_0000_0100,
+        16b1000_0000_0000_1010,
+        16b1100_0000_0000_0011,
+        16b0000_0000_0000_0101,
+        16b1000_0000_0000_1010,
+        16b1100_0000_0000_0100,
+        16b0000_0000_0010_0000,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0110_0000,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0011,
+        16b0000_0000_0000_0110,
+        16b1000_0000_0000_1010,
+        16b1100_0000_0000_0011,
+        16b0000_0000_0000_0111,
+        16b1000_0000_0000_1010,
+        16b1100_0000_0000_0100,
+        16b0000_0000_1110_1000,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0100_0000,
+        16b0000_0000_0000_0001,
+        16b1000_0000_0000_1010,
+        16b0000_0000_0101_0011,
+        16b0000_0000_0000_0000,
+        16b1000_0000_0000_1010,
+        16b1100_0000_0000_0100,
+        16b0000_0000_1110_1000,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0100,
+        16b0000_0000_0001_1010,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0011,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0110_0110,
+        16b1000_0000_0000_0001,
+        16b1100_0000_0000_0100,
+        16b0000_0000_0010_0010,
+        16b1100_0000_0000_0010,
+        16b0000_0000_1000_1010,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0000_0001,
+        16b1000_0000_0000_1001,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0000_0000,
+        16b1000_0000_0000_1001,
+        16b1100_0000_0000_0010,
+        16b0000_0000_0010_1100,
+        16b1100_0000_0000_0010,
+        16b1100_0000_0000_0011,
+        16b0000_0000_0000_0001,
+        16b1000_0000_0000_1010,
+        16b1100_0000_0000_0011,
+        16b0000_0000_0000_0000,
+        16b1000_0000_0000_1010,
+        16b1100_0000_0000_0011,
+        16b0000_0000_0000_1000,
+        16b1000_0000_0000_1010,
+        16b1100_0000_0000_0011,
+        16b0000_0000_0000_1001,
+        16b1000_0000_0000_1010,
+        16b1100_0000_0000_0011,
+        16b0000_0000_1000_0000,
+        16b1000_0000_0000_0010,
+        16b0000_0000_1001_0000,
+        16b1000_0000_0000_0111,
         16b0000_0000_0000_0011,
         16b1100_0000_0000_0000,
-        16b0000_0001_0010_1100,
-        16b1100_0000_0000_0001,
+        16b1100_0000_0000_0011,
+        16b1000_0000_0000_0110,
+        16b0000_0000_0110_0110,
+        16b1000_0000_0000_0001,
+        16b0000_0000_0000_0101,
+        16b1100_0000_0000_0000,
         16b0000_0000_0000_0000,
         16b1000_0000_0000_0001,
     };
@@ -678,6 +801,7 @@ impl Main {
         LED2: LED2,
         LED3: LED3,
         LED4: LED4,
+        LED5: LED5,
         CS: PMOD1,
         MOSI: PMOD2,
         MISO: PMOD3,
@@ -692,9 +816,5 @@ impl Main {
         } else if code_addr >= BINARY_LEN {
             error <= 1;
         }
-    }
-
-    always {
-        LED5 = reset | error;
     }
 }
