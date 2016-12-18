@@ -231,6 +231,7 @@ entity J1a {
     out SCK: bit,
     in MISO: bit,
     out MOSI: bit,
+    out sleeping: bit,
 }
 
 impl J1a {
@@ -410,7 +411,7 @@ impl J1a {
                 // RX
                 3 => {
                     // Literal
-                    st0N = 0x44aa;
+                    st0N = spi_rx;
                     // {dstkW, dspI} = {1b1, 2b10};
                     dstkW = 1b1;
                     dspI = 3b001;
@@ -526,7 +527,9 @@ impl J1a {
         max: counter_value,
     };
 
-    def sleeping: bit = spi_trigger | (!counter_trigger);
+    always {
+        sleeping = spi_trigger | (!counter_trigger);
+    }
 
     def mut spi_trigger;
     def spi_ready;
@@ -550,7 +553,7 @@ impl J1a {
             spi_trigger <= 0;
             CS <= 1;
         } else {
-            if counter_ready | spi_ready {
+            if sleeping & (counter_ready | spi_ready) {
                 counter_trigger <= 1;
                 spi_trigger <= 0;
             } else if !sleeping {
@@ -634,8 +637,8 @@ impl Main {
         }
     }
 
-    const BINARY_LEN = 152;
-    def binary: bit[16][152] = {
+    const BINARY_LEN = 160;
+    def binary: bit[16][160] = {
         16b1100_0000_0000_0100,
         16b0000_0000_0010_0010,
         16b1100_0000_0000_0010,
@@ -651,9 +654,15 @@ impl Main {
         16b0000_0000_0001_0110,
         16b1100_0000_0000_0010,
         16b1100_0000_0000_0011,
-        16b1100_0000_0000_0010,
+        16b0000_0000_0011_0100,
+        16b1000_0000_0000_0101,
+        16b0000_0000_1001_1100,
+        16b1000_0000_0000_1000,
         16b1100_0000_0000_0011,
-        16b1100_0000_0000_0010,
+        16b0000_0000_0001_0010,
+        16b1000_0000_0000_0101,
+        16b0000_0000_1001_1100,
+        16b1000_0000_0000_1000,
         16b0000_0000_0000_0001,
         16b1100_0000_0000_0000,
         16b1100_0000_0000_0100,
@@ -745,9 +754,10 @@ impl Main {
         16b0000_0000_0001_1010,
         16b1100_0000_0000_0010,
         16b1100_0000_0000_0011,
-        16b1100_0000_0000_0010,
-        16b0000_0000_0110_0110,
-        16b1000_0000_0000_0001,
+        16b0000_0000_0110_1100,
+        16b1000_0000_0000_0111,
+        16b0000_0000_0000_0010,
+        16b1100_0000_0000_0000,
         16b1100_0000_0000_0100,
         16b0000_0000_0010_0010,
         16b1100_0000_0000_0010,
@@ -759,6 +769,7 @@ impl Main {
         16b0000_0000_0000_0000,
         16b1000_0000_0000_1001,
         16b1100_0000_0000_0010,
+        16b1100_0000_0000_0100,
         16b0000_0000_0010_1100,
         16b1100_0000_0000_0010,
         16b1100_0000_0000_0011,
@@ -776,13 +787,13 @@ impl Main {
         16b1100_0000_0000_0011,
         16b0000_0000_1000_0000,
         16b1000_0000_0000_0010,
-        16b0000_0000_1001_0000,
+        16b0000_0000_1001_1000,
         16b1000_0000_0000_0111,
         16b0000_0000_0000_0011,
         16b1100_0000_0000_0000,
         16b1100_0000_0000_0011,
         16b1000_0000_0000_0110,
-        16b0000_0000_0110_0110,
+        16b0000_0000_0110_1100,
         16b1000_0000_0000_0001,
         16b0000_0000_0000_0101,
         16b1100_0000_0000_0000,
@@ -792,6 +803,7 @@ impl Main {
 
     def mut insn: bit[16];
     def code_addr: bit[13];
+    def sleeping;
     def j1 = J1a {
         clk: clk,
         reset: reset,
@@ -806,13 +818,16 @@ impl Main {
         MOSI: PMOD2,
         MISO: PMOD3,
         SCK: PMOD4,
+        sleeping: sleeping,
     };
 
     def mut error: bit;
 
     on clk.posedge {
-        if code_addr >= 0 && code_addr < BINARY_LEN {
-            insn <= binary[code_addr];
+        if !code_addr >= 0 && code_addr < BINARY_LEN {
+            if !sleeping {
+                insn <= binary[code_addr];
+            }
         } else if code_addr >= BINARY_LEN {
             error <= 1;
         }

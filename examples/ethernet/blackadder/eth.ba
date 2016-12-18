@@ -50,8 +50,8 @@ EEUDASTL tx
 cs
 ERCRU tx
 EEUDASTL tx
-rx tx
-rx tx
+rx 0x34 sub .error ifnz
+rx 0x12 sub .error ifnz
 1 led_toggle
 
 cs
@@ -127,7 +127,10 @@ cs
 ESENABLERX tx
 cs
 EESTATL tx
-rx tx .loop goto
+rx .loop ifz
+
+// Got a packet.
+2 led_toggle
 
 // Configure ERXDATA for reading.
 cs
@@ -137,6 +140,7 @@ NEXT_PACKET_L load tx
 NEXT_PACKET_H load tx
 
 // Start reading!!!
+cs
 ERRXDATA tx
 
 // Read next packet pointer.
