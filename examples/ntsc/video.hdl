@@ -200,7 +200,7 @@ impl Ntsc {
 
     always {
         if v_sync == 1 && h_sync == 1 && line_count_reg == 526 {
-            line_count_reg_next = 1;
+            line_count_reg_next = 0; // SHOULD BE 1
         } else if v_sync == 1 && h_sync == 1 && line_count_reg == 527 {
             line_count_reg_next = 0;
         } else if v_sync == 0 && h_sync == 1 {
@@ -256,17 +256,79 @@ entity Main {
 }
 
 impl Main {
+    // #include "data.hdl"
+    //
+    def oob: bit = pixel_x >= 256 || pixel_y >= 240;
+    //
+    // // Position inside map.
+    // def pos: bit[12] = if oob {
+    //     0
+    // } else {
+    //     (pixel_y * (256 >> 4)) + (pixel_x >> 4)
+    // };
+    //
+    // // Index of map -> tile
+    // def tileidx: bit[8] = tilemap[pos];
+    //
+    // // Tile index plus bit offset
+    // def pixel_raw_row: bit[8] = tiles[(tileidx + (pixel_y & 0x7))];
+    // def pixel_raw: bit = pixel_raw_row[pixel_x & 0x7];
+    //
+    // // Striped pixel value.
+    // def pixel: bit[3] = if oob {
+    //     5
+    // } else {
+    //     if pixel_y > 127 {
+    //         if pixel_raw { 4 } else { 2 }
+    //     } else {
+    //         if pixel_raw { 3 } else { 1 }
+    //     }
+    // };
+
+    def pos: bit[15] = if oob {
+        0
+    } else {
+        (pixel_y * 256) + pixel_x
+    };
+
+    def rdata0: bit[2];
+    def pixel: bit[3] = (rdata0 << 1) & 1;
+
+    def demo = Demo {
+        clk: clk,
+        raddr0: pos,
+        rdata0: rdata0,
+    };
+
+    // def pixel: bit[3] = if pixel_y > 63 {
+    //     if pixel_y > 127 {
+    //         if pixel_y > 190 {
+    //             if pixel_y > 230 {
+    //                 5
+    //             } else {
+    //                 4
+    //             }
+    //         } else {
+    //             3
+    //         }
+    //     } else {
+    //         2
+    //     }
+    // } else {
+    //     1
+    // };
+
     def pixel_x: bit[10];
     def pixel_y: bit[10];
     def ntsc = Ntsc {
         clk: PMOD1,
-        pixel_data: pixel_x + pixel_y,
+        pixel_data: pixel,
         h_sync_out: _,
         v_sync_out: _,
         pixel_y: pixel_y,
         pixel_x: pixel_x,
         pixel_is_visible: _,
-        ntsc_out: {PMOD2, PMOD3, PMOD4},
+        ntsc_out: {PMOD4, PMOD3, PMOD2},
     };
 
     def s = Second {

@@ -133,7 +133,7 @@ module Ntsc (
     end
     always @(*) begin
         if ((((v_sync == 1) && (h_sync == 1)) && (line_count_reg == 526))) begin
-            line_count_reg_next = 1;
+            line_count_reg_next = 0;
         end
         else if ((((v_sync == 1) && (h_sync == 1)) && (line_count_reg == 527))) begin
             line_count_reg_next = 0;
@@ -177,6 +177,16 @@ module Ntsc (
     end
 endmodule
 
+module Demo (
+  input clk,
+  input [14:0] raddr0,
+  output reg [1:0] rdata0,
+);
+  reg [1:0] memory [0:32767];
+  initial $readmemh("zelda.hex", memory);
+  always @(posedge clk) rdata0 <= memory[raddr0];
+endmodule
+
 module Main (
     input clk,
     output LED1,
@@ -189,17 +199,30 @@ module Main (
     output PMOD3,
     output PMOD4
 );
+    reg [(1)-1:0] oob;
+    reg [(15)-1:0] pos;
+    always @(*) pos = ((pixel_y << 7) + ((pixel_x >> 1) - 128));
+    reg [(2)-1:0] rdata0;
+    reg [(3)-1:0] pixel;
+    always @(*) case (rdata0)
+      0: pixel = 1;
+      1: pixel = 2;
+      2: pixel = 3;
+      3: pixel = 4;
+      endcase
+    Demo demo(.clk (PMOD1),
+        .raddr0 (pos),
+        .rdata0 (rdata0));
     reg [(10)-1:0] pixel_x;
     reg [(10)-1:0] pixel_y;
     Ntsc ntsc(.clk (PMOD1),
-        .pixel_data ((pixel_x + pixel_y)),
+        .pixel_data (pixel),
         .h_sync_out (),
         .v_sync_out (),
         .pixel_y (pixel_y),
         .pixel_x (pixel_x),
         .pixel_is_visible (),
-        .ntsc_out ({PMOD2, PMOD3, PMOD4}));
+        .ntsc_out ({PMOD4, PMOD3, PMOD2}));
     Second s(.clk (PMOD1),
         .value (LED5));
 endmodule
-
