@@ -10,8 +10,13 @@ cargo install hoodlum
 Add this to `test.hdl`:
 
 ```rust
-entity Main (clk: in, LED1: out) {
-    let light: reg[1] = 1;
+entity Main {
+    in clk: bit,
+    out LED1: bit
+}
+
+impl Main {
+    def mut light: bit;
 
     on clk.posedge {
         light <= !light;
@@ -42,7 +47,7 @@ or best practices!
 Goals:
 
 1. Emit compatible Verilog and VHDL code.
-1. Define a DSL that's as simple (and Rust-like) as possible.
+1. Define a DSL that's elegant, borrowing from Rust syntax where applicable.
 1. Create abstractions to simplify generation of state machines and complex logic.
 1. Detect errors before they reach synthesis stage.
 1. In the future, add simulation capabilities.
@@ -62,7 +67,7 @@ Variables can be one of the following types:
 * Registers of a certain bit width. These can have arithemtic operators: `|`
 * Uints or Ints.
 
-Casting???
+TODO: More documentation
 
 ## License
 
