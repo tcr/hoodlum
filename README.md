@@ -34,10 +34,9 @@ And run
 hoodlum test.hdl output.v
 ```
 
----
-
 Examples are being tested with the iCEstick evaluation board and the [IceStorm
-open source compiler toolchain](http://www.clifford.at/icestorm/).
+open source compiler toolchain](http://www.clifford.at/icestorm/). See "examples/rot"
+for an example that works with this board.
 
 **NOTE:** I'm learning Verilog and VHDL as I go along. Feel free to suggest ideas
 or best practices!
