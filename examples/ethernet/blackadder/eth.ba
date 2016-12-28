@@ -152,13 +152,34 @@ rx RECEIVED_L store
 rx RECEIVED_H store
 
 rx // STATUS_VECTOR store
+rx pop // dummy
 0b10000000 and
-.next ifz
+.loop ifz
 3 led_toggle
 
-.next:
-rx pop // dummy
-.loop goto
+// <ip.c:enc424j600_receivecallback>
+
+// Check if packet length is too small (<8 bytes is runt packet)
+RECEIVED_L load RECEIVED_H load combine_le
+8 sub .error ifneg
+pop
+
+// Dump six bytes
+//macto (ignore) our mac filter handles this.
+rx pop rx pop rx pop rx pop rx pop rx pop
+
+// Get macfrom value TODO
+rx pop rx pop rx pop rx pop rx pop rx pop
+
+// Make sure this is ethernet
+rx 0x08 sub .error ifnz
+
+// Check if this is ARP, otherwise just bail
+rx 0x06 sub .loop ifnz
+
+// <ip.c:HandleArp>
+
+
 
 .error:
 5 led_toggle

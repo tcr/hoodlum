@@ -1,0 +1,21 @@
+entity Main {
+    in clk: bit,
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+    out LED4: bit,
+    out LED5: bit,
+    in PMOD1: bit,
+    out PMOD2: bit,
+    out PMOD3: bit,
+    out PMOD4: bit,
+    in DCDn: bit,
+    in DSRn: bit,
+}
+
+impl Main {
+    on clk.negedge {
+        LED1 <= DCDn;
+        LED2 <= DSRn;
+    }
+}
