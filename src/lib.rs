@@ -8,7 +8,7 @@ extern crate lalrpop_util;
 pub mod async;
 
 pub use hoodlum_parser::{ParseError, ast, hdl_parser};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt::Debug;
 use async::fsm_rewrite;
 use std::sync::RwLock;
