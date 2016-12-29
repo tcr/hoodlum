@@ -1,5 +1,10 @@
-entity Second(clk: in, signal: out) {
-    let index: uint{..1200000} = 0;
+entity Second {
+    in clk: bit,
+    out signal: bit,
+}
+
+impl Second {
+    def mut index: uint{..12000000};
 
     on clk.posedge {
         if index == 12000000 - 1 {
@@ -11,23 +16,33 @@ entity Second(clk: in, signal: out) {
     }
 }
 
-entity Main(clk: in, LED1: out, LED2: out, LED3: out, LED4: out, LED5: out) {
-    let rot: reg[4] = 0b0001;
-    let divider: uint{..1200000} = 0;
-    let index: uint{..1200000} = 0;
-    let _FSM: uint{..3} = 0;
+entity Main {
+    in clk: bit,
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+    out LED4: bit,
+    out LED5: bit,
+}
 
-    let ready;
-    let sec = Second {
+impl Main {
+    def mut rot: bit[4];
+    def mut divider: uint{..1200000};
+
+    def ready;
+    def sec = Second {
       clk: clk,
       signal: ready
     };
 
+    def mut _FSM: uint{..10};
     on clk.posedge {
-        reset ready {
+        if !ready {
+            divider <= 0;
+        } else {
             if divider == 1200000 - 1 {
                 divider <= 0;
-                fsm {
+                async {
                     rot <= 0b0001;
                     yield;
                     rot <= 0b0011;

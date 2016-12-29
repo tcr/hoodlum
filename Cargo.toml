@@ -1,7 +1,7 @@
 [package]
 name = "hoodlum"
-version = "0.3.0"
-authors = ["Tim Ryan <id@timryan.org>"]
+version = "0.4.0-pre"
+authors = ["Tim Ryan <tim@timryan.org>"]
 description = "HDL generation library for hardware synthesis."
 license = "MIT"
 repository = "https://github.com/tcr/hoodlum.git"
@@ -14,3 +14,4 @@ itertools = "0.5.4"
 matches = "0.1"
 maplit = "0.1.4"
 lazy_static = "0.1.*"
+clap = "*"
