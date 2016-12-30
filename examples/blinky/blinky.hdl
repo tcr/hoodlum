@@ -1,0 +1,28 @@
+entity Main {
+    in clk: bit,
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+    out LED4: bit,
+    out LED5: bit,
+}
+
+impl Main {
+    def mut index: uint{..6000000};
+
+    always {
+        LED1 = 0;
+        LED2 = 0;
+        LED3 = 0;
+        LED4 = 0;
+    }
+
+    on clk.posedge {
+        if index == 6000000 - 1 {
+            LED5 <= !LED5;
+            index <= 0;
+        } else {
+            index <= index + 1;
+        }
+    }
+}
