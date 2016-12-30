@@ -81,12 +81,14 @@ macro_rules! hdl {
 
 pub struct TypeCollector {
     inner_types: BTreeMap<String, (Option<Vec<ast::Arg>>, Option<Vec<ast::Decl>>)>,
+    literals: Vec<String>,
 }
 
 impl TypeCollector {
     pub fn new() -> TypeCollector {
         TypeCollector {
             inner_types: btreemap![],
+            literals: vec![],
         }
     }
 
@@ -142,6 +144,9 @@ impl Walker for TypeCollector {
                         }
                     }
                 }
+            },
+            &ast::Toplevel::VerilogLiteral(ref code) => {
+                self.literals.push(code.clone());
             }
         }
     }

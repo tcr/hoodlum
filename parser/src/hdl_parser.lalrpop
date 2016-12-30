@@ -36,6 +36,10 @@ Toplevel: ast::Toplevel = {
     "impl" <i:Ident> "{" <b:EntityBody> "}" => {
         ast::Toplevel::Impl(i, b)
     },
+    r"`[^`]+`" => {
+        let a = <>;
+        ast::Toplevel::VerilogLiteral(a[1..a.len()-1].to_string())
+    }
 };
 
 EntityArgs = Comma<EntityArg>;

@@ -9,6 +9,7 @@ pub type Arg = (Ident, Dir, Option<i32>);
 pub enum Toplevel {
     Entity(Ident, Vec<Arg>),
     Impl(Ident, Vec<Decl>),
+    VerilogLiteral(String),
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

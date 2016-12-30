@@ -40,6 +40,7 @@ impl Walkable for ast::Toplevel {
                     decl.walk(walker);
                 }
             }
+            _ => { }
         }
     }
 }

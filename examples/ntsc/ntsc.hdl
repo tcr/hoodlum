@@ -241,8 +241,11 @@ impl Ntsc {
     }
 }
 
+// For the moment, we use a Verilog literal for adding the
+// initialized RAM block. Ideally, this would be wrapped into
+// a language feature.
 `
-module Demo (
+module Screen (
   input clk,
   input [14:0] raddr0,
   output reg [1:0] rdata0,
@@ -305,7 +308,7 @@ impl Main {
     def rdata0: bit[2];
     def pixel: bit[3] = (rdata0 << 1) & 1;
 
-    def demo = Demo {
+    def screen = Screen {
         clk: clk,
         raddr0: pos,
         rdata0: rdata0,

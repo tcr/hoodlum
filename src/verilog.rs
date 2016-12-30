@@ -468,6 +468,13 @@ impl ToVerilog for ast::Expr {
 impl ToVerilog for TypeCollector {
     fn to_verilog(&self, v: &VerilogState) -> String {
         let mut modules = vec![];
+
+        // Push verilog literals.
+        for item in &self.literals {
+            modules.push(item.clone());
+        }
+
+        // Push entities.
         for (key, (args, body)) in self.types() {
             // Verilog always assumes a module body.
             let body = body.unwrap_or(vec![]);
@@ -480,7 +487,7 @@ impl ToVerilog for TypeCollector {
             let mut v = v.clone();
             v.init = walker.init;
 
-            modules.push(format!("{ind}module {name} ({args}\n);\n{body}{ind}endmodule\n\n",
+            modules.push(format!("{ind}module {name} ({args}\n);\n{body}{ind}endmodule\n",
                 ind=v.indent,
                 name=key,
                 args=args.iter().map(|x| {
@@ -494,6 +501,7 @@ impl ToVerilog for TypeCollector {
                     x.to_verilog(&v.tab())
                 }).collect::<Vec<_>>().join("")));
         }
-        modules.join("")
+
+        modules.join("\n")
     }
 }
