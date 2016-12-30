@@ -24,12 +24,11 @@ fn main() {
                             .short("o")
                             .long("output")
                             .help("Sets the Verilog output filename.")
-                            .required(true)
                             .takes_value(true))
                       .get_matches();
 
     let input_file = matches.value_of("INPUT").unwrap();
-    let output_file = matches.value_of("OUTPUT").unwrap();
+    let output_file = matches.value_of("OUTPUT");
 
     let mut f = File::open(&input_file).unwrap();
     let mut code = String::new();
@@ -40,13 +39,20 @@ fn main() {
 
     let code = hoodlum::parse_results(&code, hoodlum::hdl_parser::parse_Code(&code));
 
-    let verilog = code.to_verilog(&Default::default());
+    // Collect into types list.
+    let mut types = TypeCollector::new();
+    code.walk(&mut types);
+    types.validate();
+
+    // Convert typeset to code.
+    let verilog = types.to_verilog(&Default::default());
     println!("Verilog:");
     codelist(&verilog);
 
-    let mut f = File::create(&output_file).unwrap();
-    f.write_all(verilog.as_bytes()).unwrap();
-
-    println!("");
-    println!("File written as {}", &output_file);
+    if let Some(output_file) = output_file {
+        let mut f = File::create(&output_file).unwrap();
+        f.write_all(verilog.as_bytes()).unwrap();
+        println!("");
+        println!("File written as {}", &output_file);
+    }
 }

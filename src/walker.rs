@@ -2,21 +2,53 @@ use std::collections::HashMap;
 use ast;
 
 pub trait Walker {
-    fn entity(&mut self, _: &ast::Entity) { }
+    fn code(&mut self, _: &ast::Code) { }
     fn decl(&mut self, _: &ast::Decl) { }
+    fn edgeref(&mut self, _: &ast::EdgeRef) { }
+    fn expr(&mut self, _: &ast::Expr) { }
     fn seq(&mut self, _: &ast::Seq) { }
+    fn toplevel(&mut self, _: &ast::Toplevel) { }
 }
 
 pub trait Walkable {
     fn walk<W: Walker>(&self, walker: &mut W);
 }
 
-impl Walkable for ast::Entity {
+impl Walkable for ast::Code {
     fn walk<W: Walker>(&self, walker: &mut W) {
-        walker.entity(self);
-        for decl in &self.2 {
-            decl.walk(walker);
+        walker.code(self);
+        for item in &self.0 {
+            item.walk(walker);
         }
+    }
+}
+
+#[allow(unused_variables)]
+impl Walkable for ast::Toplevel {
+    fn walk<W: Walker>(&self, walker: &mut W) {
+        walker.toplevel(self);
+        match self {
+            &ast::Toplevel::Entity(ref id, ref args) => {
+                //id.walk(walker);
+                //for arg in &args {
+                //    arg.walk(walker);
+                //}
+            }
+            &ast::Toplevel::Impl(ref id, ref body) => {
+                //id.walk(walker);
+                for decl in body {
+                    decl.walk(walker);
+                }
+            }
+        }
+    }
+}
+
+impl Walkable for ast::EdgeRef {
+    fn walk<W: Walker>(&self, walker: &mut W) {
+        walker.edgeref(self);
+        //self.0
+        //self.1
     }
 }
 
@@ -24,7 +56,8 @@ impl Walkable for ast::Decl {
     fn walk<W: Walker>(&self, walker: &mut W) {
         walker.decl(self);
         match *self {
-            ast::Decl::On(_, ref block) => {
+            ast::Decl::On(ref edgeref, ref block) => {
+                edgeref.walk(walker);
                 block.walk(walker);
             }
             _ => { }
@@ -45,7 +78,7 @@ impl Walkable for ast::Seq {
         walker.seq(self);
         match *self {
             ast::Seq::If(ref cond, ref t, ref f) => {
-                // TODO cond
+                cond.walk(walker);
                 t.walk(walker);
                 if let &Some(ref block) = f {
                     block.walk(walker);
@@ -55,11 +88,42 @@ impl Walkable for ast::Seq {
                 body.walk(walker);
             }
             ast::Seq::While(ref cond, ref body) => {
-                // TODO cond
+                cond.walk(walker);
                 body.walk(walker);
+            }
+            ast::Seq::Set(ref btype, ref id, ref value) => {
+                //TODO btype
+                //TODO id
+                value.walk(walker);
             }
             _ => { }
         }
+    }
+}
+
+
+impl Walkable for ast::Expr {
+    fn walk<W: Walker>(&self, walker: &mut W) {
+        walker.expr(self);
+        //TODO
+        //match *self {
+        //    ast::Seq::If(ref cond, ref t, ref f) => {
+        //        // TODO cond
+        //        cond.walk(walker);
+        //        t.walk(walker);
+        //        if let &Some(ref block) = f {
+        //            block.walk(walker);
+        //        }
+        //    }
+        //    ast::Seq::Loop(ref body) => {
+        //        body.walk(walker);
+        //    }
+        //    ast::Seq::While(ref cond, ref body) => {
+        //        // TODO cond
+        //        body.walk(walker);
+        //    }
+        //    _ => { }
+        //}
     }
 }
 

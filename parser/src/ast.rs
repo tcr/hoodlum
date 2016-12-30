@@ -1,7 +1,15 @@
 use std::collections::BTreeSet;
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Code(pub Vec<Entity>);
+pub struct Code(pub Vec<Toplevel>);
+
+pub type Arg = (Ident, Dir, Option<i32>);
+
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub enum Toplevel {
+    Entity(Ident, Vec<Arg>),
+    Impl(Ident, Vec<Decl>),
+}
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub struct Ident(pub String);
@@ -11,9 +19,6 @@ pub enum Dir {
     In,
     Out,
 }
-
-#[derive(Clone, Debug, Eq, Hash, PartialEq)]
-pub struct Entity(pub Ident, pub Vec<(Ident, Dir, Option<i32>)>, pub Vec<Decl>);
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Edge {
@@ -99,11 +104,11 @@ pub enum UnaryOp {
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
 pub enum Expr {
+    Ref(Ident),
     Slice(Ident, Box<Expr>, Option<Box<Expr>>),
     Ternary(Box<Expr>, Box<Expr>, Box<Expr>),
     Concat(Vec<Expr>),
     Repeat(Box<Expr>, Box<Expr>),
-    Ref(Ident),
     Arith(Op, Box<Expr>, Box<Expr>),
     Unary(UnaryOp, Box<Expr>),
     Num(i32),

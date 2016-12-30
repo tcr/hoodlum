@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use {ast, Walkable, InitWalker};
+use {ast, Walkable, InitWalker, TypeCollector};
 use std::sync::RwLock;
 use sequence::fsm_rewrite;
 
@@ -453,32 +453,47 @@ impl ToVerilog for ast::Expr {
     }
 }
 
-impl ToVerilog for ast::Entity {
+//impl ToVerilog for ast::Toplevel {
+//    fn to_verilog(&self, _: &VerilogState) -> String {
+//        panic!("Not implemented. Use TypeCollector.");
+//    }
+//}
+
+//impl ToVerilog for ast::Code {
+//    fn to_verilog(&self, v: &VerilogState) -> String {
+//        self.0.iter().map(|x| x.to_verilog(v)).collect::<Vec<_>>().join("")
+//    }
+//}
+
+impl ToVerilog for TypeCollector {
     fn to_verilog(&self, v: &VerilogState) -> String {
-        let mut walker = InitWalker::new();
-        self.walk(&mut walker);
+        let mut modules = vec![];
+        for (key, (args, body)) in self.types() {
+            // Verilog always assumes a module body.
+            let body = body.unwrap_or(vec![]);
 
-        let mut v = v.clone();
-        v.init = walker.init;
+            let mut walker = InitWalker::new();
+            for decl in &body {
+                decl.walk(&mut walker);
+            }
 
-        format!("{ind}module {name} ({args}\n);\n{body}{ind}endmodule\n\n",
-            ind=v.indent,
-            name=self.0.to_verilog(&v),
-            args=self.1.iter().map(|x| {
-                if let Some(len) = x.2 {
-                    format!("\n    {} [({})-1:0] {}", x.1.to_verilog(&v), len, x.0.to_verilog(&v))
-                } else {
-                    format!("\n    {} {}", x.1.to_verilog(&v), x.0.to_verilog(&v))
-                }
-            }).collect::<Vec<_>>().join(","),
-            body=self.2.iter().map(|x| {
-                x.to_verilog(&v.tab())
-            }).collect::<Vec<_>>().join(""))
-    }
-}
+            let mut v = v.clone();
+            v.init = walker.init;
 
-impl ToVerilog for ast::Code {
-    fn to_verilog(&self, v: &VerilogState) -> String {
-        self.0.iter().map(|x| x.to_verilog(v)).collect::<Vec<_>>().join("")
+            modules.push(format!("{ind}module {name} ({args}\n);\n{body}{ind}endmodule\n\n",
+                ind=v.indent,
+                name=key,
+                args=args.iter().map(|x| {
+                    if let Some(len) = x.2 {
+                        format!("\n    {} [({})-1:0] {}", x.1.to_verilog(&v), len, x.0.to_verilog(&v))
+                    } else {
+                        format!("\n    {} {}", x.1.to_verilog(&v), x.0.to_verilog(&v))
+                    }
+                }).collect::<Vec<_>>().join(","),
+                body=body.iter().map(|x| {
+                    x.to_verilog(&v.tab())
+                }).collect::<Vec<_>>().join("")));
+        }
+        modules.join("")
     }
 }

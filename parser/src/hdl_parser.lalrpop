@@ -3,10 +3,6 @@ use ast;
 
 grammar;
 
-pub Code: ast::Code = {
-    <m:Entity+> => ast::Code(m),
-};
-
 Comma<T>: Vec<T> = { // (1)
     <v:(<T> ",")*> <e:T?> => match e {
         None => v,
@@ -29,10 +25,16 @@ Semicolon<T>: Vec<T> = { // (1)
     }
 };
 
+pub Code: ast::Code = {
+    <m:Toplevel+> => ast::Code(m),
+};
 
-Entity: ast::Entity = { // (1)
-    "entity" <i:Ident> "{" <a:EntityArgs> "}" "impl" <j:Ident> "{" <b:EntityBody> "}" => {
-        ast::Entity(i, a, b)
+Toplevel: ast::Toplevel = {
+    "entity" <i:Ident> "{" <a:EntityArgs> "}"=> {
+        ast::Toplevel::Entity(i, a)
+    },
+    "impl" <i:Ident> "{" <b:EntityBody> "}" => {
+        ast::Toplevel::Impl(i, b)
     },
 };
 
