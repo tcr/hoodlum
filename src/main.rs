@@ -38,6 +38,7 @@ fn main() {
     let code = re.replace_all(&code, "");
 
     let code = hoodlum::parse_results(&code, hoodlum::hdl_parser::parse_Code(&code));
+    typecheck(&code);
 
     // Collect into types list.
     let mut types = TypeCollector::new();

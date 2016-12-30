@@ -91,7 +91,7 @@ impl Walkable for ast::Seq {
                 cond.walk(walker);
                 body.walk(walker);
             }
-            ast::Seq::Set(ref btype, ref id, ref value) => {
+            ast::Seq::Set(_, _, ref value) => {
                 //TODO btype
                 //TODO id
                 value.walk(walker);

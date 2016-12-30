@@ -12,8 +12,8 @@ pub mod walker;
 pub use hoodlum_parser::{ParseError, ast, hdl_parser};
 pub use verilog::ToVerilog;
 pub use walker::*;
-use std::collections::{HashMap};
-use std::collections::hash_map::Entry;
+use std::collections::BTreeMap;
+use std::collections::btree_map::Entry;
 use std::fmt::Debug;
 
 pub fn codelist(code: &str) {
@@ -80,13 +80,13 @@ macro_rules! hdl {
 }
 
 pub struct TypeCollector {
-    inner_types: HashMap<String, (Option<Vec<ast::Arg>>, Option<Vec<ast::Decl>>)>,
+    inner_types: BTreeMap<String, (Option<Vec<ast::Arg>>, Option<Vec<ast::Decl>>)>,
 }
 
 impl TypeCollector {
     pub fn new() -> TypeCollector {
         TypeCollector {
-            inner_types: hashmap![],
+            inner_types: btreemap![],
         }
     }
 
@@ -99,10 +99,10 @@ impl TypeCollector {
         }
     }
 
-    pub fn types(&self) -> HashMap<String, (Vec<ast::Arg>, Option<Vec<ast::Decl>>)> {
+    pub fn types(&self) -> BTreeMap<String, (Vec<ast::Arg>, Option<Vec<ast::Decl>>)> {
         self.inner_types.clone().into_iter().map(|x| {
             (x.0, ((x.1).0.unwrap(), (x.1).1))
-        }).collect::<HashMap<_, _>>()
+        }).collect::<BTreeMap<_, _>>()
     }
 }
 
@@ -204,23 +204,23 @@ pub fn typecheck(code: &ast::Code) {
     code.walk(&mut types);
     types.validate();
 
-    for (key, entity) in types.types() {
+    for (_, entity) in types.types() {
         // Extract defs.
         let mut inner_defs = vec![];
-        for item in entity.1.unwrap_or(vec![]) {
+        for item in entity.1.clone().unwrap_or(vec![]) {
             //TODO if shadow an entity arg, panic
             match item {
                 ast::Decl::Let(id, _, _) => {
                     inner_defs.push(id.0.clone());
-                    println!("obj def {:?}", id);
+                    //println!("obj def {:?}", id);
                 }
                 ast::Decl::Latch(id, _) => {
                     inner_defs.push(id.0.clone());
-                    println!("latch {:?}", id);
+                    //println!("latch {:?}", id);
                 }
                 ast::Decl::Reg(id, _, _) => {
                     inner_defs.push(id.0.clone());
-                    println!("reg {:?}", id);
+                    //println!("reg {:?}", id);
                 }
                 _ => { }
             }
@@ -230,7 +230,9 @@ pub fn typecheck(code: &ast::Code) {
         let mut checker = RefChecker::new();
         checker.valid.extend(entity.0.clone().iter().map(|x| (x.0).0.clone()));
         checker.valid.extend(inner_defs);
-        code.walk(&mut checker);
+        for decl in entity.1.unwrap_or(vec![]) {
+            decl.walk(&mut checker);
+        }
     }
 
     // TODO iterate through code, identify type decls. Then check AST for
