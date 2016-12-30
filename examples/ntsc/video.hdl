@@ -241,6 +241,17 @@ impl Ntsc {
     }
 }
 
+`
+module Demo (
+  input clk,
+  input [14:0] raddr0,
+  output reg [1:0] rdata0,
+);
+  reg [1:0] memory [0:32767];
+  initial $readmemh("zelda.hex", memory);
+  always @(posedge clk) rdata0 <= memory[raddr0];
+endmodule
+`
 
 entity Main {
     in clk: bit,

@@ -1,18 +1,18 @@
-all: rise_ice.bin
+all: compiled.bin
 
-rise_ice.bin:
-	hoodlum stack.hdl test.v
-	yosys -q -p "synth_ice40 -abc2 -top Main -blif rise_ice.blif" test.v
-	arachne-pnr -p icestick.pcf rise_ice.blif -o rise_ice.txt
-	#icebox_explain rise_ice.txt > rise_ice.ex
-	icepack rise_ice.txt rise_ice.bin
-	#icetime -mit -dhx8k rise_ice.txt
+compiled.bin: ethernet.hdl
+	hoodlum $^ -o compiled.v
+	yosys -q -p "synth_ice40 -abc2 -top Main -blif compiled.blif" compiled.v
+	arachne-pnr -p icestick.pcf compiled.blif -o compiled.txt
+	icebox_explain compiled.txt > compiled.ex
+	icepack compiled.txt compiled.bin
+	icetime -mit -dhx1k compiled.txt
 
 graph:
-	yosys -o test_syn.v rise_ice.blif
+	yosys -o test_syn.v compiled.blif
 
 flash:
-	iceprog rise_ice.bin
+	iceprog compiled.bin
 
 clean:
-	rm -f rise_ice.blif rise_ice.txt rise_ice.ex rise_ice.bin
+	rm -f compiled.blif compiled.txt compiled.ex compiled.bin compiled.v

@@ -1,0 +1,618 @@
+entity Second {
+    in clk: bit,
+    out ready: bit
+}
+
+impl Second {
+  let index: uint{..12000000} = 0;
+
+  on clk.posedge {
+      if index == 12000000 - 1 {
+          ready <= 1;
+      } else {
+          index <= index + 1;
+          ready <= 0;
+      }
+  }
+}
+
+
+entity MiniCounter {
+    in clk: bit,
+    in rst: bit,
+    out ready: bit
+}
+
+impl MiniCounter {
+  let index: uint{..240} = 0;
+
+  on clk.posedge {
+      if !rst {
+          ready <= 0;
+          index <= 0;
+      } else {
+          if index == 240 - 1 {
+              ready <= 1;
+          } else {
+              index <= index + 1;
+              ready <= 0;
+          }
+      }
+  }
+}
+
+entity SpiMaster {
+    in reset: bit,
+    in clk: bit,
+    in trigger: bit,
+    out ready: bit,
+    in tx_byte: bit[8],
+    out rx_byte: bit[8],
+    out spi_clk: bit,
+    out spi_tx: bit,
+    in spi_rx: bit,
+}
+
+impl SpiMaster {
+    let live_clk: bit[1] = 0;
+
+    // Internal signals.
+    let read_index: uint{..9} = 0;
+    let internal_clk: bit[1] = 0;
+
+    let _FSM: bit[32] = 0;
+
+    // Generate SPI signal from internal clock + SPI state.
+    always {
+        spi_clk = live_clk && internal_clk;
+    }
+
+    // Generate divided SPI clock.
+    let div_idx: uint{..40} = 0;
+    on clk.negedge {
+        if reset {
+            div_idx <= 0;
+            internal_clk <= 0;
+        } else {
+            if div_idx == 40 - 1 {
+                internal_clk <= !internal_clk;
+                div_idx <= 0;
+            } else {
+                div_idx <= div_idx + 1;
+            }
+        }
+    }
+
+    // Sample read values from positive clock edge.
+    on internal_clk.posedge {
+        if live_clk {
+            rx_byte[read_index] <= spi_rx;
+        }
+    }
+
+    let transmitting = 0;
+    let transmit_save = 0;
+
+    // On positive edge, check the tx_ready state.
+    on clk.posedge {
+        if reset {
+            ready <= 0;
+            transmit_save <= 0;
+        } else {
+            // if trigger is high, and we are not transmitting, start
+            if transmit_save == transmitting {
+                ready <= 1;
+                transmit_save <= !transmitting;
+            } else if trigger {
+                ready <= 0;
+            }
+        }
+    }
+
+    // SPI output state machine.
+    on internal_clk.negedge {
+        if reset {
+            transmitting <= 0;
+        } else {
+            fsm {
+                INIT => {
+                    // Wait for transition trigger.
+                    spi_tx <= 0;
+                    if ready == 0 {
+                        read_index <= 8;
+                        fsm <= WRITING;
+                    }
+                }
+                WRITING => {
+                    // Enable output clock.
+                    live_clk <= 1;
+
+                    // Write bits.
+                    if read_index > 0 {
+                        spi_tx <= tx_byte[read_index - 1];
+                        read_index <= read_index - 1;
+                    } else {
+                        // Disable output clock.
+                        live_clk <= 0;
+                        fsm <= FINISH;
+                    }
+                }
+                FINISH => {
+                    transmitting <= !transmitting;
+                    fsm <= INIT;
+                }
+            }
+        }
+    }
+}
+
+entity BufferMux {
+    in count: bit[8],
+    in bytes: bit[128],
+    out buffer: bit[8],
+}
+
+impl BufferMux {
+    always {
+        match count {
+            _ => buffer = bytes[8*0:8*1],
+            1 => buffer = bytes[8*1:8*2],
+            2 => buffer = bytes[8*2:8*3],
+            3 => buffer = bytes[8*3:8*4],
+            4 => buffer = bytes[8*4:8*5],
+            5 => buffer = bytes[8*5:8*6],
+            6 => buffer = bytes[8*6:8*7],
+            7 => buffer = bytes[8*7:8*8],
+            8 => buffer = bytes[8*8:8*9],
+            9 => buffer = bytes[8*9:8*10],
+            10 => buffer = bytes[8*10:8*11],
+            11 => buffer = bytes[8*11:8*12],
+            12 => buffer = bytes[8*12:8*13],
+            13 => buffer = bytes[8*13:8*14],
+            14 => buffer = bytes[8*14:8*15],
+            15 => buffer = bytes[8*15:8*16],
+        }
+    }
+}
+
+entity BufferDemux {
+    in reset: bit,
+    in count: bit[8],
+    in buffer: bit[8],
+    out bytes: bit[128],
+}
+
+impl BufferDemux {
+    always {
+        match count {
+            _ => bytes[8*0:8*1] = buffer,
+            1 => bytes[8*1:8*2] = buffer,
+            2 => bytes[8*2:8*3] = buffer,
+            3 => bytes[8*3:8*4] = buffer,
+            4 => bytes[8*4:8*5] = buffer,
+            5 => bytes[8*5:8*6] = buffer,
+            6 => bytes[8*6:8*7] = buffer,
+            7 => bytes[8*7:8*8] = buffer,
+            8 => bytes[8*8:8*9] = buffer,
+            9 => bytes[8*9:8*10] = buffer,
+            10 => bytes[8*10:8*11] = buffer,
+            11 => bytes[8*11:8*12] = buffer,
+            12 => bytes[8*12:8*13] = buffer,
+            13 => bytes[8*13:8*14] = buffer,
+            14 => bytes[8*14:8*15] = buffer,
+            15 => bytes[8*15:8*16] = buffer,
+        }
+    }
+}
+
+entity SpiController {
+    in reset: bit,
+    in clk: bit,
+    in trigger: bit,
+    out ready: bit,
+    in tx_bytes: bit[128],
+    out rx_bytes: bit[128],
+    in raise_cs: bit[16],
+    out spi_cs: bit,
+    out spi_clk: bit,
+    out spi_miso: bit,
+    in spi_mosi: bit,
+    in count: bit[8],
+}
+
+impl SpiController {
+    let tx_buffer: bit[8];
+    let rx_buffer: bit[8];
+
+    let master_trigger;
+    let master_ready;
+    let spi = SpiMaster {
+        reset: reset,
+        clk: clk,
+        trigger: master_trigger,
+        ready: master_ready,
+        tx_byte: tx_buffer,
+        rx_byte: rx_buffer,
+        spi_clk: spi_clk,
+        spi_rx: spi_miso,
+        spi_tx: spi_mosi,
+    };
+
+    let mini_delay_trigger;
+    let mini_delay_result;
+    let mini_delay = MiniCounter {
+      clk: clk,
+      rst: mini_delay_trigger,
+      ready: mini_delay_result,
+    };
+
+    let so_far: bit[8];
+
+    let tx_mux = BufferMux {
+        count: so_far,
+        bytes: tx_bytes,
+        buffer: tx_buffer,
+    };
+
+    let rx_mux = BufferDemux {
+        count: so_far,
+        bytes: rx_bytes,
+        buffer: rx_buffer,
+    };
+
+    let _FSM: bit[9] = 0;
+    on clk.negedge {
+        if reset {
+            spi_cs <= 1;
+            ready <= 0;
+            master_trigger <= 0;
+            mini_delay_trigger <= 0;
+        } else {
+            async {
+                // Wait for trigger as response to ready falling low.
+                ready := 0;
+                yield;
+                while !trigger {
+                    yield;
+                }
+
+                spi_cs <= 0;
+                so_far := 0;
+
+                while so_far < count {
+                    // Incr.
+                    spi_cs <= 0;
+
+                    master_trigger <= 1;
+                    yield;
+                    master_trigger <= 0;
+                    // Wait for master readiness.
+                    // TODO this shouldn't be await, should be await_imm
+                    await master_ready;
+
+                    // Raising CS.
+                    if raise_cs[so_far] {
+                        spi_cs <= 1;
+                        mini_delay_trigger <= 1;
+                        await mini_delay_result;
+                        mini_delay_trigger <= 0;
+                    }
+                    // TODO this is spurious, but there was a bug in async generation we want to
+                    // skip over.
+                    yield;
+
+                    // Incr
+                    so_far := so_far + 1;
+                }
+
+                ready := 1;
+            }
+        }
+    }
+}
+
+entity Ethernet {
+    in reset: bit,
+    in tx_clk: bit,
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+    out LED4: bit,
+    out CS: bit,
+    out spi_bit: bit, // MOSI
+    in spi_rx: bit, // MISO
+    out spi_clk: bit,
+}
+
+impl Ethernet {
+    const ERCRU = 0x20;
+    const EWCRU = 0x22;
+    const EEUDASTL = (0x16 | 0x00);
+    const ESSETETHRST = 0b11001010;
+    const EECON2L = (0x0E | 0x60);
+    const EERXSTL = (0x04 | 0x00);
+    const EMAMXFLL = (0x0A | 0x40);
+    const EERXTAILL = (0x06 | 0x00);
+
+    const EMAADR3L = (0x00 | 0x60);
+    const EMAADR3H = (0x01 | 0x60);
+    const EMAADR2L = (0x02 | 0x60);
+    const EMAADR2H = (0x03 | 0x60);
+    const EMAADR1L = (0x04 | 0x60);
+    const EMAADR1H = (0x05 | 0x60);
+
+    const ESENABLERX = 0b11101000;
+
+    const ERCR = 0x00;
+    const EESTATL = (0x1A | 0x00);
+
+    const EERXRDPTL = (0x8A);
+
+    const ERRXDATA = 0b00101100;
+
+    // Internal values.
+    let tx_valid = 0;
+    let tx_bytes: bit[128] = 0;
+    let spi_ready;
+    let rx_bytes: bit[128];
+    let raise_cs: bit[16];
+    let count: bit[8];
+    let spi = SpiController {
+        reset: reset,
+        clk: tx_clk,
+        trigger: tx_valid,
+        ready: spi_ready,
+        tx_bytes: tx_bytes,
+        rx_bytes: rx_bytes,
+        raise_cs: raise_cs,
+        spi_cs: CS,
+        spi_clk: spi_clk,
+        spi_mosi: spi_bit,
+        spi_miso: spi_rx,
+        count: count,
+    };
+
+    let sleep_counter: uint{..360} = 0;
+
+#define tx_byte tx_bytes[0:8]
+#define spi_rx_value rx_bytes[0:8]
+
+#define do_cs_toggle tx_valid <= 0; yield; CS <= 1; mini_delay_trigger <= 1; await mini_delay_result; mini_delay_trigger <= 0; CS <= 0; tx_valid <= 1
+
+#define TX(p, v) tx_bytes[p*8:(p+1)*8] <= v
+#define RX(p, v) v := rx_bytes[p*8:(p+1)*8]
+
+#define BV(i) (1 << (i))
+
+#define write_16(reg, A, B, last) \
+    count <= 4; \
+    raise_cs <= last << 3; \
+    TX(0, EWCRU); \
+    TX(1, reg); \
+    TX(2, A); \
+    TX(3, B); \
+    await spi_ready
+
+#define read_16(reg, A, B, last) \
+    count <= 4; \
+    raise_cs <= last << 3; \
+    TX(0, ERCRU); \
+    TX(1, reg); \
+    await spi_ready; \
+    RX(2, A); \
+    RX(3, B)
+
+#define write_byte(reg, last) \
+    count <= 1; \
+    raise_cs <= last; \
+    tx_byte <= reg; \
+    await spi_ready
+
+
+#define write_byte_term(reg, last) \
+    count <= 1; \
+    raise_cs <= last; \
+    tx_byte <= reg; \
+    yield; \
+    tx_valid <= 0; \
+    await spi_ready
+
+#define read_byte(reg, last) \
+    count <= 1; \
+    raise_cs <= last; \
+    await spi_ready; \
+    RX(0, reg)
+
+#define read_byte_imm(reg, last) \
+    count <= 1; \
+    raise_cs <= last; \
+    await spi_ready; \
+    RX(0, reg)
+
+    // Loop variables.
+    let receivedL: bit[8] = 0;
+    let receivedH: bit[8] = 0;
+    let NextPacketPointerL: bit[8] = 0;
+    let NextPacketPointerH: bit[8] = 0;
+    let _FSM: bit[9] = 0;
+
+    let checksumL: bit[8] = 0;
+    let checksumH: bit[8] = 0;
+
+    let dummy: bit[8] = 0;
+    let status_vector: bit[8] = 0;
+
+    on tx_clk.negedge {
+        if reset {
+            _FSM <= 0;
+            tx_valid <= 0;
+            raise_cs <= 0;
+            sleep_counter <= 0;
+            count <= 1;
+        } else {
+            async {
+                LED1 <= 1;
+
+                tx_valid <= 1;
+
+                count <= 8;
+                raise_cs <= BV(4 - 1) | BV(8 - 1);
+                TX(0, EWCRU);
+                TX(1, EEUDASTL);
+                TX(2, 0x34);
+                TX(3, 0x12);
+                // ^ toggle cs
+                TX(4, ERCRU);
+                TX(5, EEUDASTL);
+                // 6, receive checksumL
+                // 7, receive checksumH
+                // ^ toggle cs
+                await spi_ready;
+
+                RX(6, checksumL);
+                RX(7, checksumH);
+                if checksumL == 0x34 && checksumH == 0x12 {
+                    LED2 <= 1;
+                }
+
+                // Reset.
+                count <= 1;
+                raise_cs <= 0;
+                TX(0, ESSETETHRST);
+                await spi_ready;
+
+                tx_valid := 0;
+                sleep_counter := 0;
+                while sleep_counter < 360 {
+                    sleep_counter := sleep_counter + 1;
+                    yield;
+                }
+                yield;
+
+                tx_valid <= 1;
+                yield;
+
+                write_16(EECON2L, 0x00, 0xCB, 1); // (magic number)
+                write_16(EERXSTL, 0x40, 0x53, 1); // RX_BUFFER_START 0x5340
+                write_16(EMAMXFLL, 0x42, 0x02, 1); // MAX_FRAMELEN 0x0242
+                write_16(EERXTAILL, 0xFE, 0x5F, 1); // (magic number)
+
+                // Read MAC address
+                read_16(EMAADR1L, dummy, dummy, 1); // MAC 0:1
+                read_16(EMAADR2L, dummy, dummy, 1); // MAC 2:3
+                read_16(EMAADR3L, dummy, dummy, 1); // MAC 4:5
+
+                write_byte(ESENABLERX, 1);
+
+                //Memory configuration
+                //The ENC424j600 has 0x6000 (24kB) bytes of memory
+                //We have to make good use of it.
+                // 0x0000
+                //  [Scratchpad]
+                // 0x0400
+                //  [TCP packets (578+42)*TCP_SOCKETS
+                // 0x1b84 (assuming 10 sockets)
+                //  [unused area]
+                // 0x5340 (RX_BUFFER_START (0x6000-RX_BUFFER_SIZE))
+                //  [RX Buffer]
+                // 0x6000 (End of standard SRAM)
+
+                NextPacketPointerL <= 0x40;
+                NextPacketPointerH <= 0x53;
+
+                // enc424j600_recvpack()
+
+                loop {
+                    tx_valid <= 1;
+                    write_byte(ESENABLERX, 1);
+                    write_byte(ERCR | EESTATL, 0);
+                    read_byte_imm(dummy, 1);
+
+                    if dummy > 0 {
+                        //Configure ERXDATA for reading.
+                        write_16(EERXRDPTL, NextPacketPointerL, NextPacketPointerH, 1);
+
+                        //Start reading!!!
+                        write_byte(ERRXDATA, 0);
+
+                        // Read next packet pointer.
+                        read_byte(NextPacketPointerL, 0);
+                        read_byte(NextPacketPointerH, 0);
+
+                        // Read received byte count.
+                        read_byte(receivedL, 0);
+                        read_byte(receivedH, 0);
+
+                        read_byte(status_vector, 0);
+                        read_byte(dummy, 1);
+                        if status_vector & (1 << 7) {
+                            LED3 <= 1;
+                        }
+                        // else {
+                          // ERROR: Bad packet
+                          // I have never observed tis code getting called, even when I saw dropped packets.
+                        // }
+                    }
+
+                    tx_valid <= 0;
+                    yield;
+                }
+
+                loop {
+                    yield;
+                }
+            }
+        }
+    }
+}
+
+entity Main {
+    in clk: bit,
+    out LED1: bit,
+    out LED2: bit,
+    out LED3: bit,
+    out LED4: bit,
+    out LED5: bit,
+    out PMOD1: bit,
+    out PMOD2: bit,
+    in PMOD3: bit,
+    out PMOD4: bit,
+    out PMOD7: bit,
+}
+
+impl Main {
+    // PMOD1 = CS
+    // PMOD2 = MOSI
+    // PMOD3 = MISO
+    // PMOD4 = SCLK
+
+    // Reset is active high. We declare it inverse of a temporary value which is initialized to 0.
+    let reset;
+    let init_active;
+    always {
+        reset = !init_active;
+    }
+
+    // This is our one-second initial delay.
+    let sec = Second {
+        clk: clk,
+        ready: init_active,
+    };
+
+    let ether = Ethernet {
+        reset: reset,
+        tx_clk: clk,
+        LED1: LED1,
+        LED2: LED2,
+        LED3: LED3,
+        LED4: LED4,
+        CS: PMOD1,
+        spi_bit: PMOD2,
+        spi_rx: PMOD3,
+        spi_clk: PMOD4,
+    };
+
+    always {
+        LED5 = reset;
+    }
+}

@@ -15,4 +15,4 @@ flash:
 	iceprog compiled.bin
 
 clean:
-	rm -f compiled.blif compiled.txt compiled.ex compiled.bin
+	rm -f compiled.blif compiled.txt compiled.ex compiled.bin compiled.v
