@@ -146,6 +146,9 @@ Decl: ast::Decl = {
     "always" "{" <b:CombStatements> "}" => {
         ast::Decl::Always(b)
     },
+    <b:CombStatement> ";" => {
+        ast::Decl::Always(ast::SeqBlock(vec![b]))
+    },
 };
 
 KeyPair: (ast::Ident, ast::Expr) = {
@@ -221,7 +224,7 @@ pub SeqStatement: ast::Seq = {
     "loop" "{" <b:SeqStatements> "}" ";"? => {
         ast::Seq::Loop(b)
     },
-    "async" "{" <b:SeqStatements> "}" ";"? => {
+    "sequence" "{" <b:SeqStatements> "}" ";"? => {
         ast::Seq::Async(b)
     },
     "yield" ";" => {

@@ -242,7 +242,7 @@
   {
     'comment': 'Keyword'
     'name': 'keyword.other.hoodlum'
-    'match': '\\b(crate|extern|mod|let|def|set|proc|ref|use|super|as|move|always|on|in|out|bit|uint|int|yield|await|fsm|async)\\b'
+    'match': '\\b(crate|extern|mod|let|def|set|proc|ref|use|super|as|move|always|on|in|out|bit|uint|int|yield|await|fsm|async|sequence)\\b'
   }
   { 'include': '#unsafe' }
   { 'include': '#sigils' }

@@ -8,15 +8,10 @@ entity Main {
 }
 
 impl Main {
+    // With a 12Mhz clock, count off every .5 seconds of ticks.
     def mut index: uint{..6000000};
 
-    always {
-        LED1 = 0;
-        LED2 = 0;
-        LED3 = 0;
-        LED4 = 0;
-    }
-
+    // Declare a state change every positive clock edge.
     on clk.posedge {
         if index == 6000000 - 1 {
             LED5 <= !LED5;
@@ -25,4 +20,13 @@ impl Main {
             index <= index + 1;
         }
     }
+
+    // Disable the other LEDs, as they otherwise would be
+    // left floating and semi-lit. Because these definitions
+    // are stateless (not mutable), we can declare them at the
+    // top level.
+    LED1 = 0;
+    LED2 = 0;
+    LED3 = 0;
+    LED4 = 0;
 }

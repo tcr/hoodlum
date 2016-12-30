@@ -1,6 +1,6 @@
 //! Experimental rewriting of yield, await, async blocks.
 
-use VerilogState;
+use verilog::VerilogState;
 use ast;
 
 use std::mem;

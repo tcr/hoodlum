@@ -42,7 +42,7 @@ impl Main {
         } else {
             if divider == 1200000 - 1 {
                 divider <= 0;
-                async {
+                sequence {
                     rot <= 0b0001;
                     yield;
                     rot <= 0b0011;
