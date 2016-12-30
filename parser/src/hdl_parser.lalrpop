@@ -91,7 +91,7 @@ DefType: bool = {
   "def" => false,
 };
 
-Decl: ast::Decl = {
+pub Decl: ast::Decl = {
     <m:DefType> <i:Ident> ";" => {
         if m {
             ast::Decl::Latch(i, vec![])
