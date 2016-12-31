@@ -219,13 +219,22 @@ pub fn typecheck(code: &ast::Code) {
                     inner_defs.push(id.0.clone());
                     //println!("obj def {:?}", id);
                 }
-                ast::Decl::Latch(id, _) => {
-                    inner_defs.push(id.0.clone());
-                    //println!("latch {:?}", id);
-                }
                 ast::Decl::Reg(id, _, _) => {
                     inner_defs.push(id.0.clone());
                     //println!("reg {:?}", id);
+                }
+                _ => { }
+            }
+        }
+
+        // Extract def muts.
+        let mut inner_def_muts = vec![];
+        for item in entity.1.clone().unwrap_or(vec![]) {
+            //TODO if shadow an entity arg, panic
+            match item {
+                ast::Decl::Latch(id, _) => {
+                    inner_def_muts.push(id.0.clone());
+                    //println!("latch {:?}", id);
                 }
                 _ => { }
             }
@@ -235,6 +244,7 @@ pub fn typecheck(code: &ast::Code) {
         let mut checker = RefChecker::new();
         checker.valid.extend(entity.0.clone().iter().map(|x| (x.0).0.clone()));
         checker.valid.extend(inner_defs);
+        checker.valid.extend(inner_def_muts);
         for decl in entity.1.unwrap_or(vec![]) {
             decl.walk(&mut checker);
         }

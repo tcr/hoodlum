@@ -26,5 +26,5 @@ fn def_mut_with_assignment() {
 def mut a = b | c;
 "#;
 
-    parse_results(code, hoodlum::hdl_parser::parse_Decl(code));
+    let _ = parse_results(code, hoodlum::hdl_parser::parse_Decl(code));
 }

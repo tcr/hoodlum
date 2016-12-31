@@ -3,7 +3,7 @@ use ast;
 
 grammar;
 
-Comma<T>: Vec<T> = { // (1)
+Comma<T>: Vec<T> = {
     <v:(<T> ",")*> <e:T?> => match e {
         None => v,
         Some(e) => {
@@ -14,8 +14,19 @@ Comma<T>: Vec<T> = { // (1)
     }
 };
 
-Semicolon<T>: Vec<T> = { // (1)
+Semicolon<T>: Vec<T> = {
     <v:(<T> ";")*> <e:T?> => match e {
+        None => v,
+        Some(e) => {
+            let mut v = v;
+            v.push(e);
+            v
+        }
+    }
+};
+
+Pipe<T>: Vec<T> = {
+    <v:(<T> "|")*> <e:T?> => match e {
         None => v,
         Some(e) => {
             let mut v = v;
@@ -149,9 +160,6 @@ pub Decl: ast::Decl = {
     "on" <sig:Ident> "." <edge:Edge> "{" <b:SeqStatements> "}" => {
         ast::Decl::On(ast::EdgeRef(sig, edge), b)
     },
-    "always" "{" <b:CombStatements> "}" => {
-        ast::Decl::Always(b)
-    },
     <b:CombStatement> ";" => {
         ast::Decl::Always(ast::SeqBlock(vec![b]))
     },
@@ -198,6 +206,12 @@ CombStatement: ast::Seq = {
 };
 
 MatchArmComb: (Vec<ast::Expr>, ast::SeqBlock) = {
+//    <e:Pipe<Expr>> "=>" <s:CombStatement> "," => {
+//        (e, ast::SeqBlock(vec![s]))
+//    },
+//    <e:Pipe<Expr>> "=>" "{" <b:CombStatements> "}" ","? => {
+//        (e, b)
+//    },
     <e:Expr> "=>" <s:CombStatement> "," => {
         (vec![e], ast::SeqBlock(vec![s]))
     },

@@ -1,6 +1,6 @@
 all: compiled.bin
 
-compiled.bin: rot.hdl
+compiled.bin: sequence.hdl
 	hoodlum $^ -o compiled.v
 	yosys -q -p "synth_ice40 -abc2 -top Main -blif compiled.blif" compiled.v
 	arachne-pnr -p icestick.pcf compiled.blif -o compiled.txt
