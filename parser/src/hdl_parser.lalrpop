@@ -195,13 +195,13 @@ CombStatement: ast::Seq = {
     },
 
     <i:Ident> "=" <v:Expr> => {
-        ast::Seq::Set(ast::BlockType::Blocking, i, v)
+        ast::Seq::Set(ast::BlockType::Static, i, v)
     },
     <i:Ident> "[" <idx:Expr> "]" "=" <v:Expr> => {
-        ast::Seq::SetIndex(ast::BlockType::Blocking, i, idx, v)
+        ast::Seq::SetIndex(ast::BlockType::Static, i, idx, v)
     },
     <i:Ident> "[" <from:Expr> ":" <to:Expr> "]" "=" <v:Expr> => {
-        ast::Seq::SetRange(ast::BlockType::Blocking, i, from, to, v)
+        ast::Seq::SetRange(ast::BlockType::Static, i, from, to, v)
     },
 };
 

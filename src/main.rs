@@ -1,11 +1,9 @@
 #[macro_use] extern crate hoodlum;
-extern crate regex;
 extern crate clap;
 
 use std::io::prelude::*;
 use std::fs::File;
 use hoodlum::*;
-use regex::Regex;
 use clap::{Arg, App};
 
 fn main() {
@@ -34,19 +32,8 @@ fn main() {
     let mut code = String::new();
     let _ = f.read_to_string(&mut code);
 
-    let re = Regex::new(r"(?m)//.*").unwrap();
-    let code = re.replace_all(&code, "");
-
-    let code = hoodlum::parse_results(&code, hoodlum::hdl_parser::parse_Code(&code));
-    typecheck(&code);
-
-    // Collect into types list.
-    let mut types = TypeCollector::new();
-    code.walk(&mut types);
-    types.validate();
-
-    // Convert typeset to code.
-    let verilog = types.to_verilog(&Default::default());
+    // Compile file to code.
+    let verilog = compile(&code);
     println!("Verilog:");
     codelist(&verilog);
 

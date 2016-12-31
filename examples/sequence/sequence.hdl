@@ -31,8 +31,8 @@ impl Main {
 
     def ready;
     def sec = Second {
-      clk: clk,
-      signal: ready
+        clk: clk,
+        signal: ready
     };
 
     def mut _FSM: uint{..10};
@@ -61,11 +61,10 @@ impl Main {
         }
     }
 
-    always {
-        LED1 = ready && rot[0];
-        LED2 = ready && rot[1];
-        LED3 = ready && rot[2];
-        LED4 = ready && rot[3];
-        LED5 = !ready;
-    }
+    // Defines LED states.
+    LED1 = ready && rot[0];
+    LED2 = ready && rot[1];
+    LED3 = ready && rot[2];
+    LED4 = ready && rot[3];
+    LED5 = !ready;
 }

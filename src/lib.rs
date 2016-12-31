@@ -1,9 +1,10 @@
 #[macro_use] extern crate itertools;
+#[macro_use] extern crate lazy_static;
 #[macro_use] extern crate maplit;
 #[macro_use] extern crate matches;
-#[macro_use] extern crate lazy_static;
 extern crate hoodlum_parser;
 extern crate lalrpop_util;
+extern crate regex;
 
 pub mod sequence;
 pub mod verilog;
@@ -15,6 +16,7 @@ pub use walker::*;
 use std::collections::BTreeMap;
 use std::collections::btree_map::Entry;
 use std::fmt::Debug;
+use regex::Regex;
 
 pub fn codelist(code: &str) {
     for (i, line) in code.lines().enumerate() {
@@ -208,6 +210,33 @@ impl Walker for RefChecker {
     }
 }
 
+
+pub struct DefMutChecker {
+    pub valid: Vec<String>,
+}
+
+impl DefMutChecker {
+    pub fn new() -> Self {
+        DefMutChecker {
+            valid: vec![],
+        }
+    }
+}
+
+impl Walker for DefMutChecker {
+    fn seq(&mut self, expr: &ast::Seq) {
+        match expr {
+            &ast::Seq::Set(_, ref id, _) => {
+                //let id_str = &id.0;
+                //if self.valid.iter().position(|x| *x == *id_str).is_none() {
+                //    panic!("Invalid assignment to non-mutable var {:?}", id_str);
+                //}
+            }
+            _ => { }
+        }
+    }
+}
+
 //TODO not abort
 pub fn typecheck(code: &ast::Code) {
     let mut types = TypeCollector::new();
@@ -245,12 +274,22 @@ pub fn typecheck(code: &ast::Code) {
             }
         }
 
-        // Check all inner refs.
+        // Check that all inner refs are declared.
         let mut checker = RefChecker::new();
         checker.valid.extend(entity.0.clone().iter().map(|x| (x.0).0.clone()));
-        checker.valid.extend(inner_defs);
-        checker.valid.extend(inner_def_muts);
-        for decl in entity.1.unwrap_or(vec![]) {
+        checker.valid.extend(inner_defs.clone());
+        checker.valid.extend(inner_def_muts.clone());
+        for decl in entity.1.clone().unwrap_or(vec![]) {
+            decl.walk(&mut checker);
+        }
+
+        // Check that all static assignments are non-mutable.
+
+        // Check that all latch assignments are mutable.
+        let mut checker = DefMutChecker::new();
+        checker.valid.extend(entity.0.clone().iter().map(|x| (x.0).0.clone()));
+        checker.valid.extend(inner_def_muts.clone());
+        for decl in entity.1.clone().unwrap_or(vec![]) {
             decl.walk(&mut checker);
         }
     }
@@ -258,4 +297,22 @@ pub fn typecheck(code: &ast::Code) {
     // TODO iterate through code, identify type decls. Then check AST for
     // incorrect references.
     //panic!("okay");
+}
+
+// Easy invocation of Verilog compilation.
+pub fn compile(code: &str) -> String {
+    // Removes comments.
+    let re = Regex::new(r"(?m)//.*").unwrap();
+    let code = re.replace_all(&code, "");
+
+    let code = parse_results(&code, hdl_parser::parse_Code(&code));
+    typecheck(&code);
+
+    // Collect into types list.
+    let mut types = TypeCollector::new();
+    code.walk(&mut types);
+    types.validate();
+
+    // Convert typeset to code.
+    types.to_verilog(&Default::default())
 }

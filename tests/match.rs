@@ -42,6 +42,8 @@ match a {
     let _ = parse_results(code, hoodlum::hdl_parser::parse_SeqStatement(code));
 }
 
+//TODO
+#[ignore]
 #[test]
 fn match_expr() {
     let code = r#"

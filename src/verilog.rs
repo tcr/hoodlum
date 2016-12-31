@@ -362,6 +362,7 @@ impl ToVerilog for ast::BlockType {
         match self {
             &ast::BlockType::Blocking => "=".to_string(),
             &ast::BlockType::NonBlocking => "<=".to_string(),
+            &ast::BlockType::Static => "=".to_string(),
         }
     }
 }

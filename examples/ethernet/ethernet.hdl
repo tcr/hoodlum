@@ -424,7 +424,7 @@ impl J1a {
                 dspI = 3b000;
             },
         }
-    }
+    };
 
     //     0b0_000_????? => st0N = st0;                     // jump
     //     0b0_010_????? => st0N = st0;                     // call
@@ -505,7 +505,7 @@ impl J1a {
             },
             _ => pcN = pc_plus_1,
         }
-    }
+    };
 
     def counter_ready;
     def mut counter_trigger;

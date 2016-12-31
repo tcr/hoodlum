@@ -47,6 +47,7 @@ pub struct SeqBlock(pub Vec<Seq>);
 pub enum BlockType {
     Blocking,
     NonBlocking,
+    Static,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
