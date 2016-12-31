@@ -101,14 +101,103 @@ Non-goals:
 
 ## Tutorial
 
-Entity definitions are in `entity` blocks. Logic definitions are in `impl` blocks.
+A Hoodlum script is composed of entity definitions in `entity` blocks, and
+logic definitions are in `impl` blocks. The topmost entity is the `Main` block.
 
-Variables can be one of the following types:
+```
+entity Main {
+    in clk: bit,
+    out LED1: bit,
+}
+```
 
-* Registers of a certain bit width. These can have arithemtic operators: `|`
-* Uints or Ints.
+These top level entries reference pin definitions in your `.pcf` file; see
+"examples/blinky/icestick.pcf" for one for the iCEstick evaluation board.
 
-TODO: More documentation.
+Each of these entity members declares:
+
+* A **direction**: `in` indicates a value will be *read by* the entity, and `out`
+  indicates a value will be *written by* the entity.
+* A **name**. This can be referenced by name in the `impl` block.
+* A **type**. Here, we declare both values to be one `bit` wide, i.e. a logic value
+  of either `0` or `1` (or `x`, in more complicated logic).
+
+Inside of a corresponding `impl` block, we can reference these values:
+
+```
+impl Main {
+    def mut toggle: bit;
+
+    def toggle_next: bit = !toggle;
+
+    on clk.negedge {
+        toggle <= toggle_next;
+    }
+
+    LED1 = toggle;
+}
+```
+
+Let's break this down. First, we define a variable "toggle" which is one
+bit wide. We declare this as `def mut`, meaning the variable is mutable inside
+of a `on` block.
+
+Next, we define a variable "toggle_next" which is *not* mutable. This means we
+have a stateless definition that requires no state (latches or flip-flops). We
+can declare its value inline with the definition or as a standalone declaration.
+Its value is always equal to the inverse of the "toggle" variable.
+
+The `on` block has a sensitivity to either the positive or negative falling edge
+of a signal value. Inside of an `on` block we can make assignments to mutable
+variables using the nonblocking `<=` or blocking `:=` operators. Here, every
+time we see a negative clock edge, we reset the "toggle" latch to be the value
+of "toggle_next", i.e. the inverse of itself.
+
+(Nonblocking definitions are deferred until the end of the `on` block; this simplifies
+stateful logic to all be set on the same clock impulse.)
+
+Last, we declare a value for our output variable. `LED1` is set to always be
+equal to the value of the mutable "toggle" value.
+
+At 12Mhz, you won't be able to see the LED toggling at this speed! See
+"examples/blinky/blinky.hdl" for how to use a counter to make it visible.
+
+### Types
+
+Each definition has a type, declared by the format `def [mut] name: <type>`.
+
+* `bit` declares a value that can hold `0`, `1`, or `x`.
+* `bit[n]` declares a port that is *n* bits wide. You can reference individual
+  bits using a slice operator (e.g. `myvariable[1]`) and set it at once with
+  a numeric literal (e.g. `myvariable = 0b101101`, etc.)
+* `uint{..n}` and `int{..n}` declares integers (unsigned and signed) whose max
+  value is `n` (to the nearest power of two). This is shorthand for calculating
+  the maximum bit length for a given integer.
+
+Inside an entity, you can also define sub-entities:
+
+```
+entity Toggle {
+    in value: bit,
+    out opposite: bit,
+}
+
+impl Toggle { ... }
+
+entity Main { ... }
+
+impl Main {
+    def clk_prime: bit;
+    def toggle = Toggle {
+        value: clk,
+        opposite: clk_prime,
+    }
+}
+```
+
+Main declares a sub-entity Toggle with an input value given as "clk" and a
+output value as "clk_prime". Note that you have to declare output variables
+alongside the sub-entity to use them.
 
 ## License
 
