@@ -80,26 +80,9 @@ cd language-hoodlum
 apm link --local .
 ```
 
-## Language Design
+---
 
-Goals:
-
-1. Define a hardware description language that's elegant, borrowing syntax from Rust
-syntax and other modern (familiar) languages.
-1. Emit compatible Verilog-2001 (and VHDL) code.
-1. Create abstractions to simplify generation of state machines, sequential code,
-and reset states.
-1. Hackable so you can add your own constructs.
-1. Statically detect errors before they reach synthesis stage.
-1. In the future, add simulation capabilities.
-
-Non-goals:
-
-1. Don't compile Rust into HDL. Rust's stdlib fits an entirely different computing
-   model. The abstraction mismatch makes code that's hard to debug.
-1. Don't support compiling all features of Verilog-2001 or VHDL, just a functional subset.
-
-## Tutorial
+## Hoodlum Tutorial
 
 A Hoodlum script is composed of entity definitions in `entity` blocks, and
 logic definitions are in `impl` blocks. The topmost entity is the `Main` block.
@@ -198,6 +181,31 @@ impl Main {
 Main declares a sub-entity Toggle with an input value given as "clk" and a
 output value as "clk_prime". Note that you have to declare output variables
 alongside the sub-entity to use them.
+
+---
+
+## Contributing
+
+Open up any issues, discussion, ideas, or bugs in the issue tracker.
+
+### Language Design Goals
+
+Goals:
+
+1. Define a hardware description language that's elegant, borrowing syntax from Rust
+syntax and other modern (familiar) languages.
+1. Emit compatible Verilog-2001 (and VHDL) code.
+1. Create abstractions to simplify generation of state machines, sequential code,
+and reset states.
+1. Hackable so you can add your own constructs.
+1. Statically detect errors before they reach synthesis stage.
+1. In the future, add simulation capabilities.
+
+Non-goals:
+
+1. Don't compile Rust into HDL. Rust's stdlib fits an entirely different computing
+   model. The abstraction mismatch makes code that's hard to debug.
+1. Don't support compiling all features of Verilog-2001 or VHDL, just a functional subset.
 
 ## License
 
