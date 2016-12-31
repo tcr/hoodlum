@@ -22,19 +22,24 @@ pub fn codelist(code: &str) {
     }
 }
 
-pub fn code_error(code: &str, tok: usize) {
+pub fn code_error(code: &str, tok_pos: usize) {
     let code = format!("\n\n{}", code);
     let code = code.lines().collect::<Vec<_>>();
-    let mut pos = 0;
+    let mut pos: isize = 0;
     for (i, lines) in (&code[..]).windows(3).enumerate() {
-        if pos + lines[2].len() >= tok {
-            println!("{:>3} | {}", i - 1, lines[0]);
-            println!("{:>3} | {}", i, lines[1]);
+        if pos + lines[2].len() as isize >= tok_pos as isize {
+            if i > 1 {
+                println!("{:>3} | {}", i - 1, lines[0]);
+            }
+            if i > 0 {
+                println!("{:>3} | {}", i, lines[1]);
+            }
             println!("{:>3} | {}", i + 1, lines[2]);
-            println!("{}^", (0..tok - (pos - 6)).map(|_| "~").collect::<String>());
+
+            println!("{}^", (0..(tok_pos as isize) - (pos - 6)).map(|_| "~").collect::<String>());
             return;
         }
-        pos += lines[2].len() + 1;
+        pos += (lines[2].len() as isize) + 1;
     }
 }
 
