@@ -51,9 +51,25 @@ and best practices in the issues section!
 * [examples/sequence](https://github.com/tcr/hoodlum/tree/master/examples/sequence) —
   Shows an LED display pattern compiled via a `sequence` generator.
 * [examples/ntsc](https://github.com/tcr/hoodlum/tree/master/examples/ntsc) —
-  Generates NTSC video and displays a static image.
+  Generates NTSC video and displays a static image. **Requires an external circuit.**
 * [examples/ethernet](https://github.com/tcr/hoodlum/tree/master/examples/ethernet) —
-  Drives the `enc424j600` Ethernet PMOD board to send UDP packets.
+  Drives the `enc424j600` Ethernet PMOD board to send UDP packets. **Requires an
+  enc424j600 PMOD board.**
+
+### Running on an [iCEstick Evaluation Kit](http://www.latticesemi.com/icestick)
+
+Each example has a Makefile allowing you to run:
+
+```
+make && make flash
+```
+
+If you are getting errors on macOS about the device not being found, try running
+this first to unload the native FTDI driver:
+
+```
+sudo kextunload -b com.apple.driver.AppleUSBFTDI
+```
 
 ## Language Design
 
