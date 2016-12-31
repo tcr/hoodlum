@@ -1,7 +1,7 @@
 use std::str::FromStr;
 use ast;
 
-grammar;
+#[LALR] grammar;
 
 Comma<T>: Vec<T> = {
     <v:(<T> ",")*> <e:T?> => match e {

@@ -7,10 +7,10 @@ description = "Parser for the hoodlum crate."
 license = "MIT"
 
 [build-dependencies]
-lalrpop = "0.11.0"
+lalrpop = "0.12"
 
 [dependencies]
-lalrpop-util = "0.11.0"
+lalrpop-util = "0.12"
 
 [profile.dev]
 codegen-units = 8
