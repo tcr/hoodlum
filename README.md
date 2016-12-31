@@ -22,9 +22,7 @@ impl Main {
         light <= !light;
     }
 
-    always {
-        LED1 = light;
-    }
+    LED1 = light;
 }
 ```
 
