@@ -206,17 +206,11 @@ CombStatement: ast::Seq = {
 };
 
 MatchArmComb: (Vec<ast::Expr>, ast::SeqBlock) = {
-//    <e:Pipe<Expr>> "=>" <s:CombStatement> "," => {
-//        (e, ast::SeqBlock(vec![s]))
-//    },
-//    <e:Pipe<Expr>> "=>" "{" <b:CombStatements> "}" ","? => {
-//        (e, b)
-//    },
-    <e:Expr> "=>" <s:CombStatement> "," => {
-        (vec![e], ast::SeqBlock(vec![s]))
+    <e:Pipe<Literal>> "=>" <s:CombStatement> "," => {
+        (e, ast::SeqBlock(vec![s]))
     },
-    <e:Expr> "=>" "{" <b:CombStatements> "}" ","? => {
-        (vec![e], b)
+    <e:Pipe<Literal>> "=>" "{" <b:CombStatements> "}" ","? => {
+        (e, b)
     },
 };
 
@@ -282,16 +276,16 @@ FsmArm: (ast::Ident, ast::SeqBlock) = {
 };
 
 BlockType: ast::BlockType = {
-  ":=" => ast::BlockType::Blocking,
-  "<=" => ast::BlockType::NonBlocking,
+    ":=" => ast::BlockType::Blocking,
+    "<=" => ast::BlockType::NonBlocking,
 };
 
 MatchArmSeq: (Vec<ast::Expr>, ast::SeqBlock) = {
-    <e:Expr> "=>" <s:SeqStatement> "," => {
-        (vec![e], ast::SeqBlock(vec![s]))
+    <e:Pipe<Literal>> "=>" <s:SeqStatement> "," => {
+        (e, ast::SeqBlock(vec![s]))
     },
-    <e:Expr> "=>" "{" <b:SeqStatements> "}" ","? => {
-        (vec![e], b)
+    <e:Pipe<Literal>> "=>" "{" <b:SeqStatements> "}" ","? => {
+        (e, b)
     },
 };
 
@@ -331,6 +325,12 @@ Expr4: ast::Expr = {
     Term => <>,
 };
 
+Literal: ast::Expr = {
+    "_" => ast::Expr::Placeholder,
+    Ident => ast::Expr::Ref(<>),
+    Num => <>,
+};
+
 Term: ast::Expr = {
     "!" <r:Term> => ast::Expr::Unary(ast::UnaryOp::Not, Box::new(r)),
     "(" <e:Expr> ")" => e,
@@ -338,7 +338,5 @@ Term: ast::Expr = {
     "{" <v:Comma<Expr>> "}" => ast::Expr::Concat(v),
     <i:Ident> "[" <l:Expr> ":" <r:Expr> "]" => ast::Expr::Slice(i, Box::new(l), Some(Box::new(r))),
     <i:Ident> "[" <l:Expr> "]" => ast::Expr::Slice(i, Box::new(l), None),
-    "_" => ast::Expr::Placeholder,
-    Ident => ast::Expr::Ref(<>),
-    Num => <>,
+    Literal => <>,
 };

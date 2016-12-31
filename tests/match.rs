@@ -2,9 +2,7 @@ extern crate hoodlum;
 
 use hoodlum::*;
 
-//TODO
 #[test]
-#[ignore]
 fn match_or() {
     let code = r#"
 match a {
