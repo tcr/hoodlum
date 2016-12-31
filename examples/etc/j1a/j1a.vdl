@@ -1,7 +1,7 @@
 `default_nettype none
 `define WIDTH 16
 
-impl J1a {
+entity J1a {
     in clk: bit,
     in resetq: bit,
 
@@ -120,28 +120,28 @@ impl J1a {
 
     always {
         match {pc[12], insn[15:13]} {
-            0b1_??? =>
-            0b0_1?? => {dstkW, dspI} = {1'b1,      2'b01},
-            0b0_001 => {dstkW, dspI} = {1'b0,      2'b11},
-            0b0_011 => {dstkW, dspI} = {func_T_N,  {insn[1:0]}},
+            4b1_??? =>
+            4b0_1?? => {dstkW, dspI} = {1'b1,      2'b01},
+            4b0_001 => {dstkW, dspI} = {1'b0,      2'b11},
+            4b0_011 => {dstkW, dspI} = {func_T_N,  {insn[1:0]}},
             _:      => {dstkW, dspI} = {1'b0,      2'b00},
         }
         dspN = dsp + {dspI[1], dspI[1], dspI};
 
         match ({pc[12], insn[15:13]}) {
-            0b1_??? => {rstkW, rspI} = {1'b0,      2'b11},
-            0b0_010 => {rstkW, rspI} = {1'b1,      2'b01},
-            0b0_011 => {rstkW, rspI} = {func_T_R,  insn[3:2]},
+            4b1_??? => {rstkW, rspI} = {1'b0,      2'b11},
+            4b0_010 => {rstkW, rspI} = {1'b1,      2'b01},
+            4b0_011 => {rstkW, rspI} = {func_T_R,  insn[3:2]},
             _ =>       {rstkW, rspI} = {1'b0,      2'b00},
         }
 
         match {reboot, pc[12], insn[15:13], insn[7], |st0} {
-            7'b1_0_???_?_? => pcN = 0,
-            7'b0_0_000_?_? |
-            7'b0_0_010_?_? |
-            7'b0_0_001_?_0 => pcN = insn[12:0],
-            7'b0_1_???_?_? |
-            7'b0_0_011_1_? => pcN = rst0[13:1],
+            7b1_0_???_?_? => pcN = 0,
+            7b0_0_000_?_? |
+            7b0_0_010_?_? |
+            7b0_0_001_?_0 => pcN = insn[12:0],
+            7b0_1_???_?_? |
+            7b0_0_011_1_? => pcN = rst0[13:1],
             _ =>              pcN = pc_plus_1,
         }
     }

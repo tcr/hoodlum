@@ -71,6 +71,15 @@ this first to unload the native FTDI driver:
 sudo kextunload -b com.apple.driver.AppleUSBFTDI
 ```
 
+### Atom Highlighting Plugin
+
+You can highlight `.hdl` scripts in Atom. Run the following to install the Atom Plugin:
+
+```
+cd language-hoodlum
+apm link --local .
+```
+
 ## Language Design
 
 Goals:
