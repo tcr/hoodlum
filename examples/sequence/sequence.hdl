@@ -35,7 +35,6 @@ impl Main {
         signal: ready
     };
 
-    def mut _FSM: uint{..10};
     on clk.posedge {
         if !ready {
             divider <= 0;

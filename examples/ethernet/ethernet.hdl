@@ -85,12 +85,14 @@ impl SpiMaster {
         }
     }
 
+    def mut __FSM_1: bit[2];
+
     def mut readier: bit;
     on clk.negedge {
         if reset {
             ready <= 0;
         } else {
-            if _FSM == 3 {
+            if __FSM_1 == 3 {
                 ready <= readier;
                 readier <= 0;
             } else {
@@ -100,7 +102,6 @@ impl SpiMaster {
     }
 
     // SPI output state machine.
-    def mut _FSM: bit[4];
     on internal_clk.negedge {
         if !reset {
             fsm {

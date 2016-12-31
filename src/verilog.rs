@@ -215,8 +215,14 @@ impl ToVerilog for ast::SeqBlock {
 
 // TODO get rid of this with rewriting AST
 lazy_static! {
+    // Temporary match of FSM states when generating FSM interior.
     static ref FSM_MAP: RwLock<HashMap<String, i32>> = RwLock::new(HashMap::new());
+
+    // Temporary match of placeholder values in match patterns.
     static ref IS_MATCH: RwLock<bool> = RwLock::new(false);
+
+    // Temporary set of FSM structs inside entity.
+    static ref FSM_SET: RwLock<Vec<isize>> = RwLock::new(vec![]);
 }
 
 impl ToVerilog for ast::Seq {
@@ -285,8 +291,13 @@ impl ToVerilog for ast::Seq {
                     }).collect::<Vec<_>>().join(""))
             }
             ast::Seq::FsmCase(ref arms) => {
-                format!("{ind}case (_FSM)\n{body}{ind}endcase\n",
+                // Increase FSM count.
+                FSM_SET.write().unwrap().push(arms.iter().map(|arm| arm.0.iter().cloned().max().unwrap_or(0)).max().unwrap() as isize);
+                let fsm_id = FSM_SET.read().unwrap().len();
+
+                format!("{ind}case (__FSM_{fsm_id})\n{body}{ind}endcase\n",
                     ind=v.indent,
+                    fsm_id=fsm_id,
                     body=arms.iter().map(|arm| {
                         format!("{ind}{cond}: begin\n{body}{ind}end\n",
                             ind=v.tab().indent,
@@ -303,8 +314,10 @@ impl ToVerilog for ast::Seq {
                 res.to_verilog(&v_new)
             }
             ast::Seq::FsmTransition(n) => {
-                format!("{ind}_FSM <= {id};\n",
+                let fsm_id = FSM_SET.read().unwrap().len();
+                format!("{ind}__FSM_{fsm_id} <= {id};\n",
                     ind=v.indent,
+                    fsm_id=fsm_id,
                     id=n)
                     //id=v.fsm.get(&n).map(|x| x.to_string()).unwrap_or(format!("$$${}$$$", n))) //.expect(format!("Missing FSM state in generation step: {:?}!"))
                     //id=v.fsm.get(&n).expect(&format!("Missing FSM state in generation step: {:?}", n)))
@@ -330,8 +343,10 @@ impl ToVerilog for ast::Seq {
                 ast::Seq::FsmCase(out).to_verilog(&v)
             }
             ast::Seq::FsmCaseTransition(ref ident) => {
-                format!("{ind}_FSM = {id};\n",
+                let fsm_id = FSM_SET.read().unwrap().len();
+                format!("{ind}__FSM_{fsm_id} = {id};\n",
                     ind=v.indent,
+                    fsm_id=fsm_id, 
                     id=FSM_MAP.read().unwrap().get(&ident.0).expect("Unknown fsm transition"))
             }
             ast::Seq::Await(..) => {
@@ -488,7 +503,22 @@ impl ToVerilog for TypeCollector {
             let mut v = v.clone();
             v.init = walker.init;
 
-            modules.push(format!("{ind}module {name} ({args}\n);\n{body}{ind}endmodule\n",
+            FSM_SET.write().unwrap().truncate(0);
+
+            let body_code = body.iter().map(|x| {
+                x.to_verilog(&v.tab())
+            }).collect::<Vec<_>>().join("");
+
+            let fsm_prefix = FSM_SET.read().unwrap()
+                .iter()
+                .enumerate()
+                .map(|(i, x)| {
+                    let width = u32::next_power_of_two(*x as u32).trailing_zeros();
+                    format!("{}reg [({})-1:0] __FSM_{} = 0;\n", v.tab().indent, width, i + 1)
+                })
+                .collect::<Vec<_>>()
+                .join("");
+            modules.push(format!("{ind}module {name} ({args}\n);\n{fsm_prefix}{body}{ind}endmodule\n",
                 ind=v.indent,
                 name=key,
                 args=args.iter().map(|x| {
@@ -498,9 +528,8 @@ impl ToVerilog for TypeCollector {
                         format!("\n    {} {}", x.1.to_verilog(&v), x.0.to_verilog(&v))
                     }
                 }).collect::<Vec<_>>().join(","),
-                body=body.iter().map(|x| {
-                    x.to_verilog(&v.tab())
-                }).collect::<Vec<_>>().join("")));
+                fsm_prefix=if fsm_prefix.len() > 0 { format!("{}\n", fsm_prefix) } else { format!("") },
+                body=body_code));
         }
 
         modules.join("\n")

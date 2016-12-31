@@ -39,7 +39,9 @@ for an example that works with this board.
 **NOTE:** I'm learning Verilog and VHDL as I go along. Feel free to suggest ideas
 or best practices!
 
----
+## Examples
+
+## Language Design
 
 Goals:
 
@@ -55,7 +57,7 @@ Non-goals:
    model. The abstraction mismatch makes bad output.
 1. Don't support all features of Verilog-2001 or VHDL, just a functional subset.
 
-## Language
+## Tutorial
 
 Entity definitions are in `entity` blocks. Logic definitions are in `impl` blocks.
 
