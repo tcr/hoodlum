@@ -1,4 +1,4 @@
-# hoodlum
+# hoodlum (alpha)
 
 **Hoodlum** is a nice-looking hardware description language that compiles to
 Verilog. It wants to add stronger type guarantees and high-level concepts like
@@ -45,6 +45,15 @@ for a simple blinking light.
 and best practices in the issues section!
 
 ## Examples
+
+* [examples/blinky](https://github.com/tcr/hoodlum/tree/master/examples/blinky) —
+  Blink an LED on and off with a counter. Example for the iCEstick evaluation board.
+* [examples/sequence](https://github.com/tcr/hoodlum/tree/master/examples/sequence) —
+  Shows an LED display pattern compiled via a `sequence` generator.
+* [examples/ntsc](https://github.com/tcr/hoodlum/tree/master/examples/ntsc) —
+  Generates NTSC video and displays a static image.
+* [examples/ethernet](https://github.com/tcr/hoodlum/tree/master/examples/ethernet) —
+  Drives the `enc424j600` Ethernet PMOD board to send UDP packets.
 
 ## Language Design
 
