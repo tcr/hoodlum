@@ -9,29 +9,32 @@ to get involved with. To get started:
 cargo install hoodlum
 ```
 
-Add this to a file called `blink.hdl`:
+Add this to a file called `blinky.hdl`:
 
 ```rust
 entity Main {
     in clk: bit,
-    out LED1: bit
+    out LED1: bit,
 }
 
 impl Main {
-    def mut light: bit;
-
+    def mut index: uint{..6000000};
     on clk.posedge {
-        light <= !light;
+        if index == 6000000 - 1 {
+            index <= 0;
+            LED1 <= !LED1;
+        } else {
+            index <= index + 1;
+        }
     }
-
-    LED1 = light;
 }
+
 ```
 
 And run:
 
 ```
-hoodlum test.hdl -o output.v
+hoodlum blinky.hdl -o output.v
 ```
 
 The tutorial and examples target the $20 iCEstick evaluation board and the [IceStorm
