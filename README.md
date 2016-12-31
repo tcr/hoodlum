@@ -1,13 +1,15 @@
 # hoodlum
 
-A nice-looking hardware description language with FSM generation, simple reset
-generation, and more. Hackable so you can add your own constructs.
+**Hoodlum** is a nice-looking hardware description language that compiles to
+Verilog. It wants to add stronger type guarantees and high-level concepts like
+enums (and structs/typedefs), but also make FPGA design easier and more fun
+to get involved with. To get started:
 
 ```
 cargo install hoodlum
 ```
 
-Add this to `test.hdl`:
+Add this to a file called `blink.hdl`:
 
 ```rust
 entity Main {
@@ -26,18 +28,18 @@ impl Main {
 }
 ```
 
-And run
+And run:
 
 ```
 hoodlum test.hdl -o output.v
 ```
 
-Examples are being tested with the iCEstick evaluation board and the [IceStorm
-open source compiler toolchain](http://www.clifford.at/icestorm/). See "examples/rot"
-for an example that works with this board.
+The tutorial and examples target the $20 iCEstick evaluation board and the [IceStorm
+open source compiler toolchain](http://www.clifford.at/icestorm/). See "examples/blinky"
+for a simple blinking light.
 
 **NOTE:** I'm learning Verilog and VHDL as I go along. Feel free to suggest ideas
-or best practices!
+and best practices in the issues section!
 
 ## Examples
 
@@ -45,17 +47,20 @@ or best practices!
 
 Goals:
 
-1. Emit compatible Verilog and VHDL code.
-1. Define a DSL that's elegant, borrowing from Rust syntax where applicable.
-1. Create abstractions to simplify generation of state machines and complex logic.
-1. Detect errors before they reach synthesis stage.
+1. Define a hardware description language that's elegant, borrowing syntax from Rust
+syntax and other modern (familiar) languages.
+1. Emit compatible Verilog-2001 (and VHDL) code.
+1. Create abstractions to simplify generation of state machines, sequential code,
+and reset states.
+1. Hackable so you can add your own constructs.
+1. Statically detect errors before they reach synthesis stage.
 1. In the future, add simulation capabilities.
 
 Non-goals:
 
 1. Don't compile Rust into HDL. Rust's stdlib fits an entirely different computing
-   model. The abstraction mismatch makes bad output.
-1. Don't support all features of Verilog-2001 or VHDL, just a functional subset.
+   model. The abstraction mismatch makes code that's hard to debug.
+1. Don't support compiling all features of Verilog-2001 or VHDL, just a functional subset.
 
 ## Tutorial
 
@@ -66,7 +71,7 @@ Variables can be one of the following types:
 * Registers of a certain bit width. These can have arithemtic operators: `|`
 * Uints or Ints.
 
-TODO: More documentation
+TODO: More documentation.
 
 ## License
 
