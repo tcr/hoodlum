@@ -238,6 +238,33 @@ impl Walker for DefMutChecker {
     }
 }
 
+
+pub struct DefChecker {
+    pub valid: Vec<String>,
+}
+
+impl DefChecker {
+    pub fn new() -> Self {
+        DefChecker {
+            valid: vec![],
+        }
+    }
+}
+
+impl Walker for DefChecker {
+    fn seq(&mut self, expr: &ast::Seq) {
+        match expr {
+            &ast::Seq::Set(ast::BlockType::Static, ref id, _) => {
+                let id_str = &id.0;
+                if self.valid.iter().position(|x| *x == *id_str).is_none() {
+                    panic!("Invalid static assignment to mutable var {:?}", id_str);
+                }
+            }
+            _ => { }
+        }
+    }
+}
+
 //TODO not abort
 pub fn typecheck(code: &ast::Code) {
     let mut types = TypeCollector::new();
@@ -245,6 +272,18 @@ pub fn typecheck(code: &ast::Code) {
     types.validate();
 
     for (_, entity) in types.types() {
+        // Extract consts.
+        let mut inner_consts = vec![];
+        for item in entity.1.clone().unwrap_or(vec![]) {
+            //TODO if shadow an entity arg, panic
+            match item {
+                ast::Decl::Const(id, _) => {
+                    inner_consts.push(id.0.clone());
+                }
+                _ => { }
+            }
+        }
+
         // Extract defs.
         let mut inner_defs = vec![];
         for item in entity.1.clone().unwrap_or(vec![]) {
@@ -257,6 +296,9 @@ pub fn typecheck(code: &ast::Code) {
                 ast::Decl::Reg(id, _, _) => {
                     inner_defs.push(id.0.clone());
                     //println!("reg {:?}", id);
+                }
+                ast::Decl::Const(id, _) => {
+                    inner_consts.push(id.0.clone());
                 }
                 _ => { }
             }
@@ -278,6 +320,7 @@ pub fn typecheck(code: &ast::Code) {
         // Check that all inner refs are declared.
         let mut checker = RefChecker::new();
         checker.valid.extend(entity.0.clone().iter().map(|x| (x.0).0.clone()));
+        checker.valid.extend(inner_consts.clone());
         checker.valid.extend(inner_defs.clone());
         checker.valid.extend(inner_def_muts.clone());
         for decl in entity.1.clone().unwrap_or(vec![]) {
@@ -286,11 +329,19 @@ pub fn typecheck(code: &ast::Code) {
 
         // Check that all static assignments are non-mutable.
         //TODO only include non-mutable arguments
+        let mut checker = DefChecker::new();
+        checker.valid.extend(entity.0.clone().iter().map(|x| (x.0).0.clone()));
+        checker.valid.extend(inner_consts.clone());
+        checker.valid.extend(inner_defs.clone());
+        for decl in entity.1.clone().unwrap_or(vec![]) {
+            decl.walk(&mut checker);
+        }
 
         // Check that all latch assignments are mutable.
         //TODO only include mutable arguments
         let mut checker = DefMutChecker::new();
         checker.valid.extend(entity.0.clone().iter().map(|x| (x.0).0.clone()));
+        checker.valid.extend(inner_consts.clone());
         checker.valid.extend(inner_def_muts.clone());
         for decl in entity.1.clone().unwrap_or(vec![]) {
             decl.walk(&mut checker);

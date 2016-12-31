@@ -61,6 +61,9 @@ impl Walkable for ast::Decl {
                 edgeref.walk(walker);
                 block.walk(walker);
             }
+            ast::Decl::Always(ref block) => {
+                block.walk(walker);
+            }
             _ => { }
         }
     }
@@ -97,7 +100,26 @@ impl Walkable for ast::Seq {
                 //TODO id
                 value.walk(walker);
             }
-            _ => { }
+            ast::Seq::SetIndex(_, _, ref idx, ref value) => {
+                //TODO btype
+                //TODO id
+                idx.walk(walker);
+                value.walk(walker);
+            }
+            ast::Seq::Async(_) => {
+                println!("TODO: walk async");
+            }
+            ast::Seq::Fsm(_) => {
+                println!("TODO: walk fsm");
+            }
+            ast::Seq::Match(ref expr, _) => {
+                expr.walk(walker);
+                println!("TODO: walk match");
+            }
+            _ => {
+                println!("oh {:?}", self);
+                unimplemented!();
+            }
         }
     }
 }
