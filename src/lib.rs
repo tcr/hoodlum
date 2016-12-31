@@ -226,11 +226,12 @@ impl DefMutChecker {
 impl Walker for DefMutChecker {
     fn seq(&mut self, expr: &ast::Seq) {
         match expr {
-            &ast::Seq::Set(_, ref id, _) => {
-                //let id_str = &id.0;
-                //if self.valid.iter().position(|x| *x == *id_str).is_none() {
-                //    panic!("Invalid assignment to non-mutable var {:?}", id_str);
-                //}
+            &ast::Seq::Set(ast::BlockType::Blocking, ref id, _) |
+            &ast::Seq::Set(ast::BlockType::NonBlocking, ref id, _) => {
+                let id_str = &id.0;
+                if self.valid.iter().position(|x| *x == *id_str).is_none() {
+                    panic!("Invalid assignment to non-mutable var {:?}", id_str);
+                }
             }
             _ => { }
         }
@@ -284,8 +285,10 @@ pub fn typecheck(code: &ast::Code) {
         }
 
         // Check that all static assignments are non-mutable.
+        //TODO only include non-mutable arguments
 
         // Check that all latch assignments are mutable.
+        //TODO only include mutable arguments
         let mut checker = DefMutChecker::new();
         checker.valid.extend(entity.0.clone().iter().map(|x| (x.0).0.clone()));
         checker.valid.extend(inner_def_muts.clone());
