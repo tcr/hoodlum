@@ -1,13 +1,13 @@
 [package]
 name = "hoodlum-parser"
-version = "0.4.0"
+version = "0.4.1"
 authors = ["Tim Ryan <id@timryan.org>"]
 build = "build.rs"
 description = "Parser for the hoodlum crate."
 license = "MIT"
 
 [build-dependencies]
-lalrpop = "0.12"
+libflate = "0.1"
 
 [dependencies]
 lalrpop-util = "0.12"
