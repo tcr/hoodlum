@@ -31,7 +31,7 @@ impl Main {
 And run
 
 ```
-hoodlum test.hdl output.v
+hoodlum test.hdl -o output.v
 ```
 
 Examples are being tested with the iCEstick evaluation board and the [IceStorm
