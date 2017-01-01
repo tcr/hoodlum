@@ -1,6 +1,6 @@
 [package]
 name = "hoodlum"
-version = "0.4.1"
+version = "0.5.0"
 authors = ["Tim Ryan <tim@timryan.org>"]
 description = "HDL generation library for hardware synthesis."
 license = "MIT"
@@ -8,7 +8,7 @@ repository = "https://github.com/tcr/hoodlum.git"
 
 [dependencies]
 lalrpop-util = "0.11.0"
-hoodlum-parser = { path = "./parser", version = "0.4.2" }
+hoodlum-parser = { path = "./parser", version = "0.5.0" }
 regex = "0.1"
 itertools = "0.5.4"
 matches = "0.1"
