@@ -15,3 +15,7 @@ matches = "0.1"
 maplit = "0.1.4"
 lazy_static = "0.1.*"
 clap = { version = "2.19", default-features = false, features = [ "wrap_help", "suggestions"] }
+
+[[bin]]
+name = "hoodlum"
+doc = false

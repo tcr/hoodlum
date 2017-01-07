@@ -1,0 +1,73 @@
+# ##############################################################################
+# iCEstick PCF
+# https://raw.githubusercontent.com/wd5gnr/icestick/master/icestick.pcf
+# ##############################################################################
+
+# Clock
+set_io clk 21   # 12 MHz clock
+
+# LEDs
+set_io --warn-no-port LED1 99  # red
+set_io --warn-no-port LED2 98  # red
+set_io --warn-no-port LED3 97  # red
+set_io --warn-no-port LED4 96  # red
+set_io --warn-no-port LED5 95  # green
+
+# IRDA interface
+#set_io IRRXD 106
+#set_io IRTXD 105
+#set_io IRSD 107
+
+# SPI (to configuration EEPROM)
+#set_io SPI_SCK 70
+#set_io SPI_SI 68
+#set_io SPI_SO 67
+#set_io SPI_SS 71
+
+# J1
+#set_io J1_1  3.3V
+#set_io J1_2 GND
+#set_io J1_3 112  # PIO0_02
+#set_io J1_4 113  # PIO0_03
+#set_io J1_5 114  # PIO0_04
+#set_io J1_6 115  # PIO0_05
+#set_io J1_7 116  # PIO0_06 PMOD pin 7
+#set_io J1_8 117  # PIO0_07 PMOD pin 8
+#set_io J1_9 118  # PIO0_08 PMOD pin 9
+#set_io J1_10 119 # PIO0_09 PMOD pin 10
+
+# J3
+#set_io J3_1 3.3V
+#set_io J3_2 GND
+#set_io J3_3 62  # PIO2_17
+#set_io J3_4 61  # PIO2_16
+#set_io J3_5 60  # PIO2_15
+#set_io J3_6 56  # PIO2_14
+#set_io J3_7 48  # PIO2_13
+#set_io J3_8 47  # PIO2_12
+#set_io J3_9 45  # PIO2_11
+#set_io J3_10 44  # PIO2_10
+
+# PMOD
+# Note: pin 5 and 11 are ground, pins 6 and 12 are Vcc
+set_io --warn-no-port PMOD1 78 # PIO1_02
+set_io --warn-no-port PMOD2 79 # PIO1_03
+set_io --warn-no-port PMOD3 80 # PIO1_04
+set_io --warn-no-port PMOD4 81 # PIO1_05
+set_io --warn-no-port PMOD7 87 # PIO1_06
+set_io --warn-no-port PMOD8 88 # PIO1_07
+set_io --warn-no-port PMOD9 90 # PIO1_08
+set_io --warn-no-port PMOD10 91 # PIO1_09
+
+# FTDI Port B UART
+#set_io DCDn 1
+#set_io DSRn 2
+#set_io DTRn 3
+#set_io CTSn 4
+#set_io RTSn 7
+#set_io RS232_Tx 8
+#set_io RS232_Rx 9
+
+# Config pins
+#set_io CDONE 65
+#set_io CRESET_B 66

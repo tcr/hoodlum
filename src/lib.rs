@@ -1,3 +1,6 @@
+//! # Hoodlum
+//! Is the coolest.
+
 #[macro_use] extern crate itertools;
 #[macro_use] extern crate lazy_static;
 #[macro_use] extern crate maplit;
