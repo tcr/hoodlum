@@ -21,12 +21,12 @@ impl Main {
         }
     }
 
-    // Disable the other LEDs, as they otherwise would be
+    // Set the other LEDs to LED5, as they otherwise would be
     // left floating and semi-lit. Because these definitions
     // are stateless (not mutable), we can declare them at the
     // top level.
-    LED1 = 0;
-    LED2 = 0;
-    LED3 = 0;
-    LED4 = 0;
+    LED1 = LED5;
+    LED2 = LED5;
+    LED3 = LED5;
+    LED4 = LED5;
 }
