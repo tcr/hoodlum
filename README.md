@@ -41,7 +41,7 @@ The tutorial and examples target the $20 iCEstick evaluation board and the [IceS
 open source compiler toolchain](http://www.clifford.at/icestorm/). See "examples/blinky"
 for the complete source code.
 
-![Blinky example](https://media.giphy.com/media/3oz8xYBBziWGxIvq5W/giphy.gif)
+![Blinky example](https://media.giphy.com/media/l0Hlz7tI5gEsh8Atq/giphy.gif)
 
 **NOTE:** I'm learning Verilog and VHDL as I go along. Feel free to suggest ideas
 and best practices in the issues section!
